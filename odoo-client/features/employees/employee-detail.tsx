@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon, LoaderCircleIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { ScrollArea } from '@/features/nexacrm/components/ui/scroll-area'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/features/nexacrm/components/ui/tabs'
 import SidePanel, {
   SidePanelTrigger,
 } from '@/features/nexacrm/components/layout/side-panel'
@@ -19,6 +25,7 @@ import { employeeName } from './types'
 import EmployeeFields from './components/employee-fields'
 import EmployeeTimeline from './components/employee-timeline'
 import EmployeeActions from './components/employee-actions'
+import EmployeeAttendance from '@/features/attendance/employee-attendance'
 
 export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const router = useRouter()
@@ -122,7 +129,18 @@ export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
         </SidePanel>
         <ScrollArea className="xl:min-h-0 xl:flex-1">
           <div className="py-4 xl:px-4">
-            <EmployeeTimeline employeeId={employee.id} />
+            <Tabs key={employee.id} defaultValue="timeline" className="gap-4">
+              <TabsList variant="line">
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="attendance">Attendance</TabsTrigger>
+              </TabsList>
+              <TabsContent value="timeline">
+                <EmployeeTimeline employeeId={employee.id} />
+              </TabsContent>
+              <TabsContent value="attendance">
+                <EmployeeAttendance employeeId={employee.id} />
+              </TabsContent>
+            </Tabs>
           </div>
         </ScrollArea>
       </div>

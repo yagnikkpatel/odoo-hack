@@ -13,7 +13,7 @@ import {
   useDraggable,
   useDroppable,
   useSensor,
-  useSensors
+  useSensors,
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import type { Table } from '@tanstack/react-table'
@@ -28,10 +28,17 @@ import {
   isSameMonth,
   parse,
   startOfMonth,
-  startOfWeek
+  startOfWeek,
 } from 'date-fns'
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { parseAsString, useQueryState } from '@/features/nexacrm/adapters/query-state'
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from 'lucide-react'
+import {
+  parseAsString,
+  useQueryState,
+} from '@/features/nexacrm/adapters/query-state'
 
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
@@ -40,10 +47,11 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from '@/features/nexacrm/components/ui/dropdown-menu'
 
 import CalendarChip from '@/features/nexacrm/components/calendar/calendar-chip'
+
 import SearchableMenuSection from '@/features/nexacrm/components/ui/searchable-menu-section'
 
 // Hook Imports
@@ -68,7 +76,9 @@ import { cn } from '@/features/nexacrm/lib/utils'
  *
  * Month layout only - no day or week view.
  */
+// Attendance adaptation of the NexaCRM calendar: compact chips also open records.
 export type RecordCalendarProps<TData> = {
+  onOpenRecord: (record: TData) => void
   table: Table<TData>
 
   /** Stable id, as on the board - used for React keys and as the drag id. */
@@ -121,7 +131,7 @@ const DayCell = <TData,>({
   isDropTarget,
   getId,
   renderCard,
-  draggable
+  draggable,
 }: {
   day: Date
   month: Date
@@ -131,7 +141,10 @@ const DayCell = <TData,>({
   renderCard: (record: TData) => ReactNode
   draggable: boolean
 }) => {
-  const { setNodeRef, isOver } = useDroppable({ id: dayKey(day), disabled: !isDropTarget })
+  const { setNodeRef, isOver } = useDroppable({
+    id: dayKey(day),
+    disabled: !isDropTarget,
+  })
   const [expanded, setExpanded] = useState(false)
 
   const isToday = isSameDay(day, new Date())
@@ -147,30 +160,35 @@ const DayCell = <TData,>({
         'flex min-h-28 min-w-0 flex-col gap-1.5 border-r p-1.5 last:border-r-0',
 
         !isSameMonth(day, month) && 'bg-muted/25',
-        isOver && 'bg-brand/5 ring-brand/30 ring-1 ring-inset'
+        isOver && 'bg-brand/5 ring-brand/30 ring-1 ring-inset',
       )}
     >
       <span
         className={cn(
           'text-muted-foreground self-end px-1 text-xs tabular-nums',
-          isToday && 'bg-brand text-brand-foreground rounded px-1.5 font-medium'
+          isToday &&
+            'bg-brand text-brand-foreground rounded px-1.5 font-medium',
         )}
       >
         {format(day, 'd')}
       </span>
 
-      {shown.map(record => (
-        <CalendarCard key={getId(record)} id={getId(record)} draggable={draggable}>
+      {shown.map((record) => (
+        <CalendarCard
+          key={getId(record)}
+          id={getId(record)}
+          draggable={draggable}
+        >
           {renderCard(record)}
         </CalendarCard>
       ))}
 
       {hidden > 0 || expanded ? (
         <Button
-          variant='ghost'
-          size='sm'
+          variant="ghost"
+          size="sm"
           onClick={() => setExpanded(!expanded)}
-          className='text-muted-foreground h-6 justify-start px-1 text-xs font-normal'
+          className="text-muted-foreground h-6 justify-start px-1 text-xs font-normal"
         >
           {expanded ? 'Show less' : `+${hidden} more`}
         </Button>
@@ -179,10 +197,21 @@ const DayCell = <TData,>({
   )
 }
 
-const CalendarCard = ({ id, draggable, children }: { id: string; draggable: boolean; children: ReactNode }) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, disabled: !draggable })
+const CalendarCard = ({
+  id,
+  draggable,
+  children,
+}: {
+  id: string
+  draggable: boolean
+  children: ReactNode
+}) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+    disabled: !draggable,
+  })
 
-  if (!draggable) return <div className='min-w-0'>{children}</div>
+  if (!draggable) return <div className="min-w-0">{children}</div>
 
   return (
     <div
@@ -204,7 +233,7 @@ const CalendarAgenda = <TData,>({
   days,
   getId,
   renderCard,
-  testId
+  testId,
 }: {
   days: { day: Date; records: TData[] }[]
   getId: (record: TData) => string
@@ -213,32 +242,40 @@ const CalendarAgenda = <TData,>({
 }) => {
   if (days.length === 0) {
     return (
-      <div data-testid={testId} className='text-muted-foreground rounded-md border px-4 py-10 text-center text-sm'>
-        Nothing scheduled this month.
+      <div
+        data-testid={testId}
+        className="text-muted-foreground rounded-md border px-4 py-10 text-center text-sm"
+      >
+        No attendance entries this month.
       </div>
     )
   }
 
   return (
-    <div data-testid={testId} className='flex flex-col gap-4'>
+    <div data-testid={testId} className="flex flex-col gap-4">
       {days.map(({ day, records }) => (
-        <div key={day.toISOString()} className='flex flex-col gap-2'>
-          <div className='flex items-baseline gap-2 border-b pb-1.5'>
+        <div key={day.toISOString()} className="flex flex-col gap-2">
+          <div className="flex items-baseline gap-2 border-b pb-1.5">
             <span
               className={cn(
                 'text-sm font-medium tabular-nums',
-                isSameDay(day, new Date()) && 'bg-brand text-brand-foreground rounded px-1.5'
+                isSameDay(day, new Date()) &&
+                  'bg-brand text-brand-foreground rounded px-1.5',
               )}
             >
               {format(day, 'd')}
             </span>
-            <span className='text-muted-foreground text-xs'>{format(day, 'EEEE')}</span>
-            <span className='text-muted-foreground/70 ml-auto text-xs tabular-nums'>{records.length}</span>
+            <span className="text-muted-foreground text-xs">
+              {format(day, 'EEEE')}
+            </span>
+            <span className="text-muted-foreground/70 ml-auto text-xs tabular-nums">
+              {records.length}
+            </span>
           </div>
 
-          <div className='grid items-start gap-2 sm:grid-cols-2'>
-            {records.map(record => (
-              <div key={getId(record)} className='min-w-0'>
+          <div className="grid items-start gap-2 sm:grid-cols-2">
+            {records.map((record) => (
+              <div key={getId(record)} className="min-w-0">
                 {renderCard(record)}
               </div>
             ))}
@@ -251,6 +288,7 @@ const CalendarAgenda = <TData,>({
 
 const RecordCalendar = <TData,>({
   table,
+  onOpenRecord,
   getId,
   getDate,
   renderCard,
@@ -259,7 +297,7 @@ const RecordCalendar = <TData,>({
   isUntitled,
   onDateChange,
   canEdit = false,
-  testId = 'record-calendar'
+  testId = 'record-calendar',
 }: RecordCalendarProps<TData>) => {
   const isGrid = useMediaQuery(GRID_QUERY)
   const showsFullCard = useMediaQuery(FULL_CARD_QUERY)
@@ -267,7 +305,9 @@ const RecordCalendar = <TData,>({
 
   const [monthParam, setMonthParam] = useQueryState(
     'month',
-    parseAsString.withDefault('').withOptions({ history: 'push', shallow: true, clearOnDefault: true })
+    parseAsString
+      .withDefault('')
+      .withOptions({ history: 'push', shallow: true, clearOnDefault: true }),
   )
 
   const month = useMemo(() => {
@@ -275,7 +315,9 @@ const RecordCalendar = <TData,>({
 
     const parsed = parse(monthParam, MONTH_PARAM_FORMAT, new Date())
 
-    return Number.isNaN(parsed.getTime()) ? startOfMonth(new Date()) : startOfMonth(parsed)
+    return Number.isNaN(parsed.getTime())
+      ? startOfMonth(new Date())
+      : startOfMonth(parsed)
   }, [monthParam])
 
   const rows = table.getPrePaginationRowModel().rows
@@ -286,22 +328,37 @@ const RecordCalendar = <TData,>({
     showsFullCard ? (
       renderCard(record)
     ) : (
-      <CalendarChip title={getTitle(record)} meta={getMeta?.(record)} muted={isUntitled?.(record)} />
+      <button
+        type="button"
+        className="w-full min-w-0 rounded text-left focus-visible:ring-2 focus-visible:ring-primary"
+        onClick={() => onOpenRecord(record)}
+        aria-label={'View attendance for ' + getTitle(record)}
+      >
+        <CalendarChip
+          title={getTitle(record)}
+          meta={getMeta?.(record)}
+          muted={isUntitled?.(record)}
+        />
+      </button>
     )
 
   const weeks = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 })
     const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 })
 
-    return eachWeekOfInterval({ start, end }, { weekStartsOn: 1 }).map(weekStart =>
-      eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) })
+    return eachWeekOfInterval({ start, end }, { weekStartsOn: 1 }).map(
+      (weekStart) =>
+        eachDayOfInterval({
+          start: weekStart,
+          end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+        }),
     )
   }, [month])
 
   const byDay = useMemo(() => {
     const buckets = new Map<string, TData[]>()
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
       const iso = getDate(row.original)
 
       if (!iso) return
@@ -322,19 +379,23 @@ const RecordCalendar = <TData,>({
   const agendaDays = useMemo(
     () =>
       eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) })
-        .map(day => ({ day, records: byDay.get(dayKey(day)) ?? [] }))
-        .filter(entry => entry.records.length > 0),
-    [month, byDay]
+        .map((day) => ({ day, records: byDay.get(dayKey(day)) ?? [] }))
+        .filter((entry) => entry.records.length > 0),
+    [month, byDay],
   )
 
-  const draggingRecord = draggingId ? rows.find(row => getId(row.original) === draggingId)?.original : undefined
+  const draggingRecord = draggingId
+    ? rows.find((row) => getId(row.original) === draggingId)?.original
+    : undefined
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setDraggingId(null)
 
     if (!over || !onDateChange) return
 
-    const record = rows.find(row => getId(row.original) === active.id)?.original
+    const record = rows.find(
+      (row) => getId(row.original) === active.id,
+    )?.original
 
     if (!record) return
 
@@ -347,34 +408,46 @@ const RecordCalendar = <TData,>({
     onDateChange(record, withDateOf(getDate(record), day))
   }
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
 
   const monthOptions = useMemo(() => {
     const base = startOfMonth(new Date())
 
-    return Array.from({ length: MONTH_PICKER_RANGE * 2 + 1 }, (_, index) => addMonths(base, index - MONTH_PICKER_RANGE))
+    return Array.from({ length: MONTH_PICKER_RANGE * 2 + 1 }, (_, index) =>
+      addMonths(base, index - MONTH_PICKER_RANGE),
+    )
   }, [])
 
   const goToMonth = (next: Date) => {
     const start = startOfMonth(next)
 
-    setMonthParam(isSameMonth(start, new Date()) ? '' : format(start, MONTH_PARAM_FORMAT))
+    setMonthParam(
+      isSameMonth(start, new Date()) ? '' : format(start, MONTH_PARAM_FORMAT),
+    )
   }
 
   const monthGrid = (
     <div>
-      <div className='grid grid-cols-7'>
-        {weeks[0]?.map(day => (
-          <div key={day.toISOString()} className='text-muted-foreground px-2 pb-1.5 text-right text-xs'>
+      <div className="grid grid-cols-7">
+        {weeks[0]?.map((day) => (
+          <div
+            key={day.toISOString()}
+            className="text-muted-foreground px-2 pb-1.5 text-right text-xs"
+          >
             {format(day, 'EEE')}
           </div>
         ))}
       </div>
 
-      <div data-testid={testId} className='overflow-hidden rounded-md border'>
-        {weeks.map(week => (
-          <div key={week[0].toISOString()} className='grid grid-cols-7 border-b last:border-b-0'>
-            {week.map(day => (
+      <div data-testid={testId} className="overflow-hidden rounded-md border">
+        {weeks.map((week) => (
+          <div
+            key={week[0].toISOString()}
+            className="grid grid-cols-7 border-b last:border-b-0"
+          >
+            {week.map((day) => (
               <DayCell
                 key={day.toISOString()}
                 day={day}
@@ -393,55 +466,78 @@ const RecordCalendar = <TData,>({
   )
 
   const body = (
-    <div className='flex flex-col gap-3'>
-      <div className='flex items-center justify-between gap-2'>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant='outline' size='sm' className='gap-1.5 font-medium' />}>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 font-medium"
+              />
+            }
+          >
             {format(month, 'MMMM yyyy')}
-            <ChevronDownIcon className='text-muted-foreground size-4' />
+            <ChevronDownIcon className="text-muted-foreground size-4" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align='start' className='max-h-80 w-48 overflow-y-auto'>
+          <DropdownMenuContent
+            align="start"
+            className="max-h-80 w-48 overflow-y-auto"
+          >
             <DropdownMenuGroup>
-              <SearchableMenuSection
-                items={monthOptions}
-                getLabel={option => format(option, 'MMMM yyyy')}
-                label='months'
-              >
-                {options =>
-                  options.map(option => (
-                    <DropdownMenuItem
-                      key={format(option, MONTH_PARAM_FORMAT)}
-                      onClick={() => goToMonth(option)}
-                      className={isSameMonth(option, month) ? 'bg-muted' : ''}
-                    >
-                      {format(option, 'MMMM yyyy')}
-                    </DropdownMenuItem>
-                  ))
-                }
+              <SearchableMenuSection items={monthOptions} getLabel={option => format(option, 'MMMM yyyy')} label='months'>
+              {options => options.map((option) => (
+                <DropdownMenuItem
+                  key={format(option, MONTH_PARAM_FORMAT)}
+                  onClick={() => goToMonth(option)}
+                  className={isSameMonth(option, month) ? 'bg-muted' : ''}
+                >
+                  {format(option, 'MMMM yyyy')}
+                </DropdownMenuItem>
+              ))}
               </SearchableMenuSection>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className='flex items-center gap-1'>
+        <div className="flex items-center gap-1">
           <Button
-            variant='ghost'
-            size='icon-sm'
-            aria-label='Previous month'
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Previous month"
             onClick={() => goToMonth(addMonths(month, -1))}
           >
             <ChevronLeftIcon />
           </Button>
-          <Button variant='ghost' size='sm' onClick={() => goToMonth(new Date())}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => goToMonth(new Date())}
+          >
             Today
           </Button>
-          <Button variant='ghost' size='icon-sm' aria-label='Next month' onClick={() => goToMonth(addMonths(month, 1))}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Next month"
+            onClick={() => goToMonth(addMonths(month, 1))}
+          >
             <ChevronRightIcon />
           </Button>
         </div>
       </div>
 
-      {isGrid ? monthGrid : <CalendarAgenda days={agendaDays} getId={getId} renderCard={renderCard} testId={testId} />}
+      {isGrid ? (
+        monthGrid
+      ) : (
+        <CalendarAgenda
+          days={agendaDays}
+          getId={getId}
+          renderCard={renderCard}
+          testId={testId}
+        />
+      )}
     </div>
   )
 
@@ -451,7 +547,9 @@ const RecordCalendar = <TData,>({
     <DndContext
       sensors={sensors}
       collisionDetection={pointerWithin}
-      onDragStart={({ active }: DragStartEvent) => setDraggingId(String(active.id))}
+      onDragStart={({ active }: DragStartEvent) =>
+        setDraggingId(String(active.id))
+      }
       onDragCancel={() => setDraggingId(null)}
       onDragEnd={handleDragEnd}
     >
@@ -459,7 +557,10 @@ const RecordCalendar = <TData,>({
 
       <DragOverlay>
         {draggingRecord ? (
-          <div data-testid='calendar-drag-overlay' className='pointer-events-none w-64 rotate-1 shadow-xl'>
+          <div
+            data-testid="calendar-drag-overlay"
+            className="pointer-events-none w-64 rotate-1 shadow-xl"
+          >
             {renderCard(draggingRecord)}
           </div>
         ) : null}

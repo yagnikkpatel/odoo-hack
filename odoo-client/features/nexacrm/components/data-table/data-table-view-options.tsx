@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
+import SearchableMenuSection from '@/features/nexacrm/components/ui/searchable-menu-section'
 import { VIEW_BAR_TRIGGER } from '@/features/nexacrm/components/data-table/record-view-bar'
 import {
   DropdownMenu,
@@ -161,19 +162,31 @@ const DataTableViewOptions = <TData,>({
               <span className='text-muted-foreground text-xs tabular-nums'>{visibleCount} shown</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className='w-60'>
-              <DndContext
-                id={dndId}
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                modifiers={[restrictToVerticalAxis]}
-                onDragEnd={handleDragEnd}
+              <SearchableMenuSection
+                items={orderedColumns}
+                getLabel={column => column.columnDef.meta?.label ?? column.id}
+                label='fields'
               >
-                <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                  {orderedColumns.map(column => (
-                    <SortableColumnItem key={column.id} column={column} disabled={!sortableIds.includes(column.id)} />
-                  ))}
-                </SortableContext>
-              </DndContext>
+                {(columns, searching) => (
+                  <DndContext
+                    id={dndId}
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    modifiers={[restrictToVerticalAxis]}
+                    onDragEnd={searching ? undefined : handleDragEnd}
+                  >
+                    <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                      {columns.map(column => (
+                        <SortableColumnItem
+                          key={column.id}
+                          column={column}
+                          disabled={searching || !sortableIds.includes(column.id)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </SearchableMenuSection>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuGroup>

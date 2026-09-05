@@ -10,6 +10,8 @@ const minutesAgoToIso = (minutes: number) => new Date(Date.now() - minutes * 60_
 
 const toCompany = ({ createdMinutesAgo, updatedMinutesAgo, ...company }: (typeof db)[number]): Company => ({
   ...company,
+  name: 'Odoo',
+  logo: '/images/companies/odoo.png',
   createdAt: minutesAgoToIso(createdMinutesAgo),
   updatedAt: minutesAgoToIso(updatedMinutesAgo)
 })

@@ -20,11 +20,13 @@ import { useEmployeesStore } from '../store'
 import { employeeName } from '../types'
 import type { Employee } from '../types'
 import EmployeeStatusBadge from '../components/status-badge'
+import EmployeeCompany from '../components/employee-company'
 import EmployeeRowActions from './row-actions'
 
 export const REORDERABLE_COLUMN_IDS = [
   'name',
   'email',
+  'companyId',
   'department',
   'jobTitle',
   'managerId',
@@ -104,6 +106,14 @@ export const columns: ColumnDef<Employee>[] = [
       <DataTableColumnHeader column={column} title="Work email" />
     ),
     cell: ({ row }) => <EmailCell email={row.original.email} />,
+  },
+  {
+    id: 'companyId',
+    accessorKey: 'companyName',
+    size: 170,
+    meta: { label: 'Company', icon: Building2Icon },
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Company" />,
+    cell: ({ row }) => <EmployeeCompany employee={row.original} />,
   },
   {
     accessorKey: 'department',

@@ -24,6 +24,7 @@ import { employeeName } from './types'
 import EmployeeFields from './components/employee-fields'
 import EmployeeTimeline from './components/employee-timeline'
 import EmployeeActions from './components/employee-actions'
+import EmployeeAttendance from '@/features/attendance/employee-attendance'
 
 export const useEmployeePreview = () =>
   useQueryState(
@@ -96,6 +97,10 @@ export default function EmployeePanel() {
                 <ClockIcon className="size-3.5" />
                 Timeline
               </TabsTrigger>
+              <TabsTrigger value="attendance">
+                <ClockIcon className="size-3.5" />
+                Attendance
+              </TabsTrigger>
             </TabsList>
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-4">
@@ -104,6 +109,9 @@ export default function EmployeePanel() {
                 </TabsContent>
                 <TabsContent value="timeline">
                   <EmployeeTimeline employeeId={employee.id} />
+                </TabsContent>
+                <TabsContent value="attendance">
+                  <EmployeeAttendance employeeId={employee.id} />
                 </TabsContent>
               </div>
             </ScrollArea>

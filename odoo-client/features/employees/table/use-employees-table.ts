@@ -28,6 +28,7 @@ import type {
 import type { Employee } from '@/features/employees/types'
 
 // Store Imports
+import { useCompaniesStore } from '@/features/nexacrm/store/use-companies-store'
 import { useEmployeesStore } from '@/features/employees/store'
 
 // Local Imports
@@ -41,6 +42,12 @@ export const useEmployeesTable = ({
   onEditEmployee: (employee: Employee) => void
 }) => {
   const employees = useEmployeesStore((state) => state.employees)
+
+  const companies = useCompaniesStore(state => state.companies)
+  const data = useMemo(() => employees.map(employee => ({
+    ...employee,
+    companyName: companies.find(company => company.id === employee.companyId)?.name || '',
+  })), [employees, companies])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -73,7 +80,7 @@ export const useEmployeesTable = ({
   const meta = useMemo(() => ({ onEditRow: onEditEmployee }), [onEditEmployee])
 
   const table = useReactTable({
-    data: employees,
+    data,
     columns,
     state: {
       sorting,

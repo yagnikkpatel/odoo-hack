@@ -4,7 +4,6 @@ import {
   BuildingIcon,
   CalendarIcon,
   CalendarPlusIcon,
-  ClockIcon,
   MailIcon,
   MapPinIcon,
   PencilIcon,
@@ -25,7 +24,10 @@ import UserChip from '@/features/nexacrm/components/record/user-chip'
 import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { formatDate } from '@/features/nexacrm/utils/format'
 import { useEmployeesStore } from '../store'
+import EmployeeCompany from './employee-company'
 import EmployeeContractsLink from '@/features/contracts/components/employee-contracts-link'
+import { EmployeeAttendanceLink } from '@/features/attendance/employee-attendance'
+import EmployeeSchedule from '@/features/working-schedules/employee-schedule'
 import { EMPLOYMENT_TYPE_LABELS, STATUS_LABELS, employeeName } from '../types'
 import type {
   Employee,
@@ -82,6 +84,9 @@ export default function EmployeeFields({ employee }: { employee: Employee }) {
         />
       </RecordGroup>
       <RecordGroup title="Work">
+        <RecordField type="static" label="Company" icon={BuildingIcon}>
+          <EmployeeCompany employee={employee} />
+        </RecordField>
         <RecordField
           label="Department"
           icon={BuildingIcon}
@@ -158,20 +163,13 @@ export default function EmployeeFields({ employee }: { employee: Employee }) {
             })
           }
         />
-        <RecordField type="static" label="Schedule" icon={ClockIcon}>
-          <span
-            className="text-muted-foreground text-sm"
-            title="Working schedules will be connected when that module is built"
-          >
-            Not assigned · Soon
-          </span>
-        </RecordField>
+        <EmployeeSchedule employeeId={employee.id} />
       </RecordGroup>
       <RecordGroup title="Related records">
         <div className="grid grid-cols-2 gap-2 py-1">
           <EmployeeContractsLink employeeId={employee.id} />
+          <EmployeeAttendanceLink employeeId={employee.id} />
           {[
-            { label: 'Attendance', icon: ClockIcon },
             { label: 'Time off', icon: CalendarIcon },
             { label: 'Allocations', icon: CalendarPlusIcon },
           ].map(({ label, icon: Icon }) => (
