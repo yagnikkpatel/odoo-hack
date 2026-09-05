@@ -50,3 +50,28 @@ export function requireScopedPermission(
     );
   };
 }
+
+/**
+ * Passes when the caller holds at least one of the codes. Used where a route is
+ * open to both scopes and the service does the narrowing (own vs any).
+ */
+export function requireAnyPermission(...codes: string[]): RequestHandler {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new AppError(401, "Authentication required");
+    }
+
+    const permissions = await getRolePermissions(req.user.role);
+
+    if (codes.some((code) => permissions.has(code))) {
+      next();
+
+      return;
+    }
+
+    throw new AppError(
+      403,
+      `Missing required permission: one of ${codes.join(", ")}`,
+    );
+  };
+}
