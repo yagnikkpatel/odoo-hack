@@ -14,6 +14,7 @@ const mocks = {
   '../lib/validate': { parseOrThrow: () => { throw new Error('Not in scope') } },
   '../types/user.dto': {},
   '../services/auth.service': {},
+  '../services/permission.service': { getRolePermissions: async role => { assert.equal(role, 'hr_manager'); return new Set(['employee:read:any']) } },
   express: { Router: () => ({ get: (...args) => registrations.push(args), post: () => {} }) }
 }
 function load(relative) {
@@ -52,7 +53,7 @@ async function main() {
   await route[2](request, response)
   assert.equal(response.statusCode, 200)
   assert.equal(response.headers['Cache-Control'], 'no-store, private')
-  assert.deepEqual(response.payload, { success: true, data: { user: expected } })
+  assert.deepEqual(response.payload, { success: true, data: { user: { ...expected, permissions: ['employee:read:any'] } } })
   assert.equal(JSON.stringify(response.payload).includes('must-not-leak'), false)
   await assert.rejects(route[2]({ headers: {} }, response), error => error.statusCode === 401)
   account = null

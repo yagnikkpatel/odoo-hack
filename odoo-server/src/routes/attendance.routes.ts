@@ -1,13 +1,16 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requirePermission } from "../middlewares/permission.middleware";
+import { uploadAttendanceSelfie } from "../middlewares/upload.middleware";
 import {
   checkInHandler,
   checkOutHandler,
   createAttendanceHandler,
+  enrollFaceHandler,
   deleteAttendanceHandler,
   getAttendanceHandler,
   getMyTodayAttendanceHandler,
+  getVerificationStatusHandler,
   listAttendancesHandler,
   listMyAttendancesHandler,
   updateAttendanceHandler,
@@ -21,13 +24,28 @@ attendanceRouter.use(requireAuth);
 attendanceRouter.post(
   "/check-in",
   requirePermission("attendance:create:own"),
+  uploadAttendanceSelfie,
   checkInHandler,
 );
 
 attendanceRouter.post(
   "/check-out",
   requirePermission("attendance:create:own"),
+  uploadAttendanceSelfie,
   checkOutHandler,
+);
+
+attendanceRouter.get(
+  "/me/verification",
+  requirePermission("attendance:read:own"),
+  getVerificationStatusHandler,
+);
+
+attendanceRouter.post(
+  "/me/face",
+  requirePermission("attendance:create:own"),
+  uploadAttendanceSelfie,
+  enrollFaceHandler,
 );
 
 attendanceRouter.get(

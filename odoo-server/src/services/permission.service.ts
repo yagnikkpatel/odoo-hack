@@ -1,4 +1,4 @@
-import { getCached, invalidateCache, setCached } from "../lib/cache";
+import { invalidateCache } from "../lib/cache";
 import { findPermissionCodesByRole } from "../repositories/permission.repository";
 
 function rolePermissionsCacheKey(roleName: string): string {
@@ -8,17 +8,9 @@ function rolePermissionsCacheKey(roleName: string): string {
 export async function getRolePermissions(
   roleName: string,
 ): Promise<Set<string>> {
-  const cacheKey = rolePermissionsCacheKey(roleName);
-  const cached = await getCached<string[]>(cacheKey);
-
-  if (cached) {
-    return new Set(cached);
-  }
-
+  // Permission revocations must apply to the next request, even if Redis is
+  // unavailable or another request was populating a stale cache entry.
   const codes = await findPermissionCodesByRole(roleName);
-
-  await setCached(cacheKey, codes);
-
   return new Set(codes);
 }
 

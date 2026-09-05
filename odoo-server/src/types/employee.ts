@@ -1,3 +1,5 @@
+import type { FaceTemplateSource } from "./attendance";
+
 export const MANAGER_ROLES = [
   "admin",
   "hr_manager",
@@ -46,6 +48,11 @@ export type EmployeeProfileRecord = {
   companyImage?: ImageRef;
   workLocation: string;
   location: string | null;
+  workLatitude: number | null;
+  workLongitude: number | null;
+  workRadiusM: number;
+  faceEnrolledAt: Date | null;
+  faceSource: FaceTemplateSource | null;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -268,6 +268,22 @@ export async function createRequestHandler(
   });
 }
 
+export async function getMyTimeOffHandler(req: Request, res: Response): Promise<void> {
+  const userId = requireUserId(req);
+  const [types, allocations, requests] = await Promise.all([listTypes(), listMyAllocations(userId), listMyRequests(userId)]);
+  const referenced = new Set([...allocations, ...requests].map(record => record.typeId));
+  res.setHeader('Cache-Control', 'no-store, private');
+  res.json({ success: true, data: { types: types.filter(type => type.active || referenced.has(type.id)), allocations, requests } });
+}
+
+export async function createMyRequestHandler(req: Request, res: Response): Promise<void> {
+  const userId = requireUserId(req);
+  if (req.body?.employeeId && req.body.employeeId !== userId) throw new AppError(403, 'You can only request your own time off.');
+  const input = parseOrThrow(createRequestSchema, { ...req.body, employeeId: userId });
+  const request = await createRequest(input, requireActor(req));
+  res.status(201).json({ success: true, data: request });
+}
+
 export async function getRequestHandler(
   req: Request,
   res: Response,

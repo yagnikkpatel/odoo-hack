@@ -7,6 +7,10 @@ type PermissionCodeRow = {
 export async function findPermissionCodesByRole(
   roleName: string,
 ): Promise<string[]> {
+  if (roleName === 'admin') {
+    const all = await pool.query<PermissionCodeRow>('SELECT code FROM permissions ORDER BY code');
+    return all.rows.map(row => row.code);
+  }
   const result = await pool.query<PermissionCodeRow>(
     `SELECT p.code
      FROM role_permissions rp

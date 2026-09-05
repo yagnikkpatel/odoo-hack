@@ -2,6 +2,7 @@ import { pool } from "../lib/db";
 import {
   ATTENDANCE_TIMEZONE,
   AttendanceRecord,
+  AttendanceVerification,
   OPEN_SESSION_MAX_HOURS,
 } from "../types/attendance";
 
@@ -16,6 +17,8 @@ const ATTENDANCE_COLUMNS = `
     a.worked_hours::float8 AS "workedHours",
     a.overtime_hours::float8 AS "overtimeHours",
     a.status AS "status",
+    a.check_in_verification AS "checkInVerification",
+    a.check_out_verification AS "checkOutVerification",
     a.edited_by AS "editedBy",
     e.name AS "editedByName",
     a.edited_at AS "editedAt",
@@ -55,18 +58,19 @@ export type AttendanceFields = {
 
 export async function checkInEmployee(
   employeeId: string,
+  verification: AttendanceVerification | null = null,
 ): Promise<AttendanceRecord | null> {
   const result = await pool.query<AttendanceRecord>(
     `WITH inserted AS (
-       INSERT INTO attendances (employee_id, attendance_date, check_in, status)
-       VALUES ($2, ${LOCAL_TODAY}, NOW(), 'incomplete')
+       INSERT INTO attendances (employee_id, attendance_date, check_in, status, check_in_verification)
+       VALUES ($2, ${LOCAL_TODAY}, NOW(), 'incomplete', $3::jsonb)
        ON CONFLICT (employee_id, attendance_date) DO NOTHING
        RETURNING *
      )
      SELECT ${ATTENDANCE_COLUMNS}
      FROM inserted a
      ${ATTENDANCE_JOINS}`,
-    [ATTENDANCE_TIMEZONE, employeeId],
+    [ATTENDANCE_TIMEZONE, employeeId, verification],
   );
 
   return result.rows[0] ?? null;
@@ -74,11 +78,13 @@ export async function checkInEmployee(
 
 export async function checkOutEmployee(
   employeeId: string,
+  verification: AttendanceVerification | null = null,
 ): Promise<AttendanceRecord | null> {
   const result = await pool.query<AttendanceRecord>(
     `WITH updated AS (
        UPDATE attendances
        SET check_out = NOW(),
+           check_out_verification = $3::jsonb,
            status = CASE WHEN status = 'incomplete' THEN 'present' ELSE status END,
            updated_at = NOW()
        WHERE id = (
@@ -91,12 +97,13 @@ export async function checkOutEmployee(
          ORDER BY check_in DESC
          LIMIT 1
        )
+       AND check_out IS NULL
        RETURNING *
      )
      SELECT ${ATTENDANCE_COLUMNS}
      FROM updated a
      ${ATTENDANCE_JOINS}`,
-    [employeeId, String(OPEN_SESSION_MAX_HOURS)],
+    [employeeId, String(OPEN_SESSION_MAX_HOURS), verification],
   );
 
   return result.rows[0] ?? null;

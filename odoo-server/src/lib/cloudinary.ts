@@ -30,12 +30,13 @@ function configureCloudinary(): void {
 export async function uploadImageToCloudinary(
   buffer: Buffer,
   folder: string,
+  options: { timeoutMs?: number } = {},
 ): Promise<StoredImage> {
   configureCloudinary();
 
   const uploaded = await new Promise<UploadApiResponse>((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { resource_type: "image", folder },
+      { resource_type: "image", folder, ...(options.timeoutMs ? { timeout: options.timeoutMs } : {}) },
       (error, result) => {
         if (error) {
           const httpCode = (error as { http_code?: number }).http_code;

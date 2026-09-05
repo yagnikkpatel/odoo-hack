@@ -1,5 +1,6 @@
 import { PoolClient } from "pg";
 import { pool } from "../lib/db";
+import type { FaceTemplateSource } from "../types/attendance";
 import {
   EmployeeProfileImageIds,
   EmployeeAccountOption,
@@ -28,6 +29,11 @@ type ProfileRow = {
   companyImageId: string | null;
   workLocation: string;
   location: string | null;
+  workLatitude: number | null;
+  workLongitude: number | null;
+  workRadiusM: number;
+  faceEnrolledAt: Date | null;
+  faceSource: FaceTemplateSource | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -51,6 +57,11 @@ const PROFILE_COLUMNS = `
     p.company_image_public_id AS "companyImageId",
     p.work_location AS "workLocation",
     p.location AS "location",
+    p.work_latitude AS "workLatitude",
+    p.work_longitude AS "workLongitude",
+    p.work_radius_m AS "workRadiusM",
+    p.face_enrolled_at AS "faceEnrolledAt",
+    p.face_source AS "faceSource",
     p.created_at AS "createdAt",
     p.updated_at AS "updatedAt"
 `;
@@ -73,6 +84,9 @@ const UPDATABLE_COLUMNS: Record<string, string> = {
   companyName: "company_name",
   workLocation: "work_location",
   location: "location",
+  workLatitude: "work_latitude",
+  workLongitude: "work_longitude",
+  workRadiusM: "work_radius_m",
 };
 
 export type ProfileFields = {
@@ -84,6 +98,23 @@ export type ProfileFields = {
   companyName?: string;
   workLocation?: string;
   location?: string | null;
+  workLatitude?: number | null;
+  workLongitude?: number | null;
+  workRadiusM?: number;
+};
+
+/** Internal verification data; never included in employee API responses. */
+export type VerificationProfile = {
+  userId: string;
+  workLocation: string;
+  workLatitude: number | null;
+  workLongitude: number | null;
+  workRadiusM: number;
+  faceDescriptor: number[] | null;
+  faceSource: FaceTemplateSource | null;
+  faceImageUrl: string | null;
+  faceEnrolledAt: Date | null;
+  employeeImageUrl: string | null;
 };
 
 type ImageIdRow = {
@@ -119,6 +150,11 @@ function toProfileRecord(row: ProfileRow): EmployeeProfileRecord {
     ...(companyImage ? { companyImage } : {}),
     workLocation: row.workLocation,
     location: row.location,
+    workLatitude: row.workLatitude,
+    workLongitude: row.workLongitude,
+    workRadiusM: row.workRadiusM,
+    faceEnrolledAt: row.faceEnrolledAt,
+    faceSource: row.faceSource,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -265,14 +301,15 @@ export async function insertProfile(input: {
       | "workLocation"
     >
   > &
-    Pick<ProfileFields, "managerId" | "location">;
+    Pick<ProfileFields, "managerId" | "location" | "workLatitude" | "workLongitude" | "workRadiusM">;
 }): Promise<EmployeeProfileRecord> {
   await pool.query(
     `INSERT INTO employee_profiles (
        user_id, job_position, department, contact, manager_id,
-       working_schedule, company_name, work_location, location
+       working_schedule, company_name, work_location, location,
+       work_latitude, work_longitude, work_radius_m
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       input.userId,
       input.fields.jobPosition,
@@ -283,6 +320,9 @@ export async function insertProfile(input: {
       input.fields.companyName,
       input.fields.workLocation,
       input.fields.location ?? null,
+      input.fields.workLatitude ?? null,
+      input.fields.workLongitude ?? null,
+      input.fields.workRadiusM ?? 150,
     ],
   );
 
@@ -357,6 +397,11 @@ export async function updateProfile(
       assignments.push(`employee_image_url = $${values.length}`);
       values.push(employeeImage.publicId);
       assignments.push(`employee_image_public_id = $${values.length}`);
+      // Invalidate only an HR-photo-derived template, atomically with its photo.
+      // Employee-enrolled selfies remain valid when HR replaces the avatar.
+      for (const column of ["face_descriptor", "face_source", "face_image_url", "face_image_public_id", "face_enrolled_at"]) {
+        assignments.push(`${column} = CASE WHEN face_source = 'hr_photo' THEN NULL ELSE ${column} END`);
+      }
     }
 
     if (companyImage) {
@@ -429,6 +474,66 @@ const IMAGE_COLUMNS: Record<string, { url: string; publicId: string }> = {
   },
 };
 
+export async function findVerificationProfile(userId: string): Promise<VerificationProfile | null> {
+  const result = await pool.query<VerificationProfile>(
+    `SELECT user_id AS "userId", work_location AS "workLocation",
+       work_latitude AS "workLatitude", work_longitude AS "workLongitude",
+       work_radius_m AS "workRadiusM", face_descriptor AS "faceDescriptor",
+       face_source AS "faceSource", face_image_url AS "faceImageUrl",
+       face_enrolled_at AS "faceEnrolledAt", employee_image_url AS "employeeImageUrl"
+     FROM employee_profiles WHERE user_id = $1`,
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function saveFaceTemplate(
+  userId: string,
+  descriptor: number[],
+  source: FaceTemplateSource,
+  image: StoredImage | null,
+  expectedEmployeeImageUrl?: string,
+): Promise<{ previousImagePublicId: string | null } | null> {
+  if (descriptor.length !== 128 || !Array.from(descriptor).every((value) => Number.isFinite(value))) {
+    throw new Error("Face descriptor must contain 128 finite numbers");
+  }
+  // Lock before obtaining the previous image so concurrent enrollments cannot
+  // delete the newly selected image or leave replaced images orphaned.
+  const result = await pool.query<{ previousImagePublicId: string | null }>(
+    `WITH previous AS MATERIALIZED (
+       SELECT user_id, face_image_public_id FROM employee_profiles
+       WHERE user_id = $1
+         AND ($3::text <> 'hr_photo' OR (face_descriptor IS NULL AND employee_image_url = $6))
+       FOR UPDATE
+     )
+     UPDATE employee_profiles p
+     SET face_descriptor = $2::real[], face_source = $3,
+         face_image_url = $4, face_image_public_id = $5,
+         face_enrolled_at = NOW(), updated_at = NOW()
+     FROM previous WHERE p.user_id = previous.user_id
+     RETURNING previous.face_image_public_id AS "previousImagePublicId"`,
+    [userId, descriptor, source, image?.url ?? null, image?.publicId ?? null, expectedEmployeeImageUrl ?? null],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function clearFaceTemplate(userId: string, onlySource?: FaceTemplateSource): Promise<string | null> {
+  const result = await pool.query<{ previousImagePublicId: string | null }>(
+    `WITH previous AS MATERIALIZED (
+       SELECT user_id, face_image_public_id FROM employee_profiles
+       WHERE user_id = $1 AND ($2::text IS NULL OR face_source = $2)
+       FOR UPDATE
+     )
+     UPDATE employee_profiles p
+     SET face_descriptor = NULL, face_source = NULL, face_image_url = NULL,
+         face_image_public_id = NULL, face_enrolled_at = NULL, updated_at = NOW()
+     FROM previous WHERE p.user_id = previous.user_id
+     RETURNING previous.face_image_public_id AS "previousImagePublicId"`,
+    [userId, onlySource ?? null],
+  );
+  return result.rows[0]?.previousImagePublicId ?? null;
+}
+
 export async function clearProfileImage(
   userId: string,
   imageType: "employee" | "company",
@@ -462,6 +567,14 @@ export async function clearProfileImage(
          WHERE user_id = $1`,
         [userId],
       );
+      if (imageType === "employee") {
+        await client.query(
+          `UPDATE employee_profiles SET face_descriptor = NULL, face_source = NULL,
+             face_image_url = NULL, face_image_public_id = NULL, face_enrolled_at = NULL
+           WHERE user_id = $1 AND face_source = 'hr_photo'`,
+          [userId],
+        );
+      }
     }
 
     const result = await client.query<ProfileRow>(

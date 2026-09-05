@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { getCurrentAuthUser } from "../services/current-auth-user.service";
+import { getRolePermissions } from "../services/permission.service";
 import { parseOrThrow } from "../lib/validate";
 import {
   forgotPasswordSchema,
@@ -21,8 +22,9 @@ import {
 export async function currentUserHandler(req: Request, res: Response): Promise<void> {
   if (!req.user?.userId) throw new AppError(401, "Authentication is required");
   const user = await getCurrentAuthUser(req.user.userId);
+  const permissions = [...await getRolePermissions(user.role)];
   res.setHeader("Cache-Control", "no-store, private");
-  res.status(200).json({ success: true, data: { user } });
+  res.status(200).json({ success: true, data: { user: { ...user, permissions } } });
 }
 
 export async function loginHandler(

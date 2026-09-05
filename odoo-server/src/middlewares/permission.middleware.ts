@@ -1,6 +1,14 @@
 import { NextFunction, Request, RequestHandler, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { getRolePermissions } from "../services/permission.service";
+import { getCurrentAuthUser } from "../services/current-auth-user.service";
+
+async function currentPermissions(req: Request) {
+  if (!req.user) throw new AppError(401, 'Authentication required');
+  const user = await getCurrentAuthUser(req.user.userId);
+  req.user = { userId: user.id, email: user.email, role: user.role };
+  return getRolePermissions(user.role);
+}
 
 export function requirePermission(code: string): RequestHandler {
   return async (req: Request, _res: Response, next: NextFunction) => {
@@ -8,7 +16,7 @@ export function requirePermission(code: string): RequestHandler {
       throw new AppError(401, "Authentication required");
     }
 
-    const permissions = await getRolePermissions(req.user.role);
+    const permissions = await currentPermissions(req);
 
     if (!permissions.has(code)) {
       throw new AppError(403, `Missing required permission: ${code}`);
@@ -27,7 +35,7 @@ export function requireScopedPermission(
       throw new AppError(401, "Authentication required");
     }
 
-    const permissions = await getRolePermissions(req.user.role);
+    const permissions = await currentPermissions(req);
 
     if (permissions.has(`${action}:any`)) {
       next();
@@ -61,7 +69,7 @@ export function requireAnyPermission(...codes: string[]): RequestHandler {
       throw new AppError(401, "Authentication required");
     }
 
-    const permissions = await getRolePermissions(req.user.role);
+    const permissions = await currentPermissions(req);
 
     if (codes.some((code) => permissions.has(code))) {
       next();

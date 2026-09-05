@@ -6,6 +6,8 @@ import {
 } from "../middlewares/permission.middleware";
 import {
   approveAllocationHandler,
+  getMyTimeOffHandler,
+  createMyRequestHandler,
   approveRequestHandler,
   cancelRequestHandler,
   createAllocationHandler,
@@ -33,6 +35,8 @@ import {
 export const timeOffRouter = Router();
 
 timeOffRouter.use(requireAuth);
+timeOffRouter.get('/me', requirePermission('time_off:read:own'), getMyTimeOffHandler);
+timeOffRouter.post('/requests/me', requirePermission('time_off:create:own'), createMyRequestHandler);
 
 // The whole module in one round trip: balance and consumption maths spans types,
 // allocations and requests together, and this dataset is small by nature.

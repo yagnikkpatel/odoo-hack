@@ -3,6 +3,7 @@ import { AppError } from "../errors/AppError";
 import { parseOrThrow } from "../lib/validate";
 import {
   attendanceIdParamSchema,
+  clockProofSchema,
   createAttendanceSchema,
   listAttendancesQuerySchema,
   myAttendanceQuerySchema,
@@ -12,13 +13,16 @@ import {
   checkIn,
   checkOut,
   createAttendance,
+  enrollFace,
   getAttendance,
   getMyTodayAttendance,
+  getVerificationStatus,
   listAttendances,
   listMyAttendances,
   removeAttendance,
   updateAttendance,
 } from "../services/attendance.service";
+import { ClockProof } from "../types/attendance";
 
 function requireUserId(req: Request): string {
   if (!req.user) {
@@ -28,11 +32,31 @@ function requireUserId(req: Request): string {
   return req.user.userId;
 }
 
+/** Existing web JSON/no-body calls remain valid, but attempted proof cannot
+ * silently become an unverified event when files or coordinates are missing. */
+export function readClockProof(req: Request): ClockProof | undefined {
+  const fields = req.body ?? {};
+  const hasProof = Boolean(req.is("multipart/form-data") || req.file) ||
+    ["selfie", "latitude", "longitude", "accuracy"].some((key) =>
+      Object.prototype.hasOwnProperty.call(fields, key));
+  if (!hasProof) return undefined;
+  if (!req.file?.buffer?.length) {
+    throw new AppError(400, 'Attach a photo as the "selfie" file field', "SELFIE_REQUIRED");
+  }
+  const position = parseOrThrow(clockProofSchema, fields);
+  return {
+    selfie: req.file.buffer,
+    latitude: position.latitude,
+    longitude: position.longitude,
+    accuracyM: position.accuracy ?? null,
+  };
+}
+
 export async function checkInHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const attendance = await checkIn(requireUserId(req));
+  const attendance = await checkIn(requireUserId(req), readClockProof(req));
 
   res.status(201).json({
     success: true,
@@ -44,7 +68,7 @@ export async function checkOutHandler(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const attendance = await checkOut(requireUserId(req));
+  const attendance = await checkOut(requireUserId(req), readClockProof(req));
 
   res.status(200).json({
     success: true,
@@ -62,6 +86,18 @@ export async function getMyTodayAttendanceHandler(
     success: true,
     data: attendance,
   });
+}
+
+export async function getVerificationStatusHandler(req: Request, res: Response): Promise<void> {
+  res.setHeader("Cache-Control", "no-store, private");
+  res.status(200).json({ success: true, data: await getVerificationStatus(requireUserId(req)) });
+}
+
+export async function enrollFaceHandler(req: Request, res: Response): Promise<void> {
+  if (!req.file?.buffer?.length) {
+    throw new AppError(400, 'Attach a photo as the "selfie" file field', "SELFIE_REQUIRED");
+  }
+  res.status(200).json({ success: true, data: await enrollFace(requireUserId(req), req.file.buffer) });
 }
 
 export async function listMyAttendancesHandler(

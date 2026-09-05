@@ -26,7 +26,7 @@ Use Expo Go compatible with SDK 57, or a development build. Web camera/location 
 
 ## Backend prerequisite for face check-in
 
-**The current backend in this repository does not include the face-verification API.** Login, profile and attendance reads use its existing routes. Face enrolment and verified clock-in/out require restoring/deploying the compatible backend separately. This app-only change does not implement or enable those server endpoints. The app shows an explicit setup error when they are missing; it never silently falls back to unverified attendance.
+The compatible face-verification API is restored in `../odoo-server`. Install its dependencies, apply its attendance recovery migration, and deploy/restart that backend; updating the app alone does not update a remote server. See [backend setup and verification details](../odoo-server/docs/attendance-verification.md). The app shows an explicit setup error if those endpoints are missing; it never silently falls back to unverified attendance.
 
 Required contract:
 

@@ -55,3 +55,24 @@ export const uploadEmployeeImages = multer({
   { name: "employeeImage", maxCount: 1 },
   { name: "companyImage", maxCount: 1 },
 ]);
+
+/** Dedicated bounded memory upload; the face engine verifies the actual bytes. */
+export const uploadAttendanceSelfie = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_IMAGE_BYTES,
+    files: 1,
+    fields: 3,
+    // Busboy fires the limit at the boundary; files/fields cap the actual four.
+    parts: 5,
+    fieldSize: 128,
+  },
+  fileFilter: (_req, file, callback) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED_MIME_TYPES.has(file.mimetype) || ALLOWED_EXTENSIONS.has(extension)) {
+      callback(null, true);
+    } else {
+      callback(new AppError(400, "The selfie must be a JPEG, PNG or WebP image", "FACE_IMAGE_INVALID"));
+    }
+  },
+}).single("selfie");

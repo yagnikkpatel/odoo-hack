@@ -46,7 +46,7 @@ export type ProfileImageUploads = {
 };
 
 function profileCacheKey(userId: string): string {
-  return `employee-profile:${userId}`;
+  return `employee-profile:verification-v1:${userId}`;
 }
 
 function employeeListCacheKey(
@@ -61,7 +61,7 @@ function employeeListCacheKey(
     search: query.search ?? "",
   });
 
-  return `${EMPLOYEE_LIST_NAMESPACE}:directory-v3:v${version}:${parameters.toString()}`;
+  return `${EMPLOYEE_LIST_NAMESPACE}:directory-v4:v${version}:${parameters.toString()}`;
 }
 
 function getErrorCode(error: unknown): string | undefined {
@@ -110,7 +110,7 @@ async function assertManagerIsSelectable(
   }
 }
 
-async function invalidateEmployeeCaches(userId: string): Promise<void> {
+export async function invalidateEmployeeCaches(userId: string): Promise<void> {
   await invalidateCache([profileCacheKey(userId)]);
   await bumpCacheVersion(EMPLOYEE_LIST_NAMESPACE);
 }
@@ -145,7 +145,7 @@ export async function createEmployeeProfile(
     }
 
     if (isCheckViolation(error)) {
-      throw new AppError(400, "An employee cannot be their own manager");
+      throw new AppError(400, "Invalid employee profile: check manager and office coordinates/radius");
     }
 
     throw error;
@@ -224,7 +224,7 @@ export async function updateEmployeeProfile(
     }
 
     if (isCheckViolation(error)) {
-      throw new AppError(400, "An employee cannot be their own manager");
+      throw new AppError(400, "Invalid employee profile: check manager and office coordinates/radius");
     }
 
     throw error;

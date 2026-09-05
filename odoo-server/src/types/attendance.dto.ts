@@ -85,3 +85,16 @@ export type CreateAttendanceInput = z.infer<typeof createAttendanceSchema>;
 export type UpdateAttendanceInput = z.infer<typeof updateAttendanceSchema>;
 export type ListAttendancesQuery = z.infer<typeof listAttendancesQuerySchema>;
 export type MyAttendanceQuery = z.infer<typeof myAttendanceQuerySchema>;
+
+// Multer gives us strings. Do not coerce null, blanks, arrays or booleans into
+// valid coordinates (in particular Number("") and Number(null) both equal 0).
+const coordinate = (min: number, max: number) =>
+  z.union([z.number(), z.string().trim().min(1)])
+    .transform(Number)
+    .pipe(z.number().finite().min(min).max(max));
+
+export const clockProofSchema = z.object({
+  latitude: coordinate(-90, 90),
+  longitude: coordinate(-180, 180),
+  accuracy: coordinate(0, 100_000).optional(),
+});

@@ -12,6 +12,15 @@ function checkRequiredEnvVariables(key: string): string {
   return value;
 }
 
+function boundedNumber(key: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[key];
+  const value = raw === undefined || raw.trim() === "" ? fallback : Number(raw);
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new Error(`${key} must be a finite number between ${min} and ${max}`);
+  }
+  return value;
+}
+
 export const env = {
   port: Number(process.env.PORT ?? 4000),
   isProduction: (process.env.NODE_ENV ?? "development") === "production",
@@ -32,4 +41,10 @@ export const env = {
   passwordResetTokenTtlSeconds: Number(
     process.env.PASSWORD_RESET_TOKEN_TTL_SECONDS ?? 600,
   ),
+  // Preserve the recovered verification threshold and GPS allowance defaults.
+  // Tighten GPS policy explicitly for a deployment after testing its devices.
+  faceMatchThreshold: boundedNumber("FACE_MATCH_THRESHOLD", 0.5, 0.1, 1),
+  locationAccuracyAllowanceM: boundedNumber("ATTENDANCE_LOCATION_ACCURACY_ALLOWANCE_M", 100, 0, 1000),
+  locationMaxAccuracyM: boundedNumber("ATTENDANCE_LOCATION_MAX_ACCURACY_M", 1000, 1, 10000),
+  attendanceStoreSelfies: process.env.ATTENDANCE_STORE_SELFIES !== "false",
 } as const;
