@@ -54,7 +54,7 @@ export const appNavigation: readonly NavigationGroup[] = [
         href: "/contracts",
         icon: IconFileText,
         iconClassName: "text-violet-600",
-        status: "planned",
+        status: "ready",
       },
       {
         id: "attendance",

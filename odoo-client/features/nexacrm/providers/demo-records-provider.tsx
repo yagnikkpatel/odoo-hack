@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import EmployeesHydrator from '@/features/employees/hydrator'
 import { toEmployeePreview } from '@/features/employees/types'
+import ContractsHydrator from '@/features/contracts/hydrator'
+import { demoContracts } from '@/features/contracts/demo-data'
 
 import { CurrentUserProvider } from '@/features/nexacrm/contexts/currentUserContext'
 import {
@@ -68,6 +70,7 @@ export default async function DemoRecordsProvider({
       <ActivitiesStoreHydrator data={activities} />
       <PeopleStoreHydrator data={people} />
       <EmployeesHydrator data={people.map(toEmployeePreview)} />
+      <ContractsHydrator data={demoContracts(people.map(toEmployeePreview))} />
       <OpportunitiesStoreHydrator data={opportunities} />
       <TasksStoreHydrator data={tasks} />
       <NotesStoreHydrator data={notes} />

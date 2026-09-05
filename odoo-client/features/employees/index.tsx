@@ -14,6 +14,7 @@ import { PAGE_BODY } from '@/features/nexacrm/lib/page-shape'
 import { EMPLOYEE_VIEW_TYPES } from './types'
 import EmployeePanel, { useEmployeePreview } from './employee-panel'
 import EmployeesGrid from './grid'
+import EmployeesStatsCards from './stats-cards'
 import EmployeesTable from './table/employees-table'
 import EmployeesToolbar from './table/table-toolbar'
 import { useEmployeesTable } from './table/use-employees-table'
@@ -63,6 +64,7 @@ export default function EmployeesView({
         }
       />
       <div className={PAGE_BODY}>
+        <EmployeesStatsCards />
         {viewType === 'grid' ? (
           <EmployeesGrid table={table} onOpenRecord={setPreviewId} />
         ) : (

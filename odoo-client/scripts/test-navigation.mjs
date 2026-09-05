@@ -28,6 +28,7 @@ for (const destination of navigationDestinations.filter(item => item.status === 
 }
 for (const [pathname, expected] of [
   ['/employees', 'employees'], ['/employees/per_1', 'employees'],
+  ['/contracts', 'contracts'], ['/contracts/ctr_demo_1', 'contracts'],
   ['/dashboards/analytics', 'dashboard'], ['/dashboard', 'dashboard'],
   ['/kanban/opp_4', 'kanban'], ['/opportunities/opp_4', 'kanban'],
   ['/attendance/schedules/weekly', 'working-schedules'],

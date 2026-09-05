@@ -35,7 +35,7 @@ export default function EmployeeTimeline({
         <DataTableEmptyState
           icon={ClockIcon}
           title="No employee changes yet"
-          description="Changes to this employee will appear here. Contract history will be connected with the Contracts module."
+          description="Changes to this employee will appear here. Employment agreements are available under Related records."
         />
       ) : (
         <ul>

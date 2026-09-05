@@ -125,8 +125,30 @@ assert.equal(exported['Employment type'], 'Full-time')
 assert.equal(Object.hasOwn(exported, 'Company'), false)
 
 // Guard intentional HR scope while preserving shared template source separately.
+const { employeeStats } = load('features/employees/stats.ts')
+assert.deepEqual(employeeStats([]), { total: 0, departments: 0, withManager: 0, withoutManager: 0 })
+assert.deepEqual(employeeStats([employee]), { total: 1, departments: 0, withManager: 0, withoutManager: 1 })
+assert.deepEqual(employeeStats([
+  { ...employee, department: ' Engineering ', managerId: 'manager' },
+  { ...employee, id: 'second', department: 'engineering' },
+  { ...employee, id: 'third', department: 'Research', managerId: 'manager' },
+  { ...employee, id: 'fourth', department: '  ' },
+]), { total: 4, departments: 2, withManager: 2, withoutManager: 2 })
+assert.equal(employeeStats(state().employees).total, state().employees.length)
+
 const entry = read('features/employees/index.tsx')
 assert.doesNotMatch(entry, /PeopleStats|Calendar|PeopleView/)
+assert.match(entry, /<EmployeesStatsCards \/>/)
+assert.ok(entry.indexOf('<EmployeesStatsCards />') < entry.indexOf("{viewType === 'grid'"))
+const statsCards = read('features/employees/stats-cards.tsx')
+assert.match(statsCards, /useEmployeesStore/)
+assert.doesNotMatch(statsCards, /usePeopleStore|companyId|accountOwnerId/)
+for (const label of ['Total employees', 'Departments', 'With manager', 'Without manager']) {
+  assert.ok(statsCards.includes(label))
+}
+const classes = source => [...source.matchAll(/className=['"]([^'"]+)['"]/g)].map(match => match[1])
+assert.deepEqual(classes(statsCards), classes(read('features/nexacrm/views/apps/people/stats-cards.tsx')),
+  'KPI layout, spacing, typography, icons and loading styles must match the original template')
 assert.match(entry, /EmployeesTable/)
 assert.match(entry, /EmployeesGrid/)
 assert.match(entry, /CreateEmployeeDialog/)
@@ -150,4 +172,4 @@ assert.match(dialog, /type="button" variant="outline" onClick=\{close\}/)
 assert.match(read('app/(app)/employees/page.tsx'), /@\/features\/employees/)
 assert.match(read('app/(app)/employees/[id]/page.tsx'), /@\/features\/employees\/employee-detail/)
 assert.equal(usePeopleStore.getState(), crmState)
-console.log('PASS: employee-only seed, isolated native CRUD/history, manager cleanup, CSV validation/export and reduced UI scope.')
+console.log('PASS: employee-only seed, isolated native CRUD/history, manager cleanup, CSV validation/export, KPI totals/source styling and reduced UI scope.')

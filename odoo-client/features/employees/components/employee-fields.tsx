@@ -5,7 +5,6 @@ import {
   CalendarIcon,
   CalendarPlusIcon,
   ClockIcon,
-  FileTextIcon,
   MailIcon,
   MapPinIcon,
   PencilIcon,
@@ -26,6 +25,7 @@ import UserChip from '@/features/nexacrm/components/record/user-chip'
 import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { formatDate } from '@/features/nexacrm/utils/format'
 import { useEmployeesStore } from '../store'
+import EmployeeContractsLink from '@/features/contracts/components/employee-contracts-link'
 import { EMPLOYMENT_TYPE_LABELS, STATUS_LABELS, employeeName } from '../types'
 import type {
   Employee,
@@ -169,8 +169,8 @@ export default function EmployeeFields({ employee }: { employee: Employee }) {
       </RecordGroup>
       <RecordGroup title="Related records">
         <div className="grid grid-cols-2 gap-2 py-1">
+          <EmployeeContractsLink employeeId={employee.id} />
           {[
-            { label: 'Contracts', icon: FileTextIcon },
             { label: 'Attendance', icon: ClockIcon },
             { label: 'Time off', icon: CalendarIcon },
             { label: 'Allocations', icon: CalendarPlusIcon },
