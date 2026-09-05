@@ -20,6 +20,9 @@ assert.deepEqual(main.items.map(item => item.label), ['Employees', 'Contracts', 
 assert.deepEqual(main.items.find(item => item.id === 'time-off').children.map(item => item.label), ['Requests', 'Allocations', 'Time off types'])
 assert.deepEqual(main.items.find(item => item.id === 'payroll').children.map(item => item.label), ['Payruns', 'Payslips', 'Salary structures', 'Salary rules'])
 assert.ok(navigationDestinations.some(item => item.id === 'working-schedules'))
+for (const id of ['attendance-records', 'working-schedules']) {
+  assert.equal(navigationDestinations.find(item => item.id === id)?.status, 'ready', `${id} must stay linked in the sidebar`)
+}
 assert.ok(navigationDestinations.some(item => item.id === 'users-roles'))
 assert.equal(new Set(navigationDestinations.map(item => item.id)).size, navigationDestinations.length)
 assert.equal(new Set(navigationDestinations.map(item => item.href)).size, navigationDestinations.length)
@@ -28,6 +31,8 @@ for (const destination of navigationDestinations.filter(item => item.status === 
 }
 for (const [pathname, expected] of [
   ['/employees', 'employees'], ['/employees/per_1', 'employees'],
+  ['/contracts', 'contracts'], ['/contracts/ctr_demo_1', 'contracts'],
+  ['/attendance', 'attendance-records'], ['/attendance/att_demo_1', 'attendance-records'],
   ['/dashboards/analytics', 'dashboard'], ['/dashboard', 'dashboard'],
   ['/kanban/opp_4', 'kanban'], ['/opportunities/opp_4', 'kanban'],
   ['/attendance/schedules/weekly', 'working-schedules'],

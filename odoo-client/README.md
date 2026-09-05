@@ -27,10 +27,12 @@ The default backend API URL is `http://localhost:4000/api`. The browser submits 
 - `config/` contains typed navigation and application configuration.
 - `features/auth/` owns authentication UI, API calls, and session handling.
 - `features/nexacrm/views/dashboards/analytics/` contains the original NexaCRM analytics components and demo data, copied without UI changes. The route renders this view directly; entrance motion lives in its route CSS module. Shared template primitives stay under `features/nexacrm/components/ui/`.
-- `features/nexacrm/views/apps/people/` contains the original People page at `/employees` and record details at `/employees/[id]`, including table, grid, calendar, import/export and record panels.
+- `features/employees/` owns `/employees` and `/employees/[id]`: an HR-specific adaptation of the NexaCRM directory, grid, preview panel and full profile. It reuses the template primitives and styles, with separate employee types, native state, CSV mapping and change history.
+- `features/contracts/` owns `/contracts` and `/contracts/[id]`, reusing the Employees/NexaCRM table, preview sheet, details rail, forms and menu primitives. Its native state is separate from employee and CRM data.
+- `features/nexacrm/views/apps/people/` preserves the original CRM People implementation for reuse and source verification; the Employees routes no longer render its CRM fields or tabs.
 - `features/nexacrm/views/apps/opportunities/` supplies the separate `/kanban` page. It opens in the source Kanban view, with draggable cards/columns, stage editing, record panels and the original table/calendar switcher. `/opportunities` links redirect here to preserve template cross-links.
 - `features/nexacrm/adapters/` uses React's native `useSyncExternalStore` and browser History APIs instead of Zustand/nuqs. Import validation is plain TypeScript, not Zod. Demo records remain in memory and reset on reload; the demo role is not backend authorization.
-- `features/nexacrm/providers/demo-records-provider.tsx` seeds the shared demo state once in the app layout, preserving in-memory edits while navigating between Employees and Kanban.
+- `features/nexacrm/providers/demo-records-provider.tsx` seeds the CRM and employee stores in the app layout. Employee edits survive route navigation but are isolated from CRM People and Kanban; a full reload resets the preview data.
 - `lib/` contains shared configuration and infrastructure utilities.
 
 `/dashboard` remains as a compatibility route and redirects to the original NexaCRM analytics dashboard.
@@ -56,6 +58,30 @@ Run `node scripts/test-navigation.mjs` to verify required menu coverage, working
 
 ## Source verification
 
-Run `node scripts/verify-analytics-source.mjs`, `node scripts/verify-people-source.mjs`, and `node scripts/verify-kanban-source.mjs` to compare the extracted UI against the local warehouse. Pass a template directory as the first argument if its location changes. The checks allow documented import/routing/type adaptations, not redesigned markup or styles. `node scripts/test-native-adapters.mjs` tests the native state/CSV adapters.
+Run `node scripts/verify-analytics-source.mjs`, `node scripts/verify-people-source.mjs`, and `node scripts/verify-kanban-source.mjs` to compare the preserved template UI against the local warehouse. Pass a template directory as the first argument if its location changes. The checks allow documented import/routing/type adaptations, not redesigned markup or styles. The People check covers the preserved CRM source, not the intentionally cleaned HR adaptation. `node scripts/test-native-adapters.mjs` tests the native state/CSV adapters; `node scripts/test-employees.mjs` covers employee seed isolation, CRUD/history, manager references, CSV validation and the reduced UI scope.
 
-These are template previews: linked Companies and Sales routes have not been added, and template-only payment/email actions are not connected to services.
+## Employees preview
+
+The default table contains Name, Work email, Department, Job position, Manager and Status; Phone is an optional column. Table/grid views, search, filtering, sorting, column controls, pagination, row selection and CSV import/export remain. The original NexaCRM four-card KPI layout is restored above both views, showing Total employees, Departments, With manager and Without manager from the employee store (directory-wide, independent of table filters). Unset departments are excluded; missing managers count as Without manager. The calendar view, fill-percentage footer, company/account-owner/social fields, favorites and CRM communication/task tabs are removed from Employees. Profiles contain employee details and an employee-only timeline, with quiet audit metadata in a collapsible section. Creating an employee requires submitting the form; cancelling never creates a blank record. Deletion requires confirmation.
+
+Identity/contact data still comes from the template preview. Department, manager, status and employment type are deliberately unset until edited; CRM company and account owner are not treated as HR fields. Contracts and Attendance show actual in-memory counts and open employee-filtered lists. Working schedules are editable from the employee details, and employee panels/full profiles include Attendance tabs with table and calendar views. Time off and Allocations remain marked **Soon**. Backend persistence, contract/payroll dependency checks and role-based access are not implemented by this UI cleanup.
+
+## Contracts preview
+
+Based on A2 and B2 of the source PDF, Contracts provides a clean list with dates, wages and status, search/filter/sort/column controls, pagination, CSV export, a slide-out Details/History panel and a full details page. New/Edit uses a single validated form for atomic employment-term changes. The employee link opens their profile; contract history lists all their agreements. No KPI cards or CRM-only fields were added.
+
+Seven explicitly labelled illustrative contracts show active, expired, scheduled and draft cases, including a prior agreement for the same employee. Demo wages default to INR/month; the form also supports other listed currencies and wage periods. These are sample terms, not employee salary facts or inferred CRM data. State survives route navigation and resets on full reload. Employee master fields are not overwritten by contract edits.
+
+Dates are inclusive. Active-state contracts cannot overlap for the same employee, including open-ended and scheduled agreements. Display status is derived from the record's state and dates; expired agreements remain available for historical periods. `contractForPeriod` selects by the requested dates, ignores drafts/cancelled records, and reports periods spanning multiple agreements rather than choosing one arbitrarily. This is a tested integration helper, not a connected payroll engine or proration implementation.
+
+Salary structure and working schedule are name-only preview fields until their setup modules can supply real IDs. New records are only created on submit; Cancel makes no changes. Deletion requires confirmation and currently affects only this in-memory preview. Real persistence, employee referential integrity, payroll-dependent edit/delete restrictions, server-side overlap constraints and role enforcement must be added at the backend boundary. All roles still share the preview sidebar, as requested for the UI phase.
+
+Run `node scripts/test-contracts.mjs` for date and overlap boundaries, historical lookup, CRUD isolation, CSV safety and UI integration checks.
+
+## Attendance and working schedules
+
+`/attendance` and `/attendance/schedules` are active sidebar destinations. Attendance includes table/calendar views, employee/date filters, manual entries, check-out, correction history and employee-scoped panels. Working schedules include weekly patterns, net-hour calculations and employee assignments. These features use native React preview state; edits survive navigation but reset on reload. Contract-specific schedule history, payroll integration and backend permissions remain separate work.
+
+The feature files alone are not sufficient: `config/app-navigation.ts` must keep both destinations `ready`; `DemoRecordsProvider` must mount `AttendanceHydrator` after the employee initializer to seed attendance, schedules and assignments; employee detail/panel components must render `EmployeeAttendance`, and employee fields must render `EmployeeSchedule` and `EmployeeAttendanceLink`. Run `node scripts/test-navigation.mjs` and `node scripts/test-attendance.mjs` to guard these connections as well as the existing validation and state behavior.
+
+The separate Kanban remains a CRM template preview: linked Companies and Sales routes have not been added, and template-only payment/email actions are not connected to services.

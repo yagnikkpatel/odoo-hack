@@ -21,6 +21,7 @@ import {
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Input } from '@/features/nexacrm/components/ui/input'
+import SearchableMenuSection from '@/features/nexacrm/components/ui/searchable-menu-section'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,11 +158,19 @@ const RecordViewBar = <TData,>({
             className='input-sm w-52'
           />
         ) : (
-          optionsFor(column).map(option => (
-            <DropdownMenuItem key={option.value} onClick={() => column.setFilterValue(option.value)}>
-              {option.label}
-            </DropdownMenuItem>
-          ))
+          <SearchableMenuSection
+            items={optionsFor(column)}
+            getLabel={option => option.label}
+            label={columnLabel(column).toLowerCase()}
+          >
+            {options =>
+              options.map(option => (
+                <DropdownMenuItem key={option.value} onClick={() => column.setFilterValue(option.value)}>
+                  {option.label}
+                </DropdownMenuItem>
+              ))
+            }
+          </SearchableMenuSection>
         )}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
@@ -175,7 +184,9 @@ const RecordViewBar = <TData,>({
     columns.length > 0 ? (
       <DropdownMenuGroup>
         <DropdownMenuLabel className='text-muted-foreground text-xs font-normal'>{label}</DropdownMenuLabel>
-        {columns.map(render)}
+        <SearchableMenuSection items={columns} getLabel={columnLabel} label={label.toLowerCase()}>
+          {options => options.map(render)}
+        </SearchableMenuSection>
       </DropdownMenuGroup>
     ) : null
 

@@ -1,7 +1,15 @@
 import type { ReactNode } from 'react'
+import EmployeesHydrator from '@/features/employees/hydrator'
+import { toEmployeePreview } from '@/features/employees/types'
+import ContractsHydrator from '@/features/contracts/hydrator'
+import { demoContracts } from '@/features/contracts/demo-data'
+import AttendanceHydrator from '@/features/attendance/hydrator'
 
 import { CurrentUserProvider } from '@/features/nexacrm/contexts/currentUserContext'
-import { getCurrentUser, getUsers } from '@/features/nexacrm/services/auth-service'
+import {
+  getCurrentUser,
+  getUsers,
+} from '@/features/nexacrm/services/auth-service'
 import { getPeople } from '@/features/nexacrm/services/person-service'
 import { getCompanies } from '@/features/nexacrm/services/company-service'
 import { getActivities } from '@/features/nexacrm/services/activity-service'
@@ -25,12 +33,36 @@ import EmailsStoreHydrator from '@/features/nexacrm/store/emails-store-hydrator'
 /** Same demo data/providers as NexaCRM, shared by the extracted app views.
  * This is a UI preview, not backend authorization or persistent employee storage.
  */
-export default async function DemoRecordsProvider({ children }: { children: ReactNode }) {
-  const [user, users, people, companies, activities, opportunities, tasks, notes, attachments, events, emails] =
-    await Promise.all([
-      getCurrentUser(), getUsers(), getPeople(), getCompanies(), getActivities(), getOpportunities(),
-      getTasksData(), getNotesData(), getAttachments(), getCalendarEvents(), getEmails()
-    ])
+export default async function DemoRecordsProvider({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const [
+    user,
+    users,
+    people,
+    companies,
+    activities,
+    opportunities,
+    tasks,
+    notes,
+    attachments,
+    events,
+    emails,
+  ] = await Promise.all([
+    getCurrentUser(),
+    getUsers(),
+    getPeople(),
+    getCompanies(),
+    getActivities(),
+    getOpportunities(),
+    getTasksData(),
+    getNotesData(),
+    getAttachments(),
+    getCalendarEvents(),
+    getEmails(),
+  ])
 
   return (
     <CurrentUserProvider user={user}>
@@ -38,6 +70,9 @@ export default async function DemoRecordsProvider({ children }: { children: Reac
       <CompaniesStoreHydrator data={companies} />
       <ActivitiesStoreHydrator data={activities} />
       <PeopleStoreHydrator data={people} />
+      <EmployeesHydrator data={people.map(toEmployeePreview)} />
+      <ContractsHydrator data={demoContracts(people.map(toEmployeePreview))} />
+      <AttendanceHydrator employeeIds={people.map((person) => person.id)} />
       <OpportunitiesStoreHydrator data={opportunities} />
       <TasksStoreHydrator data={tasks} />
       <NotesStoreHydrator data={notes} />
