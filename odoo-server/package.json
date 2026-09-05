@@ -11,7 +11,8 @@
     "docker:down": "docker compose down",
     "migrate": "tsx src/scripts/migrate.ts",
     "seed": "tsx src/scripts/seed.ts",
-    "worker": "tsx src/workers/deleteCloudinaryImage.worker.ts"
+    "worker": "tsx src/workers/deleteCloudinaryImage.worker.ts",
+    "worker:attendance": "tsx src/workers/markAbsentees.worker.ts"
   },
   "keywords": [],
   "author": "",
