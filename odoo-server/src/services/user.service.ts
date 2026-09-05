@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { AppError } from "../errors/AppError";
+import { getCached, invalidateCache, setCached } from "../lib/cache";
 import {
   deleteUserById,
   findAllUsers,
@@ -12,6 +13,12 @@ import { CreateUserInput, UpdateUserInput } from "../types/user.dto";
 import { UserRecord } from "../types/user";
 
 const SALT_ROUNDS = 12;
+
+const USER_LIST_CACHE_KEY = "users:all";
+
+function userCacheKey(id: string): string {
+  return `user:${id}`;
+}
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -36,13 +43,17 @@ export async function createUser(input: CreateUserInput): Promise<UserRecord> {
   const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
 
   try {
-    return await insertUser({
+    const user = await insertUser({
       name: input.name,
       email: input.email,
       passwordHash,
       roleId,
       status: input.status,
     });
+
+    await invalidateCache([USER_LIST_CACHE_KEY]);
+
+    return user;
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new AppError(409, "Email already in use");
@@ -53,15 +64,34 @@ export async function createUser(input: CreateUserInput): Promise<UserRecord> {
 }
 
 export async function listUsers(): Promise<UserRecord[]> {
-  return findAllUsers();
+  const cached = await getCached<UserRecord[]>(USER_LIST_CACHE_KEY);
+
+  if (cached) {
+    return cached;
+  }
+
+  const users = await findAllUsers();
+
+  await setCached(USER_LIST_CACHE_KEY, users);
+
+  return users;
 }
 
 export async function getUserById(id: string): Promise<UserRecord> {
+  const cacheKey = userCacheKey(id);
+  const cached = await getCached<UserRecord>(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
   const user = await findUserById(id);
 
   if (!user) {
     throw new AppError(404, "User not found");
   }
+
+  await setCached(cacheKey, user);
 
   return user;
 }
@@ -84,6 +114,8 @@ export async function updateUserById(
       throw new AppError(404, "User not found");
     }
 
+    await invalidateCache([USER_LIST_CACHE_KEY, userCacheKey(id)]);
+
     return user;
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -100,6 +132,8 @@ export async function removeUserById(id: string): Promise<string> {
   if (!deletedId) {
     throw new AppError(404, "User not found");
   }
+
+  await invalidateCache([USER_LIST_CACHE_KEY, userCacheKey(id)]);
 
   return deletedId;
 }

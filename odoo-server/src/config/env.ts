@@ -21,4 +21,5 @@ export const env = {
   jwtAccessSecret: checkRequiredEnvVariables("JWT_SECRET"),
   jwtAccessExpiresIn: checkRequiredEnvVariables("JWT_ACCESS_EXPIRES_IN"),
   redisUrl: checkRequiredEnvVariables("REDIS_URL"),
+  cacheTtlSeconds: Number(process.env.CACHE_TTL_SECONDS ?? 60),
 } as const;
