@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO roles (name)
+VALUES ('admin')
+ON CONFLICT (name) DO NOTHING;
