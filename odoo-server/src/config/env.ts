@@ -21,7 +21,4 @@ export const env = {
   jwtAccessSecret: checkRequiredEnvVariables("JWT_SECRET"),
   jwtAccessExpiresIn: checkRequiredEnvVariables("JWT_ACCESS_EXPIRES_IN"),
   redisUrl: checkRequiredEnvVariables("REDIS_URL"),
-  // googleClientId: checkRequiredEnvVariables("GOOGLE_CLIENT_ID"),
-  // googleClientSecret: checkRequiredEnvVariables("GOOGLE_CLIENT_SECRET"),
-  // googleRedirectUrl: checkRequiredEnvVariables("GOOGLE_CALLBACK_URL"),
 } as const;
