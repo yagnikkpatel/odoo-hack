@@ -12,13 +12,8 @@ import {
   useQueryState,
 } from "@/features/nexacrm/adapters/query-state";
 import { useAttendanceStore } from "./store";
-import { calendarDateRange, loadAllAttendanceRecords } from "./records-query";
 import { attendanceColumns, ATTENDANCE_COLUMNS } from "./columns";
-import type {
-  Attendance,
-  AttendanceListQuery,
-  AttendanceStatus,
-} from "./types";
+import type { AttendanceListQuery, AttendanceStatus } from "./types";
 
 function queryKey(query: AttendanceListQuery) {
   return JSON.stringify([
@@ -38,13 +33,11 @@ export function useAttendanceTable({
   employeeId,
   from,
   to,
-  calendar,
 }: {
   scope: "own" | "all";
   employeeId: string | null;
   from: string;
   to: string;
-  calendar: boolean;
 }) {
   const records = useAttendanceStore((state) => state.records);
   const serverPagination = useAttendanceStore((state) => state.pagination);
@@ -59,7 +52,6 @@ export function useAttendanceTable({
       .withDefault("")
       .withOptions({ history: "replace", shallow: true }),
   );
-  const [month] = useQueryState("month", parseAsString.withDefault(""));
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     {},
@@ -107,17 +99,15 @@ export function useAttendanceTable({
     if (!invalidRange) void loadRecords(query).catch(() => {});
   }, [invalidRange, loadRecords, query]);
   useEffect(() => {
-    if (calendar) return;
     const timer = window.setTimeout(retry, 250);
     return () => window.clearTimeout(timer);
-  }, [calendar, retry]);
+  }, [retry]);
 
   const lastPage = Math.max(
     0,
     Math.ceil(serverPagination.total / pagination.pageSize) - 1,
   );
   if (
-    !calendar &&
     hasHydrated &&
     !isLoading &&
     !error &&
@@ -127,30 +117,10 @@ export function useAttendanceTable({
     setPagination((current) => ({ ...current, pageIndex: lastPage }));
   }
 
-  const range = useMemo(() => calendarDateRange(month), [month]);
-  const calendarQuery = useMemo<AttendanceListQuery>(
-    () => ({
-      ...query,
-      limit: 100,
-      offset: 0,
-      from: from && from > range.from ? from : range.from,
-      to: to && to < range.to ? to : range.to,
-    }),
-    [query, range, from, to],
-  );
-  const monthData = useCalendarRecords(calendar, calendarQuery, records);
   const columns = useMemo(() => attendanceColumns(), []);
   const stale = queryKey(query) !== queryKey(loadedQuery);
-  const data = calendar
-    ? monthData.records
-    : invalidRange || stale
-      ? []
-      : records;
-  const total = calendar
-    ? monthData.records.length
-    : invalidRange || stale
-      ? 0
-      : serverPagination.total;
+  const data = invalidRange || stale ? [] : records;
+  const total = invalidRange || stale ? 0 : serverPagination.total;
   const table = useReactTable({
     data,
     columns,
@@ -182,62 +152,11 @@ export function useAttendanceTable({
   return {
     table,
     query,
-    exportQuery: calendar ? calendarQuery : query,
+    exportQuery: query,
     total,
     invalidRange,
-    loading:
-      !invalidRange &&
-      (calendar ? monthData.loading : isLoading || !hasHydrated || stale),
-    error: calendar ? monthData.error : error,
-    retry: calendar ? monthData.retry : retry,
-  };
-}
-
-function useCalendarRecords(
-  enabled: boolean,
-  query: AttendanceListQuery,
-  revision: Attendance[],
-) {
-  const [result, setResult] = useState<{
-    key: string;
-    revision: Attendance[];
-    attempt: number;
-    records: Attendance[];
-    error: string | null;
-  } | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const key = JSON.stringify(query);
-  useEffect(() => {
-    if (!enabled) return;
-    const controller = new AbortController();
-    async function loadMonth() {
-      const records = await loadAllAttendanceRecords(query, controller.signal);
-      if (!controller.signal.aborted)
-        setResult({ key, revision, attempt, records, error: null });
-    }
-    void loadMonth().catch((cause) => {
-      if (!controller.signal.aborted)
-        setResult({
-          key,
-          revision,
-          attempt,
-          records: [],
-          error:
-            cause instanceof Error
-              ? cause.message
-              : "The calendar could not be loaded.",
-        });
-    });
-    return () => controller.abort();
-  }, [enabled, query, key, revision, attempt]);
-  const current =
-    result?.key === key &&
-    result.revision === revision &&
-    result.attempt === attempt;
-  return {
-    records: current ? result.records : [],
-    loading: enabled && !current,
-    error: current ? result.error : null,
-    retry: () => setAttempt((current) => current + 1),
+    loading: !invalidRange && (isLoading || !hasHydrated || stale),
+    error,
+    retry,
   };
 }

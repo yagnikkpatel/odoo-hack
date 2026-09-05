@@ -172,6 +172,7 @@ export default function AllocationsView() {
     <>
       <TimeOffListPage
         title='Allocations'
+        noun={'allocation'}
         icon={WalletIcon}
         data={data}
         columns={columns}

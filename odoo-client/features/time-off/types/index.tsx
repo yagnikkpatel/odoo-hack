@@ -133,10 +133,12 @@ export default function TypesView() {
     <>
       <TimeOffListPage
         title='Time off types'
+        noun={'time off type'}
         icon={CalendarDaysIcon}
         data={types}
         columns={columns}
         columnIds={COLUMN_IDS}
+        showFilter={false}
         onOpen={type => setRecord(type.id)}
         actions={
           canManageTypes ? (

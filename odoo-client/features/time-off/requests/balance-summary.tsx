@@ -57,11 +57,6 @@ export default function RequestBalance({
           </div>
         ))}
       </dl>
-      <p className='text-muted-foreground text-xs leading-relaxed'>
-        Only approved allocations valid on this date are available. Pending requests (
-        {formatAmount(balance.pending, type.unit)}) do not reserve balance. Approval checks coverage for every requested
-        date.
-      </p>
       <div className='max-h-36 space-y-1 overflow-y-auto text-xs'>
         {allocations.length > 0 && (
           <p className='text-muted-foreground mb-1.5 font-medium'>Approved allocation validity</p>

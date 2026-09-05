@@ -67,6 +67,9 @@ type RecordViewBarProps<TData> = {
   showSort?: boolean
   showSearch?: boolean
 
+  /** Hides the "Filter" dropdown in the bar. On by default. */
+  showFilter?: boolean
+
   /** Hides each filter field's icon+label header, leaving just its options. Off by default. */
   showFilterFieldLabels?: boolean
 
@@ -115,6 +118,7 @@ const RecordViewBar = <TData,>({
   onViewTypeChange,
   showSort = true,
   showSearch = true,
+  showFilter = true,
   showFilterFieldLabels = true,
   showFilterChips = true
 }: RecordViewBarProps<TData>) => {
@@ -247,7 +251,7 @@ const RecordViewBar = <TData,>({
             </DropdownMenu>
           ) : null}
 
-          <DropdownMenu>
+          {showFilter && <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant='ghost' size='sm' className={VIEW_BAR_TRIGGER} />}>
               <ListFilterIcon /> <span className='max-sm:hidden'>Filter</span>
             </DropdownMenuTrigger>
@@ -267,7 +271,7 @@ const RecordViewBar = <TData,>({
               {renderFieldGroup('', visible(filterableColumns), renderFilterField)}
               {renderFieldGroup('', hidden(filterableColumns), renderFilterField)}
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
 
           {showSort && <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant='ghost' size='sm' className={VIEW_BAR_TRIGGER} />}>

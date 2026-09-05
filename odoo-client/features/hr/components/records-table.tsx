@@ -13,12 +13,16 @@ export default function RecordsTable<T>({
   loading,
   onOpen,
   label,
+  noun,
 }: {
   table: Table<T>
   columnIds: string[]
   loading: boolean
   onOpen: (record: T) => void
+  /** Plural record name, used for the empty state and the footer count. */
   label: string
+  /** Singular form of `label` for the footer count. */
+  noun: string
 }) {
   return (
     <Card className="flex flex-1 flex-col gap-0 overflow-hidden py-0">
@@ -42,6 +46,8 @@ export default function RecordsTable<T>({
           table={table}
           showSelectionCount={false}
           idPrefix={label.replaceAll(' ', '-')}
+          noun={noun}
+          nounPlural={label}
         />
       </div>
     </Card>

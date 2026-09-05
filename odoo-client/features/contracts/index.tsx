@@ -110,7 +110,7 @@ function ContractDirectory() {
         />
       </div>
       <div className="border-t">
-        <DataTablePagination table={table} idPrefix="contracts" />
+        <DataTablePagination table={table} idPrefix="contracts" noun="contract" />
       </div>
     </Card>
   )

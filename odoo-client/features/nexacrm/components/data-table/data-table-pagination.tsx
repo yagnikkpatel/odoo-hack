@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 // Hook Imports
 import { usePagination } from '@/features/nexacrm/hooks/use-pagination'
 
+// Util Imports
+import { formatRecordCount } from '@/features/nexacrm/lib/record-count'
+
 const PAGE_SIZE_OPTIONS = [10, 15, 25, 50]
 const PAGE_SIZE_ITEMS = PAGE_SIZE_OPTIONS.map(size => ({ label: `${size}`, value: `${size}` }))
 
@@ -18,12 +21,20 @@ type DataTablePaginationProps<TData> = {
   table: Table<TData>
   idPrefix?: string
 
+  /** Singular record name for the footer count, e.g. "employee" -> "302 employees". */
+  noun?: string
+
+  /** Plural form, when adding an "s" is wrong ("person" -> "people"). */
+  nounPlural?: string
+
   showSelectionCount?: boolean
 }
 
 const DataTablePagination = <TData,>({
   table,
   idPrefix = 'table',
+  noun = 'row',
+  nounPlural,
   showSelectionCount = true
 }: DataTablePaginationProps<TData>) => {
   const currentPage = table.getState().pagination.pageIndex + 1
@@ -40,7 +51,8 @@ const DataTablePagination = <TData,>({
   return (
     <div className='flex flex-col-reverse items-center gap-3 px-4 py-3 sm:flex-row sm:justify-between'>
       <p className='text-muted-foreground text-sm'>
-        {showSelectionCount ? `${selectedCount} of ${totalCount} row(s) selected.` : `${totalCount} row(s)`}
+        {formatRecordCount(totalCount, noun, nounPlural)}
+        {showSelectionCount && selectedCount > 0 ? ` · ${selectedCount} selected` : ''}
       </p>
 
       <div className='flex items-center gap-4 lg:gap-6'>

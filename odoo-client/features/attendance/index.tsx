@@ -54,12 +54,6 @@ function AttendanceDirectory() {
     'record',
     parseAsString.withOptions({ history: 'push', shallow: true }),
   )
-  const [view, setView] = useQueryState(
-    'view',
-    parseAsStringLiteral(['table', 'calendar'] as const)
-      .withDefault('table')
-      .withOptions({ history: 'push', shallow: true }),
-  )
   const [scopeParam, setScope] = useQueryState(
     'scope',
     parseAsStringLiteral(['own', 'all'] as const)
@@ -84,7 +78,6 @@ function AttendanceDirectory() {
       employeeId,
       from,
       to,
-      calendar: view === 'calendar',
     })
 
   useEffect(() => {
@@ -145,11 +138,6 @@ function AttendanceDirectory() {
         showSort={false}
         showFilterFieldLabels={false}
         showFilterChips={false}
-        viewType={view}
-        viewTypes={['table', 'calendar']}
-        onViewTypeChange={(next) => {
-          if (next === 'table' || next === 'calendar') setView(next)
-        }}
         options={
           <DataTableViewOptions
             table={table}
@@ -314,7 +302,6 @@ function AttendanceDirectory() {
           <AttendanceResults
             table={table}
             loading={loading}
-            calendar={view === 'calendar'}
             onOpen={setRecordId}
           />
         )}

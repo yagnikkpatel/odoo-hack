@@ -7,6 +7,7 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from '@/features/nexacrm/components/ui/select'
 import { usePagination } from '@/features/nexacrm/hooks/use-pagination'
+import { formatRecordCount } from '@/features/nexacrm/lib/record-count'
 import type { Employee } from '../types'
 
 const PAGE_SIZES = [10, 15, 25, 50].map((size) => ({
@@ -34,7 +35,8 @@ export default function EmployeePagination({
   return (
     <div className="flex flex-col-reverse items-center gap-3 px-4 py-3 sm:flex-row sm:justify-between">
       <p className="text-muted-foreground text-sm">
-        {total} employees · {selected} selected on this page
+        {formatRecordCount(total, 'employee')}
+        {selected > 0 ? ` · ${selected} selected` : ''}
       </p>
       <div className="flex items-center gap-4 lg:gap-6">
         <div className="flex items-center gap-2">

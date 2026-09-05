@@ -123,6 +123,7 @@ export default function RequestsView() {
     <>
       <TimeOffListPage
         title='Requests'
+        noun={'request'}
         icon={CalendarDaysIcon}
         data={data}
         columns={columns}

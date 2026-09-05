@@ -74,7 +74,7 @@ const PeopleTable = ({ table, rowCount, isFiltered, showSummary }: PeopleTablePr
         />
       </div>
       <div className='border-t'>
-        <DataTablePagination table={table} idPrefix='people' />
+        <DataTablePagination table={table} idPrefix='people' noun='person' nounPlural='people' />
       </div>
     </Card>
   )

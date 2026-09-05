@@ -60,6 +60,26 @@ const RowActionShell = ({
     }
   }
 
+  // With no view/edit/extra entries the leading group and its separator would render as
+  // dead space above a lone Delete, so both are dropped when there is nothing above it.
+  const leadingItems = viewHref || onEdit || extraItems ? (
+    <DropdownMenuGroup>
+      {viewHref ? (
+        <DropdownMenuItem render={<Link href={viewHref} />}>
+          <EyeIcon /> View
+        </DropdownMenuItem>
+      ) : null}
+
+      {onEdit ? (
+        <DropdownMenuItem onClick={onEdit}>
+          <PencilIcon /> Edit
+        </DropdownMenuItem>
+      ) : null}
+
+      {extraItems}
+    </DropdownMenuGroup>
+  ) : null
+
   return (
     <div className='flex items-center justify-center'>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -77,25 +97,11 @@ const RowActionShell = ({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align='end' className='w-40'>
-          <DropdownMenuGroup>
-            {viewHref ? (
-              <DropdownMenuItem render={<Link href={viewHref} />}>
-                <EyeIcon /> View
-              </DropdownMenuItem>
-            ) : null}
-
-            {onEdit ? (
-              <DropdownMenuItem onClick={onEdit}>
-                <PencilIcon /> Edit
-              </DropdownMenuItem>
-            ) : null}
-
-            {extraItems}
-          </DropdownMenuGroup>
+          {leadingItems}
 
           {onDelete ? (
             <>
-              <DropdownMenuSeparator />
+              {leadingItems ? <DropdownMenuSeparator /> : null}
               <DropdownMenuGroup>
                 <DropdownMenuItem variant='destructive' onClick={() => setConfirmOpen(true)}>
                   <Trash2Icon /> Delete

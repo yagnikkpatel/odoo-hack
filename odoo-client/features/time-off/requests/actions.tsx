@@ -37,10 +37,15 @@ export default function RequestActions({
     setReason('')
     setError(null)
   }
+  const canDecide = canApprove && record.status === 'pending'
+  const canCancel = canUpdate && record.status === 'approved'
+
+  // Stays undefined when neither decision applies - an empty fragment would still make the
+  // menu render its separator and leave a gap above Delete.
   const decisionItems =
-    canApprove || canUpdate ? (
+    canDecide || canCancel ? (
       <>
-        {canApprove && record.status === 'pending' && (
+        {canDecide && (
           <>
             <DropdownMenuItem onClick={() => setApprovalOpen(true)}>
               <CheckIcon />
@@ -52,7 +57,7 @@ export default function RequestActions({
             </DropdownMenuItem>
           </>
         )}
-        {canUpdate && record.status === 'approved' && (
+        {canCancel && (
           <DropdownMenuItem variant='destructive' onClick={() => openDecision('cancel')}>
             <BanIcon />
             Cancel leave

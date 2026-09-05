@@ -74,7 +74,7 @@ const OpportunitiesTable = ({ table, rowCount, isFiltered, showSummary }: Opport
         />
       </div>
       <div className='border-t'>
-        <DataTablePagination table={table} idPrefix='opportunities' />
+        <DataTablePagination table={table} idPrefix='opportunities' noun='opportunity' nounPlural='opportunities' />
       </div>
     </Card>
   )

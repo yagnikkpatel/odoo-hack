@@ -1,27 +1,5 @@
-import {
-  endOfMonth,
-  endOfWeek,
-  format,
-  parse,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
 import { listAttendances } from "./service";
-import { companyDateTime } from "./types";
-import type { Attendance, AttendanceListQuery } from "./types";
-
-export function calendarDateRange(monthParam: string) {
-  const today = new Date(companyDateTime().slice(0, 10) + "T12:00:00");
-  const parsed = parse(monthParam, "yyyy-MM", today);
-  const month = Number.isNaN(parsed.getTime()) ? today : parsed;
-  return {
-    from: format(
-      startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
-      "yyyy-MM-dd",
-    ),
-    to: format(endOfWeek(endOfMonth(month), { weekStartsOn: 1 }), "yyyy-MM-dd"),
-  };
-}
+import type { AttendanceListQuery } from "./types";
 
 export async function loadAllAttendanceRecords(
   query: AttendanceListQuery,
@@ -31,7 +9,7 @@ export async function loadAllAttendanceRecords(
   // Fetching the first page tells us the total, so every remaining page can
   // be requested in parallel instead of waiting on a serial offset-by-offset
   // loop - the difference between one round trip and several in a row for
-  // any range that spans more than 100 records (a busy month's calendar grid).
+  // any export that spans more than 100 records.
   signal?.throwIfAborted();
   const first = await listAttendances({ ...query, limit: 100, offset: 0 }, signal);
   signal?.throwIfAborted();

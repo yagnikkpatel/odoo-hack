@@ -45,22 +45,9 @@ function load(relative) {
   return module.exports;
 }
 
-const { calendarDateRange, loadAllAttendanceRecords } = load(
+const { loadAllAttendanceRecords } = load(
   "features/attendance/records-query",
 );
-assert.deepEqual(calendarDateRange("2026-09"), {
-  from: "2026-08-31",
-  to: "2026-10-04",
-});
-assert.deepEqual(calendarDateRange("2024-02"), {
-  from: "2024-01-29",
-  to: "2024-03-03",
-});
-assert.deepEqual(calendarDateRange("2026-02"), {
-  from: "2026-01-26",
-  to: "2026-03-01",
-});
-assert.deepEqual(calendarDateRange("invalid"), calendarDateRange(""));
 
 const records = Array.from({ length: 231 }, (_, index) => ({
   id: String(index),
@@ -188,13 +175,8 @@ const table = read("features/attendance/use-attendance-table.ts");
 assert.match(table, /scope === 'all' && search\.trim\(\)/);
 assert.match(table, /scope === 'all' && employeeId/);
 assert.match(table, /manualFiltering: true, manualPagination: true/);
-assert.match(table, /calendar \? monthData\.records\.length/);
-assert.match(table, /exportQuery: calendar \? calendarQuery : query/);
-assert.match(table, /return \(\) => controller\.abort\(\)/);
-assert.match(
-  table,
-  /result\.revision === revision && result\.attempt === attempt/,
-);
+assert.match(table, /exportQuery: query/);
+assert.doesNotMatch(table, /calendar/i);
 const today = read("features/attendance/today-card.tsx");
 assert.doesNotMatch(today, /Close an earlier session|Still checked in from an earlier day|recovery/);
 assert.match(today, /!initialLoading && \(!today \|\| open\)/);
@@ -203,8 +185,8 @@ assert.doesNotMatch(today, /<details/);
 assert.match(today, /window\.addEventListener\('focus', refresh\)/);
 assert.doesNotMatch(
   read("features/attendance/index.tsx"),
-  /DataConnectionNotice|useEmployeesStore|workedMinutes|breakMinutes|corrections/,
+  /DataConnectionNotice|useEmployeesStore|workedMinutes|breakMinutes|corrections|calendar/i,
 );
 console.log(
-  "Attendance directory tests passed: complete pagination, month boundaries, cancellation, errors, scopes, CSV, and self-service controls.",
+  "Attendance directory tests passed: complete pagination, cancellation, errors, scopes, CSV, and self-service controls.",
 );

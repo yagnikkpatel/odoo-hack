@@ -7,6 +7,7 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from '@/features/nexacrm/components/ui/select'
 import { usePagination } from '@/features/nexacrm/hooks/use-pagination'
+import { formatRecordCount } from '@/features/nexacrm/lib/record-count'
 import type { Attendance } from './types'
 
 const PAGE_SIZES = [15, 25, 50, 100].map((size) => ({
@@ -32,9 +33,7 @@ export default function AttendancePagination({
 
   return (
     <div className="flex flex-col-reverse items-center gap-3 px-4 py-3 sm:flex-row sm:justify-between">
-      <p className="text-muted-foreground text-sm">
-        {total} attendance record{total === 1 ? '' : 's'}
-      </p>
+      <p className="text-muted-foreground text-sm">{formatRecordCount(total, 'attendance record')}</p>
       <div className="flex items-center gap-4 lg:gap-6">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium max-sm:hidden">Rows per page</p>

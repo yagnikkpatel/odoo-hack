@@ -14,6 +14,7 @@ import useTimeOffData from './use-time-off-data'
 
 export default function TimeOffListPage<TData extends { id: string }>({
   title,
+  noun,
   icon,
   data,
   columns,
@@ -22,9 +23,12 @@ export default function TimeOffListPage<TData extends { id: string }>({
   filters,
   onOpen,
   onExport,
+  showFilter,
   showFilterFieldLabels
 }: {
   title: string
+  /** Singular record name for the table footer count, e.g. "request". */
+  noun: string
   icon: LucideIcon
   data: TData[]
   columns: ColumnDef<TData>[]
@@ -33,6 +37,7 @@ export default function TimeOffListPage<TData extends { id: string }>({
   filters?: ReactNode
   onOpen: (row: TData) => void
   onExport?: (rows: TData[]) => void
+  showFilter?: boolean
   showFilterFieldLabels?: boolean
 }) {
   useTimeOffData()
@@ -48,6 +53,7 @@ export default function TimeOffListPage<TData extends { id: string }>({
         icon={icon}
         showSort={false}
         showSearch={false}
+        showFilter={showFilter}
         showFilterFieldLabels={showFilterFieldLabels}
         actions={actions}
         options={
@@ -80,6 +86,7 @@ export default function TimeOffListPage<TData extends { id: string }>({
           loading={!hydrated}
           onOpen={onOpen}
           label={title.toLowerCase()}
+          noun={noun}
         />
       </div>
     </div>
