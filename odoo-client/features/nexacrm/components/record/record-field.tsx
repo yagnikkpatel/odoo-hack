@@ -62,7 +62,7 @@ const Row = ({ label, icon: Icon, children }: { label: string; icon?: LucideIcon
     <div className='grid grid-cols-1 items-start gap-1 @3xs:grid-cols-[7.5rem_minmax(0,1fr)] @3xs:gap-2'>
       <span className='text-muted-foreground flex min-h-8 items-center gap-1.5 text-sm'>
         {Icon ? <Icon className='size-3.5 shrink-0 opacity-70' /> : null}
-        <span className='truncate'>{label}</span>
+        <span>{label}</span>
       </span>
       <div className='flex min-h-8 min-w-0 items-center'>{children}</div>
     </div>

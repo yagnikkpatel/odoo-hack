@@ -12,7 +12,6 @@ import { Badge } from "@/features/nexacrm/components/ui/badge";
 import { ATTENDANCE_STATUSES, dateTimeLabel, hoursLabel } from "./types";
 import type { Attendance } from "./types";
 import AttendanceStatusBadge from "./status-badge";
-import AttendanceActions from "./record-actions";
 
 export const ATTENDANCE_COLUMNS = [
   "employeeName",
@@ -24,9 +23,7 @@ export const ATTENDANCE_COLUMNS = [
   "status",
 ];
 
-export function attendanceColumns(
-  onEdit: (record: Attendance) => void,
-): ColumnDef<Attendance>[] {
+export function attendanceColumns(): ColumnDef<Attendance>[] {
   return [
     {
       accessorKey: "employeeName",
@@ -92,19 +89,6 @@ export function attendanceColumns(
           <AttendanceStatusBadge status={row.original.status} />
           {row.original.editedAt && <Badge variant="outline">Edited</Badge>}
         </span>
-      ),
-    },
-    {
-      id: "actions",
-      size: 48,
-      enableHiding: false,
-      enableResizing: false,
-      header: () => <span className="sr-only">Actions</span>,
-      cell: ({ row }) => (
-        <AttendanceActions
-          record={row.original}
-          onEdit={() => onEdit(row.original)}
-        />
       ),
     },
   ];

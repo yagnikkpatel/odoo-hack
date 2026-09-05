@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import {
-  DownloadIcon,
   FileTextIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -16,7 +15,6 @@ import DataTablePagination from '@/features/nexacrm/components/data-table/data-t
 import DataTableEmptyState from '@/features/nexacrm/components/data-table/data-table-empty-state'
 import DataTableViewOptions from '@/features/nexacrm/components/data-table/data-table-view-options'
 import RecordViewBar from '@/features/nexacrm/components/data-table/record-view-bar'
-import BulkActionBar from '@/features/nexacrm/components/data-table/bulk-action-bar'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
 import { PAGE_BODY } from '@/features/nexacrm/lib/page-shape'
 import { useContractsStore } from './store'
@@ -24,6 +22,7 @@ import { CONTRACT_STATUSES } from './types'
 import type { Contract } from './types'
 import { useContractsTable } from './table/use-contracts-table'
 import { REORDERABLE_COLUMN_IDS } from './table/columns'
+import ContractsBulkActions from './table/bulk-actions'
 import ContractPanel, { useContractPreview } from './contract-panel'
 import ContractEditor from './components/contract-editor'
 import { downloadContractsCsv } from './csv'
@@ -62,22 +61,7 @@ function ContractDirectory() {
 
   let records = (
     <Card className="flex flex-1 flex-col gap-0 overflow-hidden py-0">
-      <BulkActionBar table={table}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            downloadContractsCsv(
-              table
-                .getFilteredSelectedRowModel()
-                .rows.map((row) => row.original),
-            )
-          }
-        >
-          <DownloadIcon />
-          Export selected
-        </Button>
-      </BulkActionBar>
+      <ContractsBulkActions table={table} />
       <div className="flex flex-1 flex-col [&_[data-slot=table-container]]:border-b">
         <DataTable
           table={table}

@@ -145,6 +145,7 @@ const DataTableViewOptions = <TData,>({
   }
 
   const visibleCount = table.getVisibleLeafColumns().filter(column => column.getCanHide()).length
+  const hideableCount = hideableColumns.length
 
   return (
     <DropdownMenu>
@@ -165,7 +166,9 @@ const DataTableViewOptions = <TData,>({
             <DropdownMenuSubTrigger>
               <Columns3Icon />
               <span className='flex-1'>Fields</span>
-              <span className='text-muted-foreground text-xs tabular-nums'>{visibleCount} shown</span>
+              <span className='text-muted-foreground text-xs tabular-nums'>
+                {visibleCount} of {hideableCount} shown
+              </span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className='w-60'>
               <SearchableMenuSection

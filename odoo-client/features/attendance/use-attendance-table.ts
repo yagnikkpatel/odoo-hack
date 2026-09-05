@@ -39,14 +39,12 @@ export function useAttendanceTable({
   from,
   to,
   calendar,
-  onEdit,
 }: {
   scope: "own" | "all";
   employeeId: string | null;
   from: string;
   to: string;
   calendar: boolean;
-  onEdit: (record: Attendance) => void;
 }) {
   const records = useAttendanceStore((state) => state.records);
   const serverPagination = useAttendanceStore((state) => state.pagination);
@@ -63,9 +61,9 @@ export function useAttendanceTable({
   );
   const [month] = useQueryState("month", parseAsString.withDefault(""));
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    overtimeHours: false,
-  });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    {},
+  );
   const [columnOrder, setColumnOrder] = useState([
     ...ATTENDANCE_COLUMNS,
     "actions",
@@ -141,7 +139,7 @@ export function useAttendanceTable({
     [query, range, from, to],
   );
   const monthData = useCalendarRecords(calendar, calendarQuery, records);
-  const columns = useMemo(() => attendanceColumns(onEdit), [onEdit]);
+  const columns = useMemo(() => attendanceColumns(), []);
   const stale = queryKey(query) !== queryKey(loadedQuery);
   const data = calendar
     ? monthData.records

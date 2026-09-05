@@ -59,11 +59,6 @@ export default function AttendanceContent({ record }: { record: Attendance }) {
           </p>
         </RecordGroup>
       )}
-      <p className="text-muted-foreground text-xs">
-        Recorded {dateTimeLabel(record.createdAt)}. Updated{' '}
-        {dateTimeLabel(record.updatedAt)}. All times are in India Standard Time
-        (Asia/Kolkata).
-      </p>
     </div>
   )
 }

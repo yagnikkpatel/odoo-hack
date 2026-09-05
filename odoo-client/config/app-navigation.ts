@@ -59,22 +59,10 @@ export const appNavigation: readonly NavigationGroup[] = [
       {
         id: "attendance",
         label: "Attendance",
+        href: "/attendance",
         icon: IconClockHour4,
         iconClassName: "text-emerald-600",
-        children: [
-          {
-            id: "attendance-records",
-            label: "Attendance records",
-            href: "/attendance",
-            status: "ready",
-          },
-          {
-            id: "working-schedules",
-            label: "Working schedules",
-            href: "/attendance/schedules",
-            status: "ready",
-          },
-        ],
+        status: "ready",
       },
       {
         id: "time-off",

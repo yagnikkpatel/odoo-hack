@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
@@ -14,7 +13,6 @@ import AttendanceEditor from './editor'
 export default function AttendanceDetail({ id }: { id: string }) {
   const { record, loading, error, retry } = useAttendanceRecord(id)
   const [editing, setEditing] = useState(false)
-  const router = useRouter()
   if (error)
     return (
       <div className="space-y-3 py-8">
@@ -53,12 +51,7 @@ export default function AttendanceDetail({ id }: { id: string }) {
           <ArrowLeftIcon />
         </Button>
         <h1 className="mr-auto text-base font-semibold">Attendance details</h1>
-        <AttendanceActions
-          record={record}
-          detail
-          onEdit={() => setEditing(true)}
-          onDeleted={() => router.push('/attendance')}
-        />
+        <AttendanceActions onEdit={() => setEditing(true)} />
       </div>
       <Card className="max-w-3xl">
         <CardContent>

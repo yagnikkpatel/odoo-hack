@@ -53,7 +53,7 @@ export default function SearchableSelect({
           if (next !== null) onChange(String(next))
         }}
       >
-        <SelectTrigger id={id} aria-label={label} className={cn('w-full', className)}>
+        <SelectTrigger id={id} aria-label={label} className={cn('w-full min-w-0', className)}>
           <SelectValue placeholder={placeholder}>{selectedContent}</SelectValue>
         </SelectTrigger>
         <SelectContent alignItemWithTrigger={false}>

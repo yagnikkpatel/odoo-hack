@@ -1,8 +1,7 @@
 'use client'
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { ExternalLinkIcon, XIcon } from 'lucide-react'
+import { XIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { ScrollArea } from '@/features/nexacrm/components/ui/scroll-area'
 import PreviewSheet from '@/features/nexacrm/components/record/preview-sheet'
@@ -11,7 +10,6 @@ export default function RecordPanel({
   title,
   open,
   onClose,
-  href,
   actions,
   children,
 }: {
@@ -49,19 +47,6 @@ export default function RecordPanel({
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-4">{children}</div>
       </ScrollArea>
-      {href && (
-        <div className="shrink-0 border-t p-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            render={<Link href={href} />}
-          >
-            <ExternalLinkIcon />
-            Open full details
-          </Button>
-        </div>
-      )}
     </PreviewSheet>
   )
 }

@@ -21,6 +21,7 @@ type ContractsStore = {
   loadContract: (id: string) => Promise<Contract>
   save: (input: ContractInput, id?: string) => Promise<string>
   remove: (id: string) => Promise<void>
+  removeMany: (ids: string[]) => Promise<void>
 }
 
 function errorMessage(error: unknown) {
@@ -158,6 +159,21 @@ export const useContractsStore = create<ContractsStore>()((set, get) => {
       await contractService.deleteContract(id)
       forget(id)
       await refreshList()
+    },
+
+    async removeMany(ids) {
+      let failure: unknown
+      for (const id of new Set(ids)) {
+        try {
+          await contractService.deleteContract(id)
+          forget(id)
+        } catch (error) {
+          failure = error
+          break
+        }
+      }
+      await refreshList()
+      if (failure) throw failure
     },
   }
 })

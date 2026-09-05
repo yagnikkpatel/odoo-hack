@@ -264,7 +264,7 @@ const RecordViewBar = <TData,>({
                 />
               </div>}
               {showSearch && <DropdownMenuSeparator />}
-              {renderFieldGroup('Visible fields', visible(filterableColumns), renderFilterField)}
+              {renderFieldGroup('', visible(filterableColumns), renderFilterField)}
               {renderFieldGroup('', hidden(filterableColumns), renderFilterField)}
             </DropdownMenuContent>
           </DropdownMenu>

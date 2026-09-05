@@ -333,9 +333,17 @@ export default function AttendanceEditor({
                         ([value, label]) => ({ value, label }),
                       ),
                     ]}
-                    onChange={(value) =>
-                      set({ status: value as Draft['status'] })
-                    }
+                    onChange={(value) => {
+                      const status = value as Draft['status']
+                      // Marking present manually should also record the
+                      // check-out that makes it true, so the table doesn't
+                      // show "Present" alongside a blank check-out.
+                      const checkOut =
+                        status === 'present' && draft.checkIn && !draft.checkOut
+                          ? localDateTime()
+                          : draft.checkOut
+                      set({ status, checkOut })
+                    }}
                   />
                 </FormField>
               </div>

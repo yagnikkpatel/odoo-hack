@@ -85,7 +85,6 @@ function AttendanceDirectory() {
       from,
       to,
       calendar: view === 'calendar',
-      onEdit: setEditor,
     })
 
   useEffect(() => {
@@ -142,9 +141,10 @@ function AttendanceDirectory() {
         viewName={scope === 'own' ? 'My attendance' : 'Attendance'}
         count={total}
         icon={ClockIcon}
-        searchPlaceholder="Search employee name or email…"
-        showSearch={scope === 'all'}
+        showSearch={false}
         showSort={false}
+        showFilterFieldLabels={false}
+        showFilterChips={false}
         viewType={view}
         viewTypes={['table', 'calendar']}
         onViewTypeChange={(next) => {
@@ -154,6 +154,7 @@ function AttendanceDirectory() {
           <DataTableViewOptions
             table={table}
             reorderableColumnIds={ATTENDANCE_COLUMNS}
+            showCopyLink={false}
           />
         }
         actions={
@@ -193,7 +194,7 @@ function AttendanceDirectory() {
             </div>
           )}
           {scope === 'all' && (
-            <div className="grid w-full gap-1.5 sm:w-52">
+            <div className="grid w-full min-w-0 gap-1.5 sm:w-52">
               <label
                 htmlFor="attendance-employee"
                 className="text-muted-foreground text-xs"
@@ -212,7 +213,7 @@ function AttendanceDirectory() {
                     : []),
                   ...employees.map((employee) => ({
                     value: employee.id,
-                    label: `${employee.name} · ${employee.email}`,
+                    label: employee.name,
                   })),
                 ]}
                 onChange={(value) =>
@@ -338,12 +339,7 @@ function AttendanceDirectory() {
               record={selected.record}
             />
             <div className="mt-4">
-              <AttendanceActions
-                record={selected.record}
-                detail
-                onEdit={() => setEditor(selected.record!)}
-                onDeleted={() => setRecordId(null)}
-              />
+              <AttendanceActions onEdit={() => setEditor(selected.record!)} />
             </div>
           </>
         )}
