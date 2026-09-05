@@ -22,4 +22,11 @@ export const env = {
   jwtAccessExpiresIn: checkRequiredEnvVariables("JWT_ACCESS_EXPIRES_IN"),
   redisUrl: checkRequiredEnvVariables("REDIS_URL"),
   cacheTtlSeconds: Number(process.env.CACHE_TTL_SECONDS ?? 60),
+  passwordResetOtp: process.env.PASSWORD_RESET_OTP ?? "123456",
+  passwordResetOtpTtlSeconds: Number(
+    process.env.PASSWORD_RESET_OTP_TTL_SECONDS ?? 600,
+  ),
+  passwordResetTokenTtlSeconds: Number(
+    process.env.PASSWORD_RESET_TOKEN_TTL_SECONDS ?? 600,
+  ),
 } as const;

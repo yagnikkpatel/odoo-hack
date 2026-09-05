@@ -139,3 +139,15 @@ export async function deleteUserById(id: string): Promise<string | null> {
 
   return result.rows[0]?.id ?? null;
 }
+
+export async function updateUserPassword(
+  id: string,
+  passwordHash: string,
+): Promise<string | null> {
+  const result = await pool.query<DeletedRow>(
+    "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING id",
+    [passwordHash, id],
+  );
+
+  return result.rows[0]?.id ?? null;
+}

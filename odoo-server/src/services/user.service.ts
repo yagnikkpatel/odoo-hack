@@ -137,3 +137,7 @@ export async function removeUserById(id: string): Promise<string> {
 
   return deletedId;
 }
+
+export async function invalidateUserCache(id: string): Promise<void> {
+  await invalidateCache([USER_LIST_CACHE_KEY, userCacheKey(id)]);
+}
