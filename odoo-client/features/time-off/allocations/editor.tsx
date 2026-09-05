@@ -7,8 +7,7 @@ import { Input } from '@/features/nexacrm/components/ui/input'
 import { Textarea } from '@/features/nexacrm/components/ui/textarea'
 import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
 import { dateValue } from '@/features/nexacrm/lib/date-time'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import { useEmployeeOptions } from '@/features/hr/employee-options'
 import type { Allocation, AllocationInput } from '../model'
 import { useTimeOffStore } from '../store'
 
@@ -25,7 +24,7 @@ export default function AllocationEditor({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const employees = useEmployeesStore(state => state.employees)
+  const { employees, loading: employeesLoading, error: employeesError, reload: reloadEmployees } = useEmployeeOptions()
   const types = useTimeOffStore(state => state.types)
   const [draft, setDraft] = useState<AllocationInput>(
     () =>
@@ -39,6 +38,7 @@ export default function AllocationEditor({
       }
   )
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const set = (patch: Partial<AllocationInput>) => {
     setDraft(previous => ({ ...previous, ...patch }))
     setError(null)
@@ -55,11 +55,14 @@ export default function AllocationEditor({
         allocation?.status === 'refused' ? 'Resubmit for approval' : allocation ? 'Save changes' : 'Submit for approval'
       }
       error={error}
+      pending={submitting}
       onClose={onClose}
-      onSubmit={event => {
+      onSubmit={async event => {
         event.preventDefault()
-        const result = useTimeOffStore.getState().saveAllocation(draft, allocation?.id)
+        setSubmitting(true)
+        const result = await useTimeOffStore.getState().saveAllocation(draft, allocation?.id)
         if (!result.ok) {
+          setSubmitting(false)
           setError(result.error)
           return
         }
@@ -70,12 +73,24 @@ export default function AllocationEditor({
     >
       <div className='grid gap-4 sm:grid-cols-2'>
         <FormField id='allocation-employee' label='Employee'>
-          <Choice
-            id='allocation-employee'
-            value={draft.employeeId}
-            options={employees.map(employee => ({ value: employee.id, label: employeeName(employee) }))}
-            onChange={value => set({ employeeId: value })}
-          />
+          {employeesError ? (
+            <p className='text-destructive text-sm'>
+              {employeesError}{' '}
+              <button type='button' className='underline' onClick={reloadEmployees}>
+                Retry
+              </button>
+            </p>
+          ) : (
+            <Choice
+              id='allocation-employee'
+              value={draft.employeeId}
+              searchable
+              disabled={employeesLoading}
+              placeholder={employeesLoading ? 'Loading employees…' : 'Choose…'}
+              options={employees.map(employee => ({ value: employee.id, label: employee.name }))}
+              onChange={value => set({ employeeId: value })}
+            />
+          )}
         </FormField>
         <FormField id='allocation-type' label='Time off type'>
           <Choice

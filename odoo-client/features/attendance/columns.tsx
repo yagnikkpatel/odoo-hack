@@ -1,109 +1,102 @@
-'use client'
-import type {
-  ColumnDef,
-  HeaderContext,
-  CellContext,
-} from '@tanstack/react-table'
+"use client";
+
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   CalendarIcon,
   ClockIcon,
   UsersIcon,
   CircleCheckIcon,
-} from 'lucide-react'
-import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
-import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
-import { Badge } from '@/features/nexacrm/components/ui/badge'
-import { ATTENDANCE_STATUSES, dateTimeLabel, hoursLabel } from './types'
-import type { Attendance, AttendanceRow } from './types'
-import AttendanceStatusBadge from './status-badge'
-import AttendanceActions from './record-actions'
+} from "lucide-react";
+import AttendanceEmployeeAvatar from "./employee-avatar";
+import { Badge } from "@/features/nexacrm/components/ui/badge";
+import { ATTENDANCE_STATUSES, dateTimeLabel, hoursLabel } from "./types";
+import type { Attendance } from "./types";
+import AttendanceStatusBadge from "./status-badge";
+import AttendanceActions from "./record-actions";
 
 export const ATTENDANCE_COLUMNS = [
-  'employeeName',
-  'checkIn',
-  'checkOut',
-  'workedMinutes',
-  'status',
-]
+  "employeeName",
+  "attendanceDate",
+  "checkIn",
+  "checkOut",
+  "workedHours",
+  "overtimeHours",
+  "status",
+];
+
 export function attendanceColumns(
   onEdit: (record: Attendance) => void,
-): ColumnDef<AttendanceRow>[] {
+): ColumnDef<Attendance>[] {
   return [
     {
-      accessorKey: 'employeeName',
+      accessorKey: "employeeName",
       size: 210,
-      meta: { label: 'Employee', icon: UsersIcon, textFilter: true },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Employee" />
-      ),
+      meta: { label: "Employee", icon: UsersIcon },
+      header: "Employee",
       cell: ({ row }) => (
         <span className="flex min-w-0 items-center gap-2">
-          <PersonAvatar
-            name={row.original.employeeName}
-            src={row.original.avatar}
-            className="size-6"
-          />
+          <AttendanceEmployeeAvatar employeeId={row.original.employeeId} name={row.original.employeeName} />
           <span className="truncate">{row.original.employeeName}</span>
         </span>
       ),
     },
-    ...(['checkIn', 'checkOut'] as const).map((key) => ({
+    {
+      accessorKey: "attendanceDate",
+      size: 140,
+      meta: { label: "Attendance date", icon: CalendarIcon },
+      header: "Attendance date",
+    },
+    ...(["checkIn", "checkOut"] as const).map((key): ColumnDef<Attendance> => ({
       accessorKey: key,
-      size: 185,
+      size: 190,
       meta: {
-        label: key === 'checkIn' ? 'Check in' : 'Check out',
+        label: key === "checkIn" ? "Check in (IST)" : "Check out (IST)",
         icon: CalendarIcon,
       },
-      header: ({ column }: HeaderContext<AttendanceRow, unknown>) => (
-        <DataTableColumnHeader
-          column={column}
-          title={key === 'checkIn' ? 'Check in' : 'Check out'}
-        />
-      ),
-      cell: ({ row }: CellContext<AttendanceRow, unknown>) => (
-        <span className="tabular-nums">{dateTimeLabel(row.original[key])}</span>
-      ),
-    })),
-    {
-      accessorKey: 'workedMinutes',
-      size: 140,
-      meta: { label: 'Worked hours', icon: ClockIcon },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Worked hours" />
-      ),
+      header: key === "checkIn" ? "Check in (IST)" : "Check out (IST)",
       cell: ({ row }) => (
         <span className="tabular-nums">
-          {hoursLabel(row.original.workedMinutes)}
+          {row.original[key] ? dateTimeLabel(row.original[key]) : "—"}
         </span>
       ),
-    },
+    })),
+    ...(["workedHours", "overtimeHours"] as const).map(
+      (key): ColumnDef<Attendance> => ({
+        accessorKey: key,
+        size: 145,
+        meta: {
+          label: key === "workedHours" ? "Worked hours" : "Overtime",
+          icon: ClockIcon,
+        },
+        header: key === "workedHours" ? "Worked hours" : "Overtime",
+        cell: ({ row }) => (
+          <span className="tabular-nums">
+            {hoursLabel(row.original[key] * 60)}
+          </span>
+        ),
+      }),
+    ),
     {
-      accessorKey: 'status',
-      size: 185,
+      accessorKey: "status",
+      size: 180,
       meta: {
-        label: 'Status',
+        label: "Status",
         icon: CircleCheckIcon,
         filterOptions: Object.entries(ATTENDANCE_STATUSES).map(
           ([value, label]) => ({ value, label }),
         ),
       },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      filterFn: (row, id, value) => row.getValue(id) === value,
+      header: "Status",
       cell: ({ row }) => (
         <span className="flex items-center gap-1">
           <AttendanceStatusBadge status={row.original.status} />
-          {row.original.corrections.length > 0 && (
-            <Badge variant="outline">Edited</Badge>
-          )}
+          {row.original.editedAt && <Badge variant="outline">Edited</Badge>}
         </span>
       ),
     },
     {
-      id: 'actions',
+      id: "actions",
       size: 48,
-      enableSorting: false,
       enableHiding: false,
       enableResizing: false,
       header: () => <span className="sr-only">Actions</span>,
@@ -114,5 +107,5 @@ export function attendanceColumns(
         />
       ),
     },
-  ]
+  ];
 }

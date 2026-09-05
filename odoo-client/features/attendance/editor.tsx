@@ -1,14 +1,65 @@
 'use client'
-import { useState } from 'react'
+
+import { useActionState, useEffect, useState } from 'react'
+import { useFormStatus } from 'react-dom'
+import { LoaderCircleIcon } from 'lucide-react'
+import { Button } from '@/features/nexacrm/components/ui/button'
 import { Input } from '@/features/nexacrm/components/ui/input'
+import { Label } from '@/features/nexacrm/components/ui/label'
+import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
 import { DateTimePicker } from '@/features/nexacrm/components/ui/date-time-picker'
 import { Textarea } from '@/features/nexacrm/components/ui/textarea'
-import { FormField, Choice, EditorDialog } from '@/features/hr/components/form'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/features/nexacrm/components/ui/dialog'
+import { FormField, Choice } from '@/features/hr/components/form'
 import { useAttendanceStore } from './store'
-import { localDateTime, hoursLabel, workedMinutes } from './types'
-import type { Attendance, AttendanceInput } from './types'
+import { useAttendancePermissions } from './permissions'
+import { listAttendanceEmployees } from './service'
+import {
+  ATTENDANCE_STATUSES,
+  localDateTime,
+  toAttendanceTimestamp,
+} from './types'
+import type { Attendance, AttendanceStatus } from './types'
+
+type Draft = {
+  employeeId: string
+  attendanceDate: string
+  checkIn: string
+  checkOut: string
+  overtime: string
+  status: AttendanceStatus | 'automatic'
+  editReason: string
+}
+
+function initialDraft(record?: Attendance, employeeId?: string): Draft {
+  return {
+    employeeId: record?.employeeId || employeeId || '',
+    attendanceDate: record?.attendanceDate || localDateTime().slice(0, 10),
+    checkIn: record?.checkIn
+      ? localDateTime(new Date(record.checkIn))
+      : record
+        ? ''
+        : localDateTime(),
+    checkOut: record?.checkOut ? localDateTime(new Date(record.checkOut)) : '',
+    overtime: String(record?.overtimeHours || 0),
+    status: record?.status || 'automatic',
+    editReason: '',
+  }
+}
+
+function timestamp(value: string, original?: string | null) {
+  if (!value) return undefined
+  // Preserve seconds.
+  if (original && value === localDateTime(new Date(original))) return original
+  return toAttendanceTimestamp(value)
+}
 
 export default function AttendanceEditor({
   record,
@@ -21,116 +72,331 @@ export default function AttendanceEditor({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const employees = useEmployeesStore((state) => state.employees)
+  const [draft, setDraft] = useState(() => initialDraft(record, employeeId))
+  const [employees, setEmployees] = useState<
+    { id: string; name: string; email: string }[]
+  >([])
+  const [employeeError, setEmployeeError] = useState<string | null>(null)
+  const [employeesLoading, setEmployeesLoading] = useState(!record)
+  const [employeeAttempt, setEmployeeAttempt] = useState(0)
   const save = useAttendanceStore((state) => state.save)
-  const [draft, setDraft] = useState<AttendanceInput>(() =>
-    record
-      ? { ...record }
-      : {
-          employeeId: employeeId || '',
-          checkIn: localDateTime(),
-          checkOut: '',
-          breakMinutes: 0,
-          note: '',
-        },
-  )
-  const [reason, setReason] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const set = (value: Partial<AttendanceInput>) => {
+  const { canCreate, canUpdate } = useAttendancePermissions()
+
+  useEffect(() => {
+    if (record || !canCreate) return
+    let active = true
+    void listAttendanceEmployees()
+      .then((items) => {
+        if (active) setEmployees(items)
+      })
+      .catch((cause) => {
+        if (active)
+          setEmployeeError(
+            cause instanceof Error
+              ? cause.message
+              : 'Employees could not be loaded.',
+          )
+      })
+      .finally(() => {
+        if (active) setEmployeesLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [record, canCreate, employeeAttempt])
+
+  function set(value: Partial<Draft>) {
     setDraft((current) => ({ ...current, ...value }))
-    setError(null)
   }
-  return (
-    <EditorDialog
-      title={record ? 'Correct attendance' : 'New attendance'}
-      description={
-        record
-          ? 'The original values and your reason are preserved in correction history.'
-          : 'Record a check-in, or add a completed attendance entry. Times use your device’s time zone.'
-      }
-      submitLabel={record ? 'Save correction' : 'Create attendance'}
-      error={error}
-      onClose={onClose}
-      onSubmit={(event) => {
-        event.preventDefault()
-        const result = save(draft, record?.id, reason)
-        if (!result.ok) {
-          setError(result.error)
-          return
+
+  const [result, formAction, pending] = useActionState(
+    async () => {
+      try {
+        if (!(record ? canUpdate : canCreate))
+          throw new Error('You do not have permission to save attendance.')
+        if (!draft.employeeId) throw new Error('Select an employee.')
+        if (!draft.attendanceDate)
+          throw new Error('Select the attendance date.')
+        const checkIn = timestamp(draft.checkIn, record?.checkIn)
+        const checkOut = timestamp(draft.checkOut, record?.checkOut)
+        if (checkOut && !checkIn)
+          throw new Error('Add a check-in before a check-out.')
+        if (checkIn && checkOut) {
+          const duration =
+            new Date(checkOut).getTime() - new Date(checkIn).getTime()
+          if (duration <= 0)
+            throw new Error('Check-out must be after check-in.')
+          if (duration > 24 * 60 * 60 * 1000)
+            throw new Error('An attendance record cannot exceed 24 hours.')
         }
-        onSaved(result.id)
+        if (
+          [checkIn, checkOut].some(
+            (value) => value && new Date(value).getTime() > Date.now(),
+          )
+        ) {
+          throw new Error('Check-in and check-out cannot be in the future.')
+        }
+        const overtimeHours = Number(draft.overtime)
+        if (
+          !draft.overtime.trim() ||
+          !Number.isFinite(overtimeHours) ||
+          overtimeHours < 0 ||
+          overtimeHours > 24
+        ) {
+          throw new Error('Overtime must be between 0 and 24 hours.')
+        }
+        const id = await save(
+          {
+            employeeId: draft.employeeId,
+            attendanceDate: draft.attendanceDate,
+            checkIn,
+            checkOut,
+            overtimeHours,
+            status: draft.status === 'automatic' ? undefined : draft.status,
+            editReason:
+              record && draft.editReason.trim()
+                ? draft.editReason.trim()
+                : undefined,
+          },
+          record?.id,
+        )
+        onSaved(id)
         onClose()
+        return { error: null }
+      } catch (cause) {
+        return {
+          error:
+            cause instanceof Error
+              ? cause.message
+              : 'Attendance could not be saved. Please try again.',
+        }
+      }
+    },
+    { error: null },
+  )
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !pending) onClose()
       }}
     >
-      <FormField id="attendance-employee" label="Employee">
-        <Choice
-          id="attendance-employee"
-          value={draft.employeeId}
-          options={employees.map((employee) => ({
-            value: employee.id,
-            label: employeeName(employee),
-          }))}
-          onChange={(employeeId) => set({ employeeId })}
-        />
-      </FormField>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="attendance-in" label="Check in">
-          <DateTimePicker
-            id="attendance-in"
-            label="Check in"
-            required
-            value={draft.checkIn}
-            onChange={(checkIn) => set({ checkIn })}
-          />
-        </FormField>
-        <FormField id="attendance-out" label="Check out (optional)">
-          <DateTimePicker
-            id="attendance-out"
-            label="Check out"
-            value={draft.checkOut || ''}
-            onChange={(checkOut) => set({ checkOut })}
-          />
-        </FormField>
-        <FormField id="attendance-break" label="Break (minutes)">
-          <Input
-            id="attendance-break"
-            type="number"
-            min={0}
-            step={1}
-            required
-            value={draft.breakMinutes}
-            onInput={(event) =>
-              set({ breakMinutes: event.currentTarget.valueAsNumber })
-            }
-          />
-        </FormField>
-        <div className="grid content-center gap-1 rounded-lg border px-3 py-2">
-          <span className="text-muted-foreground text-xs">
-            Worked hours · calculated
-          </span>
-          <span className="text-sm font-medium tabular-nums">
-            {hoursLabel(workedMinutes(draft))}
-          </span>
-        </div>
-      </div>
-      <FormField id="attendance-note" label="Note (optional)">
-        <Textarea
-          id="attendance-note"
-          value={draft.note}
-          onChange={(event) => set({ note: event.target.value })}
-        />
-      </FormField>
-      {record && (
-        <FormField id="attendance-reason" label="Correction reason">
-          <Textarea
-            id="attendance-reason"
-            required
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Explain what changed and why…"
-          />
-        </FormField>
-      )}
-    </EditorDialog>
+      <DialogContent
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        showCloseButton={!pending}
+      >
+        <DialogHeader className="shrink-0 border-b p-5 pr-12">
+          <DialogTitle>
+            {record ? 'Correct attendance' : 'New attendance'}
+          </DialogTitle>
+          <DialogDescription>
+            Record attendance in India Standard Time (IST).
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          action={formAction}
+          className="flex min-h-0 flex-col overflow-hidden"
+        >
+          <div
+            data-testid="attendance-form-body"
+            className="min-h-0 overflow-y-auto p-5"
+          >
+            <fieldset disabled={pending} className="min-w-0 space-y-5">
+              <FormField id="attendance-employee" label="Employee">
+                {record ? (
+                  <Input
+                    id="attendance-employee"
+                    value={`${record.employeeName} · ${record.employeeEmail}`}
+                    disabled
+                  />
+                ) : employeesLoading ? (
+                  <p role="status" className="text-muted-foreground text-sm">
+                    Loading employees…
+                  </p>
+                ) : (
+                  <Choice
+                    id="attendance-employee"
+                    value={draft.employeeId}
+                    options={employees.map((employee) => ({
+                      value: employee.id,
+                      label: `${employee.name} · ${employee.email}`,
+                    }))}
+                    onChange={(employeeId) => set({ employeeId })}
+                  />
+                )}
+              </FormField>
+              {employeeError && (
+                <div className="space-y-2">
+                  <p role="alert" className="text-destructive text-sm">
+                    {employeeError}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEmployeeError(null)
+                      setEmployeesLoading(true)
+                      setEmployeeAttempt((value) => value + 1)
+                    }}
+                  >
+                    Retry employees
+                  </Button>
+                </div>
+              )}
+              <FormField id="attendance-date" label="Attendance date">
+                <DatePicker
+                  id="attendance-date"
+                  label="Attendance date"
+                  required
+                  disabled={Boolean(record)}
+                  value={draft.attendanceDate}
+                  onChange={(attendanceDate) => set({ attendanceDate })}
+                />
+              </FormField>
+              <div className="space-y-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex min-h-7 items-center justify-between gap-2">
+                      <Label htmlFor="attendance-in">Check in</Label>
+                      {draft.checkIn && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground h-7 px-2 text-xs"
+                          aria-label="Clear check-in and check-out"
+                          onClick={() => set({ checkIn: '', checkOut: '' })}
+                        >
+                          Clear times
+                        </Button>
+                      )}
+                    </div>
+                    <DateTimePicker
+                      id="attendance-in"
+                      label="Check in"
+                      timePlaceholder="Time"
+                      value={draft.checkIn}
+                      onChange={(checkIn) => set({ checkIn })}
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex min-h-7 items-center justify-between gap-2">
+                      <Label htmlFor="attendance-out">Check out</Label>
+                      {draft.checkOut && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground h-7 px-2 text-xs"
+                          aria-label="Clear check-out"
+                          onClick={() => set({ checkOut: '' })}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <DateTimePicker
+                      id="attendance-out"
+                      label="Check out"
+                      timePlaceholder="Time"
+                      value={draft.checkOut}
+                      onChange={(checkOut) => set({ checkOut })}
+                    />
+                  </div>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Times are optional. Leave both blank to record an absence.
+                </p>
+              </div>
+              <div className="grid items-start gap-4 sm:grid-cols-2">
+                <FormField id="attendance-overtime" label="Overtime (hours)">
+                  <Input
+                    id="attendance-overtime"
+                    type="number"
+                    required
+                    min={0}
+                    max={24}
+                    step="any"
+                    value={draft.overtime}
+                    onChange={(event) => set({ overtime: event.target.value })}
+                  />
+                </FormField>
+                <FormField id="attendance-status" label="Status">
+                  <Choice
+                    id="attendance-status"
+                    value={draft.status}
+                    options={[
+                      { value: 'automatic', label: 'Automatic from times' },
+                      ...Object.entries(ATTENDANCE_STATUSES).map(
+                        ([value, label]) => ({ value, label }),
+                      ),
+                    ]}
+                    onChange={(value) =>
+                      set({ status: value as Draft['status'] })
+                    }
+                  />
+                </FormField>
+              </div>
+              {record && (
+                <FormField
+                  id="attendance-reason"
+                  label="Correction reason (optional)"
+                >
+                  <Textarea
+                    id="attendance-reason"
+                    maxLength={500}
+                    value={draft.editReason}
+                    onChange={(event) =>
+                      set({ editReason: event.target.value })
+                    }
+                    placeholder="Explain what changed and why…"
+                  />
+                </FormField>
+              )}
+            </fieldset>
+          </div>
+          {result.error && (
+            <p
+              role="alert"
+              className="text-destructive shrink-0 px-5 pb-4 text-sm"
+            >
+              {result.error}
+            </p>
+          )}
+          <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <SubmitButton
+              editing={Boolean(record)}
+              disabled={!record && (employeesLoading || Boolean(employeeError))}
+            />
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SubmitButton({
+  editing,
+  disabled,
+}: {
+  editing: boolean
+  disabled: boolean
+}) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" disabled={pending || disabled}>
+      {pending && <LoaderCircleIcon className="animate-spin" />}
+      {pending ? 'Saving…' : editing ? 'Save correction' : 'Create attendance'}
+    </Button>
   )
 }

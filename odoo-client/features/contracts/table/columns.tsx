@@ -1,13 +1,12 @@
 'use client'
+
 import type { ColumnDef } from '@tanstack/react-table'
 import {
   CalendarIcon,
-  CoinsIcon,
-  FileTextIcon,
-  UsersIcon,
   CircleCheckIcon,
-  BuildingIcon,
-  BriefcaseIcon,
+  CoinsIcon,
+  MailIcon,
+  UsersIcon,
 } from 'lucide-react'
 import { Checkbox } from '@/features/nexacrm/components/ui/checkbox'
 import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
@@ -15,25 +14,24 @@ import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import ContractActions from '../components/contract-actions'
 import ContractStatusBadge from '../components/status-badge'
 import { formatContractDate, formatWage } from '../types'
-import type { ContractRow } from '../types'
+import type { Contract } from '../types'
 
 export const REORDERABLE_COLUMN_IDS = [
   'employeeName',
-  'name',
+  'employeeEmail',
   'startDate',
   'endDate',
   'wage',
   'status',
-  'department',
-  'jobPosition',
-  'salaryStructure',
 ]
+
 export const INITIAL_COLUMN_ORDER = [
   'select',
   ...REORDERABLE_COLUMN_IDS,
   'actions',
 ]
-export const columns: ColumnDef<ContractRow>[] = [
+
+export const columns: ColumnDef<Contract>[] = [
   {
     id: 'select',
     size: 44,
@@ -66,8 +64,8 @@ export const columns: ColumnDef<ContractRow>[] = [
   },
   {
     accessorKey: 'employeeName',
-    size: 200,
-    meta: { label: 'Employee', icon: UsersIcon, textFilter: true },
+    size: 220,
+    meta: { label: 'Employee', icon: UsersIcon },
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Employee" />
     ),
@@ -75,27 +73,29 @@ export const columns: ColumnDef<ContractRow>[] = [
       <span className="flex min-w-0 items-center gap-2">
         <PersonAvatar
           name={row.original.employeeName}
-          src={row.original.avatar}
+          src={row.original.employeeAvatar}
           className="size-6"
         />
-        <span className="truncate">{row.original.employeeName}</span>
+        <span className="truncate font-medium">
+          {row.original.employeeName}
+        </span>
       </span>
     ),
   },
   {
-    accessorKey: 'name',
-    size: 215,
-    meta: { label: 'Contract', icon: FileTextIcon, textFilter: true },
+    accessorKey: 'employeeEmail',
+    size: 230,
+    meta: { label: 'Email', icon: MailIcon },
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Contract" />
+      <DataTableColumnHeader column={column} title="Email" />
     ),
     cell: ({ row }) => (
-      <span className="block truncate font-medium">{row.original.name}</span>
+      <span className="block truncate">{row.original.employeeEmail}</span>
     ),
   },
   {
     accessorKey: 'startDate',
-    size: 125,
+    size: 135,
     meta: { label: 'Start date', icon: CalendarIcon },
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Start date" />
@@ -108,30 +108,26 @@ export const columns: ColumnDef<ContractRow>[] = [
   },
   {
     accessorKey: 'endDate',
-    size: 125,
+    size: 135,
     meta: { label: 'End date', icon: CalendarIcon },
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="End date" />
     ),
     cell: ({ row }) => (
-      <span
-        className={
-          row.original.endDate ? 'tabular-nums' : 'text-muted-foreground'
-        }
-      >
+      <span className="tabular-nums">
         {formatContractDate(row.original.endDate)}
       </span>
     ),
   },
   {
     accessorKey: 'wage',
-    size: 170,
+    size: 155,
     meta: { label: 'Wage', icon: CoinsIcon },
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Wage" />
     ),
     cell: ({ row }) => (
-      <span className="tabular-nums">{formatWage(row.original)}</span>
+      <span className="tabular-nums">{formatWage(row.original.wage)}</span>
     ),
   },
   {
@@ -142,33 +138,6 @@ export const columns: ColumnDef<ContractRow>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => <ContractStatusBadge status={row.original.status} />,
-    filterFn: (row, id, value) => row.getValue(id) === value,
-  },
-  {
-    accessorKey: 'department',
-    size: 170,
-    meta: { label: 'Department', icon: BuildingIcon },
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Department" />
-    ),
-    filterFn: (row, id, value) => row.getValue(id) === value,
-  },
-  {
-    accessorKey: 'jobPosition',
-    size: 190,
-    meta: { label: 'Job position', icon: BriefcaseIcon },
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Job position" />
-    ),
-  },
-  {
-    accessorKey: 'salaryStructure',
-    size: 170,
-    meta: { label: 'Salary structure', icon: FileTextIcon },
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Salary structure" />
-    ),
-    filterFn: (row, id, value) => row.getValue(id) === value,
   },
   {
     id: 'actions',

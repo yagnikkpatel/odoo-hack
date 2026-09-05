@@ -8,24 +8,28 @@ import { Button } from '@/features/nexacrm/components/ui/button'
 import { DropdownMenuItem } from '@/features/nexacrm/components/ui/dropdown-menu'
 import { Textarea } from '@/features/nexacrm/components/ui/textarea'
 import { EditorDialog, FormField } from '@/features/hr/components/form'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import type { Allocation } from '../model'
 
 function RefuseAllocationDialog({ allocationId, onClose }: { allocationId: string; onClose: () => void }) {
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   return (
     <EditorDialog
       title='Refuse allocation'
       description='Explain why this allocation cannot be approved. The reason is saved in its history.'
       submitLabel='Refuse allocation'
       error={error}
+      pending={submitting}
       onClose={onClose}
-      onSubmit={event => {
+      onSubmit={async event => {
         event.preventDefault()
-        const result = useTimeOffStore.getState().refuseAllocation(allocationId, reason)
+        setSubmitting(true)
+        const result = await useTimeOffStore.getState().refuseAllocation(allocationId, reason)
         if (!result.ok) {
+          setSubmitting(false)
           setError(result.error)
           return
         }
@@ -49,23 +53,36 @@ function RefuseAllocationDialog({ allocationId, onClose }: { allocationId: strin
   )
 }
 
-function approveAllocation(id: string) {
-  const result = useTimeOffStore.getState().approveAllocation(id)
-  if (!result.ok) {
-    toast.error(result.error)
-    return
+/**
+ * Approval is shared by the two components below, so it lives in a hook: each component gets its
+ * own pending flag rather than the module-level free function this used to be, which had nowhere
+ * to hold in-flight state once the mutation became async.
+ */
+function useApproveAllocation() {
+  const [approving, setApproving] = useState(false)
+  const approve = async (id: string) => {
+    if (approving) return
+    setApproving(true)
+    const result = await useTimeOffStore.getState().approveAllocation(id)
+    setApproving(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success('Allocation approved — the balance is now available during its validity period')
   }
-  toast.success('Allocation approved — the balance is now available during its validity period')
+  return { approving, approve }
 }
 
 export function AllocationDecisionControls({ allocation }: { allocation: Allocation }) {
-  const { can } = useCurrentUser()
+  const { canApprove } = useTimeOffPermissions()
+  const { approving, approve } = useApproveAllocation()
   const [refusing, setRefusing] = useState(false)
-  if (allocation.status !== 'pending' || !can('records:update')) return null
+  if (allocation.status !== 'pending' || !canApprove) return null
   return (
     <>
       <div className='flex flex-wrap gap-2'>
-        <Button size='sm' onClick={() => approveAllocation(allocation.id)}>
+        <Button size='sm' disabled={approving} onClick={() => void approve(allocation.id)}>
           <CheckIcon />
           Approve allocation
         </Button>
@@ -90,19 +107,20 @@ export default function AllocationActions({
   onDeleted?: () => void
   detail?: boolean
 }) {
-  const { can } = useCurrentUser()
+  const { canUpdate, canDelete, canApprove } = useTimeOffPermissions()
+  const { approving, approve } = useApproveAllocation()
   const [refusing, setRefusing] = useState(false)
-  if (detail && (allocation.status === 'approved' || (!can('records:update') && !can('records:delete')))) return null
+  if (detail && (allocation.status === 'approved' || (!canUpdate && !canDelete))) return null
   return (
     <>
       <RowActionShell
         label={'Actions for allocation ' + allocation.id}
         viewHref={detail ? undefined : '/time-off/allocations/' + allocation.id}
-        onEdit={can('records:update') && allocation.status !== 'approved' ? onEdit : undefined}
+        onEdit={canUpdate && allocation.status !== 'approved' ? onEdit : undefined}
         onDelete={
-          can('records:delete') && allocation.status !== 'approved'
-            ? () => {
-                const result = useTimeOffStore.getState().removeAllocation(allocation.id)
+          canDelete && allocation.status !== 'approved'
+            ? async () => {
+                const result = await useTimeOffStore.getState().removeAllocation(allocation.id)
                 if (!result.ok) {
                   toast.error(result.error)
                   return
@@ -113,9 +131,9 @@ export default function AllocationActions({
             : undefined
         }
         extraItems={
-          can('records:update') && allocation.status === 'pending' ? (
+          canApprove && allocation.status === 'pending' ? (
             <>
-              <DropdownMenuItem onClick={() => approveAllocation(allocation.id)}>
+              <DropdownMenuItem disabled={approving} onClick={() => void approve(allocation.id)}>
                 <CheckIcon />
                 Approve
               </DropdownMenuItem>

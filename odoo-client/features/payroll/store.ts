@@ -1,12 +1,12 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
 import { useEmployeesStore } from '@/features/employees/store'
-import { useContractsStore } from '@/features/contracts/store'
-import { useAttendanceStore } from '@/features/attendance/store'
+import { payrollAttendanceInputs } from './attendance-input'
 import { useSchedulesStore } from '@/features/working-schedules/store'
 import { useTimeOffStore } from '@/features/time-off/store'
 import { getPayrollPermissions } from './permissions'
 import { DATA_API_CONNECTED, DATA_CONNECTION_MESSAGE } from '@/features/hr/data-availability'
 import { computePayslip, eligibleEmployees, periodError, validateRules, FORMULA_VARIABLES } from './engine'
+import { payrollContractInputs } from './contract-input'
 import { RULE_CATEGORIES, COMPUTATION_METHODS } from './types'
 import type { SalaryRule, SalaryRuleInput, SalaryStructure, SalaryStructureInput, Payrun, PayrunInput, Payslip, PayrollResult } from './types'
 type PayrollStore = {
@@ -59,7 +59,7 @@ export const usePayrollStore = create<PayrollStore>()((set, get) => ({
   removeStructure: id => {
     if (!getPayrollPermissions().canConfigure) return denied()
     const structure = get().structures.find(item => item.id === id)
-    if (get().payruns.some(run => run.structureId === id) || useContractsStore.getState().contracts.some(contract => contract.salaryStructure === id || contract.salaryStructure.toLowerCase() === structure?.name.toLowerCase())) return fail('This structure is referenced by a contract or payrun. Archive it by switching Active off.')
+    if (get().payruns.some(run => run.structureId === id) || payrollContractInputs.some(contract => contract.salaryStructure === id || contract.salaryStructure.toLowerCase() === structure?.name.toLowerCase())) return fail('This structure is referenced by a contract or payrun. Archive it by switching Active off.')
     set({ structures: get().structures.filter(item => item.id !== id) }); return { ok: true, id }
   },
   createPayrun: input => {
@@ -68,7 +68,7 @@ export const usePayrollStore = create<PayrollStore>()((set, get) => ({
     if (!input.name.trim()) return fail('Enter a payrun name.')
     const structure = get().structures.find(item => item.id === input.structureId && item.active); if (!structure) return fail('Choose an active salary structure.')
     if (!input.employeeIds.length || new Set(input.employeeIds).size !== input.employeeIds.length) return fail('Select one or more distinct employees.')
-    const eligible = eligibleEmployees(useEmployeesStore.getState().employees, useContractsStore.getState().contracts, structure, input.startDate, input.endDate)
+    const eligible = eligibleEmployees(useEmployeesStore.getState().employees, payrollContractInputs, structure, input.startDate, input.endDate)
     if (input.employeeIds.some(id => !eligible.some(employee => employee.id === id))) return fail('Selected employees must have a matching active contract covering the full period. Refresh the employee selection.')
     const run: Payrun = { ...input, name: input.name.trim(), employeeIds: [...input.employeeIds], id: 'run_' + crypto.randomUUID(), structureName: structure.name, status: 'draft', createdAt: new Date().toISOString(), warnings: [] }
     set({ payruns: [run, ...get().payruns] }); return { ok: true, id: run.id }
@@ -80,7 +80,7 @@ export const usePayrollStore = create<PayrollStore>()((set, get) => ({
     const error = periodError(input.startDate, input.endDate); if (error) return fail(error)
     const structure = get().structures.find(item => item.id === input.structureId && item.active)
     if (!structure || !input.name.trim()) return fail('Enter a name and choose an active salary structure.')
-    const eligible = eligibleEmployees(useEmployeesStore.getState().employees, useContractsStore.getState().contracts, structure, input.startDate, input.endDate)
+    const eligible = eligibleEmployees(useEmployeesStore.getState().employees, payrollContractInputs, structure, input.startDate, input.endDate)
     if (!input.employeeIds.length || new Set(input.employeeIds).size !== input.employeeIds.length || input.employeeIds.some(employeeId => !eligible.some(employee => employee.id === employeeId))) return fail('Select eligible employees with full-period matching contracts.')
     set({ payruns: get().payruns.map(item => item.id === id ? { ...item, structureId: input.structureId, startDate: input.startDate, endDate: input.endDate, name: input.name.trim(), employeeIds: [...input.employeeIds], structureName: structure.name, status: 'draft', computedAt: undefined, warnings: [] } : item), payslips: get().payslips.filter(slip => slip.payrunId !== id) })
     return { ok: true, id }
@@ -99,7 +99,7 @@ export const usePayrollStore = create<PayrollStore>()((set, get) => ({
     const run = get().payruns.find(item => item.id === id); if (!run) return fail('Payrun no longer exists.'); if (locked(run)) return fail('Validated and paid payroll is immutable history.')
     const structure = get().structures.find(item => item.id === run.structureId); if (!structure) return fail('Salary structure no longer exists.')
     const schedules = useSchedulesStore.getState()
-    const payslips = run.employeeIds.map(employeeId => computePayslip(run, employeeId, structure, get().rules, { employees: useEmployeesStore.getState().employees, contracts: useContractsStore.getState().contracts, attendance: useAttendanceStore.getState().records, schedules: schedules.schedules, assignments: schedules.assignments, bankDetails: get().bankDetails, existingPayslips: get().payslips, timeOff: useTimeOffStore.getState() }))
+    const payslips = run.employeeIds.map(employeeId => computePayslip(run, employeeId, structure, get().rules, { employees: useEmployeesStore.getState().employees, contracts: payrollContractInputs, attendance: payrollAttendanceInputs, schedules: schedules.schedules, assignments: schedules.assignments, bankDetails: get().bankDetails, existingPayslips: get().payslips, timeOff: useTimeOffStore.getState() }))
     set({ payslips: [...get().payslips.filter(slip => slip.payrunId !== id), ...payslips], payruns: get().payruns.map(item => item.id === id ? { ...item, status: 'computed', computedAt: new Date().toISOString(), warnings: payslips.flatMap(slip => slip.warnings) } : item) }); return { ok: true, id }
   },
   validatePayrun: id => {

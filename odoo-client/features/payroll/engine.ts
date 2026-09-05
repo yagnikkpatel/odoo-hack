@@ -1,9 +1,9 @@
 import type { Employee } from '@/features/employees/types'
 import { employeeName } from '@/features/employees/types'
-import type { Contract } from '@/features/contracts/types'
-import { contractForPeriod } from '@/features/contracts/types'
-import type { Attendance } from '@/features/attendance/types'
-import { workedMinutes } from '@/features/attendance/types'
+import type { PayrollContractInput } from './contract-input'
+import { payrollContractForPeriod } from './contract-input'
+import type { PayrollAttendanceInput as Attendance } from './attendance-input'
+import { workedMinutes } from './attendance-input'
 import type { WorkingSchedule } from '@/features/working-schedules/types'
 import { slotMinutes } from '@/features/working-schedules/types'
 import type { TimeOffData } from '@/features/time-off/model'
@@ -35,14 +35,14 @@ export function periodError(start: string, end: string): string | undefined {
   if (!valid(start) || !valid(end) || start > end) return 'Choose a valid payroll period.'
   if ((Date.parse(end) - Date.parse(start)) / 86400000 > 366) return 'Payroll periods cannot exceed one year.'
 }
-export function periodContract(contracts: Contract[], employeeId: string, start: string, end: string) {
+export function periodContract(contracts: PayrollContractInput[], employeeId: string, start: string, end: string) {
   const error = periodError(start, end); if (error) throw new Error(error)
-  const contract = contractForPeriod(contracts, employeeId, start, end)
+  const contract = payrollContractForPeriod(contracts, employeeId, start, end)
   if (!contract) throw new Error('No active contract applies to this payroll period.')
   if (contract.startDate > start || (contract.endDate && contract.endDate < end)) throw new Error('Contract does not cover the full period. Split the payroll period.')
   return contract
 }
-export function eligibleEmployees(employees: Employee[], contracts: Contract[], structure: SalaryStructure, start: string, end: string) {
+export function eligibleEmployees(employees: Employee[], contracts: PayrollContractInput[], structure: SalaryStructure, start: string, end: string) {
   return employees.filter(employee => { if (employee.status === 'inactive') return false; try { const contract = periodContract(contracts, employee.id, start, end); return contract.salaryStructure === structure.id || contract.salaryStructure.toLowerCase() === structure.name.toLowerCase() } catch { return false } })
 }
 export function validateRules(rules: SalaryRule[], uniqueSequences = true): string | undefined {
@@ -55,7 +55,7 @@ export function validateRules(rules: SalaryRule[], uniqueSequences = true): stri
     codes.add(rule.code); context[rule.code] = 1
   }
 }
-export type ComputeContext = { employees: Employee[]; contracts: Contract[]; attendance: Attendance[]; schedules: WorkingSchedule[]; assignments: Record<string, string>; bankDetails: Record<string, string>; existingPayslips: Payslip[]; timeOff?: TimeOffData }
+export type ComputeContext = { employees: Employee[]; contracts: PayrollContractInput[]; attendance: Attendance[]; schedules: WorkingSchedule[]; assignments: Record<string, string>; bankDetails: Record<string, string>; existingPayslips: Payslip[]; timeOff?: TimeOffData }
 export function computePayslip(run: Payrun, employeeId: string, structure: SalaryStructure, allRules: SalaryRule[], context: ComputeContext): Payslip {
   const employee = context.employees.find(item => item.id === employeeId)
   const warnings: PayrollWarning[] = []
@@ -65,7 +65,7 @@ export function computePayslip(run: Payrun, employeeId: string, structure: Salar
   if (!slip.bankAccount?.trim()) warn('bank', 'Bank details are missing. Add a payment account before validation.')
   if (!employee?.email) warn('email', 'Work email is missing; payslip delivery is unavailable.', false)
   if (context.existingPayslips.some(other => other.payrunId !== run.id && other.employeeId === employeeId && other.startDate <= run.endDate && other.endDate >= run.startDate)) warn('duplicate', 'Another payslip already overlaps this payroll period.')
-  let contract: Contract
+  let contract: PayrollContractInput
   try { contract = periodContract(context.contracts, employeeId, run.startDate, run.endDate) } catch (error) { warn('contract', (error as Error).message); return slip }
   slip.contractSnapshot = { ...contract }; slip.currency = contract.currency; slip.department = contract.department
   if (contract.salaryStructure !== structure.id && contract.salaryStructure.toLowerCase() !== structure.name.toLowerCase()) warn('structure', 'The contract salary structure differs from this payrun.')

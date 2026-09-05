@@ -1,6 +1,7 @@
 'use client'
 
 // React Imports
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 
 // Third-party Imports
@@ -33,7 +34,9 @@ type ConfirmDialogProps = {
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'default' | 'destructive'
-  onConfirm: () => void
+  // Optional: set by the caller while its own mutation is in flight.
+  pending?: boolean
+  onConfirm: () => void | Promise<void>
 }
 
 const ConfirmDialog = ({
@@ -44,11 +47,23 @@ const ConfirmDialog = ({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'destructive',
+  pending = false,
   onConfirm
 }: ConfirmDialogProps) => {
-  const handleConfirm = () => {
-    onConfirm()
-    onOpenChange(false)
+  const [confirming, setConfirming] = useState(false)
+
+  // Await the handler before closing: an async onConfirm would otherwise tear the dialog
+  // down before its mutation settles, leaving a failure to surface over an empty screen.
+  // A synchronous onConfirm is only deferred by a microtask, which is not observable.
+  const handleConfirm = async () => {
+    setConfirming(true)
+
+    try {
+      await onConfirm()
+      onOpenChange(false)
+    } finally {
+      setConfirming(false)
+    }
   }
 
   return (
@@ -62,7 +77,7 @@ const ConfirmDialog = ({
           </DialogHeader>
           <DialogFooter>
             <DialogClose render={<Button variant='outline' />}>{cancelLabel}</DialogClose>
-            <Button variant={variant} onClick={handleConfirm}>
+            <Button variant={variant} disabled={pending || confirming} onClick={handleConfirm}>
               {confirmLabel}
             </Button>
           </DialogFooter>

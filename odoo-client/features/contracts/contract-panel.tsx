@@ -1,10 +1,12 @@
 'use client'
+
 import { useRef } from 'react'
 import Link from 'next/link'
 import {
   ExternalLinkIcon,
   FileTextIcon,
   HistoryIcon,
+  LoaderCircleIcon,
   PencilIcon,
   XIcon,
 } from 'lucide-react'
@@ -21,60 +23,77 @@ import {
   TabsTrigger,
 } from '@/features/nexacrm/components/ui/tabs'
 import PreviewSheet from '@/features/nexacrm/components/record/preview-sheet'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
-import { useContract } from './store'
 import type { Contract } from './types'
+import { contractTitle } from './types'
+import { useContractPermissions } from './permissions'
 import ContractFields from './components/contract-fields'
 import ContractHistory from './components/contract-history'
 import ContractActions from './components/contract-actions'
+import { useContractRecord } from './components/use-contract-record'
 
 export const useContractPreview = () =>
   useQueryState(
     'record',
     parseAsString.withOptions({ history: 'push', shallow: true }),
   )
+
 export default function ContractPanel({
   onEdit,
 }: {
   onEdit: (contract: Contract) => void
 }) {
   const [id, setId] = useContractPreview()
-  const contract = useContract(id || undefined)
+  const { contract, loading, error } = useContractRecord(id)
   const headingRef = useRef<HTMLDivElement>(null)
-  const { can } = useCurrentUser()
+  const { canUpdate } = useContractPermissions()
+  const title = contract ? contractTitle(contract) : 'Contract details'
+
   return (
     <PreviewSheet
-      open={Boolean(contract)}
+      open={Boolean(id)}
       onClose={() => setId(null)}
-      title={contract ? contract.name + ' details' : 'Contract details'}
+      title={title}
       initialFocus={headingRef}
     >
-      {contract && (
+      <div
+        ref={headingRef}
+        tabIndex={-1}
+        className="flex h-12.5 shrink-0 items-center gap-2 border-b px-4 outline-none"
+      >
+        <FileTextIcon className="size-4 shrink-0 text-violet-600" />
+        <span className="min-w-0 flex-1 truncate font-medium">{title}</span>
+        {contract && (
+          <ContractActions
+            contract={contract}
+            onEdit={() => onEdit(contract)}
+            onDeleted={() => setId(null)}
+            showView={false}
+          />
+        )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Close panel"
+          onClick={() => setId(null)}
+        >
+          <XIcon />
+        </Button>
+      </div>
+      {loading && (
+        <div className="flex flex-1 items-center justify-center">
+          <LoaderCircleIcon
+            className="text-muted-foreground size-5 animate-spin"
+            aria-label="Loading contract"
+          />
+        </div>
+      )}
+      {error && !loading && (
+        <div role="alert" className="text-destructive p-4 text-sm">
+          {error}
+        </div>
+      )}
+      {contract && !loading && (
         <>
-          <div
-            ref={headingRef}
-            tabIndex={-1}
-            className="flex h-12.5 shrink-0 items-center gap-2 border-b px-4 outline-none"
-          >
-            <FileTextIcon className="size-4 shrink-0 text-violet-600" />
-            <span className="min-w-0 flex-1 truncate font-medium">
-              {contract.name}
-            </span>
-            <ContractActions
-              contract={contract}
-              onEdit={() => onEdit(contract)}
-              onDeleted={() => setId(null)}
-              showView={false}
-            />
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Close panel"
-              onClick={() => setId(null)}
-            >
-              <XIcon />
-            </Button>
-          </div>
           <Tabs
             key={contract.id}
             defaultValue="details"
@@ -85,27 +104,24 @@ export default function ContractPanel({
               className="w-full shrink-0 justify-start rounded-none border-b px-2 pb-1 group-data-horizontal/tabs:h-10"
             >
               <TabsTrigger value="details">
-                <FileTextIcon className="size-3.5" />
-                Details
+                <FileTextIcon className="size-3.5" /> Details
               </TabsTrigger>
               <TabsTrigger value="history">
-                <HistoryIcon className="size-3.5" />
-                History
+                <HistoryIcon className="size-3.5" /> History
               </TabsTrigger>
             </TabsList>
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-4">
                 <TabsContent value="details">
                   <ContractFields contract={contract} />
-                  {can('records:update') && (
+                  {canUpdate && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-4 w-full"
                       onClick={() => onEdit(contract)}
                     >
-                      <PencilIcon />
-                      Edit contract
+                      <PencilIcon /> Edit contract
                     </Button>
                   )}
                 </TabsContent>
@@ -120,10 +136,9 @@ export default function ContractPanel({
               variant="outline"
               size="sm"
               className="w-full"
-              render={<Link href={'/contracts/' + contract.id} />}
+              render={<Link href={`/contracts/${contract.id}`} />}
             >
-              <ExternalLinkIcon />
-              Open full details
+              <ExternalLinkIcon /> Open full details
             </Button>
           </div>
         </>

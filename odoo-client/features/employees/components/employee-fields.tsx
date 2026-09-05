@@ -103,7 +103,7 @@ export default function EmployeeFields({ employee }: { employee: Employee }) {
       <ProfileImages employee={employee} />
       <RecordGroup title="Related records">
         <p className="text-muted-foreground pb-2 text-xs">
-          These modules are awaiting their data connections.
+          Contracts use live data. Attendance and time off are not connected yet.
         </p>
         <div className="grid grid-cols-2 gap-2 py-1">
           <EmployeeContractsLink employeeId={employee.id} />

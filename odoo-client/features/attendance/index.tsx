@@ -1,48 +1,51 @@
 'use client'
-import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
-import { useMemo, useState } from 'react'
-import { ClockIcon, PlusIcon, XIcon } from 'lucide-react'
+
+import { useEffect, useState } from 'react'
+import {
+  ClockIcon,
+  DownloadIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  XIcon,
+} from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
-import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
 import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
+import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select'
 import RecordViewBar from '@/features/nexacrm/components/data-table/record-view-bar'
 import DataTableViewOptions from '@/features/nexacrm/components/data-table/data-table-view-options'
-import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import {
   parseAsString,
   parseAsStringLiteral,
   useQueryState,
 } from '@/features/nexacrm/adapters/query-state'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
-import { downloadCsv } from '@/features/nexacrm/utils/csv'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
 import { PAGE_BODY } from '@/features/nexacrm/lib/page-shape'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
-import { useRecordsTable } from '@/features/hr/use-records-table'
-import RecordsTable from '@/features/hr/components/records-table'
 import RecordPanel from '@/features/hr/components/record-panel'
-import { Choice } from '@/features/hr/components/form'
-import { useAttendanceStore } from './store'
-import {
-  attendanceStatus,
-  hoursLabel,
-  workedMinutes,
-  ATTENDANCE_STATUSES,
-} from './types'
-import type { Attendance, AttendanceRow } from './types'
-import { ATTENDANCE_COLUMNS, attendanceColumns } from './columns'
+import { useAttendancePermissions } from './permissions'
+import { listAttendanceEmployees } from './service'
+import { loadAllAttendanceRecords } from './records-query'
+import type { Attendance } from './types'
+import { ATTENDANCE_COLUMNS } from './columns'
+import { useAttendanceTable } from './use-attendance-table'
+import { useAttendanceRecord } from './use-attendance-record'
+import { downloadAttendanceCsv } from './csv'
 import AttendanceEditor from './editor'
 import AttendanceContent from './record-content'
 import AttendanceActions from './record-actions'
-import AttendanceStatusBadge from './status-badge'
-import RecordCalendar from './record-calendar'
+import AttendanceResults from './directory-results'
+import TodayAttendance from './today-card'
+import { useAttendanceStore } from './store'
 
 export default function AttendanceView() {
-  const employees = useEmployeesStore((state) => state.employees)
-  const records = useAttendanceStore((state) => state.records)
-  const hydrated = useAttendanceStore((state) => state.hasHydrated)
-  const { can } = useCurrentUser()
+  const permissions = useAttendancePermissions()
+  if (!permissions.canReadOwn && !permissions.canReadAny)
+    return <p role="alert">You do not have access to attendance.</p>
+  return <AttendanceDirectory />
+}
+
+function AttendanceDirectory() {
+  const todayError = useAttendanceStore((state) => state.todayError)
+  const { canReadAny, canCreate, canCheckIn } = useAttendancePermissions()
   const [employeeId, setEmployeeId] = useQueryState(
     'employee',
     parseAsString.withOptions({ history: 'push', shallow: true }),
@@ -57,65 +60,91 @@ export default function AttendanceView() {
       .withDefault('table')
       .withOptions({ history: 'push', shallow: true }),
   )
+  const [scopeParam, setScope] = useQueryState(
+    'scope',
+    parseAsStringLiteral(['own', 'all'] as const)
+      .withDefault('all')
+      .withOptions({ history: 'push', shallow: true }),
+  )
+  const scope = canReadAny ? scopeParam : 'own'
   const [editor, setEditor] = useState<Attendance | 'new' | null>(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const data = useMemo<AttendanceRow[]>(
-    () =>
-      records
-        .filter(
-          (record) =>
-            (!employeeId || record.employeeId === employeeId) &&
-            (!from || record.checkIn.slice(0, 10) >= from) &&
-            (!to || record.checkIn.slice(0, 10) <= to),
-        )
-        .map((record) => {
-          const employee = employees.find(
-            (employee) => employee.id === record.employeeId,
+  const [employees, setEmployees] = useState<
+    { id: string; name: string; email: string }[]
+  >([])
+  const [employeesError, setEmployeesError] = useState<string | null>(null)
+  const [employeeAttempt, setEmployeeAttempt] = useState(0)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const selected = useAttendanceRecord(recordId)
+  const { table, exportQuery, total, invalidRange, loading, error, retry } =
+    useAttendanceTable({
+      scope,
+      employeeId,
+      from,
+      to,
+      calendar: view === 'calendar',
+      onEdit: setEditor,
+    })
+
+  useEffect(() => {
+    if (!canReadAny) return
+    let active = true
+    void listAttendanceEmployees()
+      .then((result) => {
+        if (active) {
+          setEmployees(result)
+          setEmployeesError(null)
+        }
+      })
+      .catch((cause) => {
+        if (active)
+          setEmployeesError(
+            cause instanceof Error
+              ? cause.message
+              : 'Employees could not be loaded.',
           )
-          return {
-            ...record,
-            employeeName: employee
-              ? employeeName(employee)
-              : 'Employee unavailable',
-            avatar: employee?.avatar,
-            workedMinutes: workedMinutes(record),
-            status: attendanceStatus(record),
-          }
-        }),
-    [records, employees, employeeId, from, to],
-  )
-  const columns = useMemo(() => attendanceColumns(setEditor), [])
-  const table = useRecordsTable({
-    data,
-    columns,
-    columnIds: ATTENDANCE_COLUMNS,
-  })
-  const selected = records.find((record) => record.id === recordId)
-  const exportRows = () =>
-    downloadCsv(
-      'attendance.csv',
-      table.getPrePaginationRowModel().rows.map(({ original: row }) => ({
-        Employee: /^\s*[=+\-@]/.test(row.employeeName)
-          ? "'" + row.employeeName
-          : row.employeeName,
-        'Employee ID': row.employeeId,
-        'Check in (local)': row.checkIn,
-        'Check out (local)': row.checkOut,
-        'Break minutes': row.breakMinutes,
-        'Worked minutes': row.workedMinutes,
-        Status: ATTENDANCE_STATUSES[row.status],
-        Corrections: row.corrections.length,
-      })),
-    )
+      })
+    return () => {
+      active = false
+    }
+  }, [canReadAny, employeeAttempt])
+
+  async function exportAll() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const records = await loadAllAttendanceRecords(exportQuery)
+      downloadAttendanceCsv(records)
+    } catch (cause) {
+      setExportError(
+        cause instanceof Error
+          ? cause.message
+          : 'Attendance could not be exported.',
+      )
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const clearFilters = () => {
+    setEmployeeId(null)
+    setFrom('')
+    setTo('')
+    table.setGlobalFilter('')
+    table.resetColumnFilters()
+  }
   return (
     <div className="flex min-h-full flex-col">
       <RecordViewBar
         table={table}
-        viewName="Attendance"
-        count={table.getFilteredRowModel().rows.length}
+        viewName={scope === 'own' ? 'My attendance' : 'Attendance'}
+        count={total}
         icon={ClockIcon}
-        searchPlaceholder="Search attendance…"
+        searchPlaceholder="Search employee name or email…"
+        showSearch={scope === 'all'}
+        showSort={false}
         viewType={view}
         viewTypes={['table', 'calendar']}
         onViewTypeChange={(next) => {
@@ -125,11 +154,10 @@ export default function AttendanceView() {
           <DataTableViewOptions
             table={table}
             reorderableColumnIds={ATTENDANCE_COLUMNS}
-            onExport={exportRows}
           />
         }
         actions={
-          can('records:create') ? (
+          canCreate ? (
             <Button
               size="sm"
               className={ACCENT_ICON_BUTTON}
@@ -139,34 +167,60 @@ export default function AttendanceView() {
               <span className="max-sm:hidden">New attendance</span>
               <span className="sr-only sm:hidden">New attendance</span>
             </Button>
-          ) : undefined
+          ) : null
         }
       />
       <div className={PAGE_BODY}>
-        <DataConnectionNotice />
+        {canCheckIn && <TodayAttendance onRetry={retry} />}
         <div className="flex flex-wrap items-end gap-3">
-          <div className="grid w-full gap-1.5 sm:w-52">
-            <label
-              htmlFor="attendance-scope"
-              className="text-muted-foreground text-xs"
-            >
-              Employee
-            </label>
-            <Choice
-              id="attendance-scope"
-              value={employeeId || 'all'}
-              options={[
-                { value: 'all', label: 'All employees' },
-                ...employees.map((employee) => ({
-                  value: employee.id,
-                  label: employeeName(employee),
-                })),
-              ]}
-              onChange={(value) =>
-                setEmployeeId(value === 'all' ? null : value)
-              }
-            />
-          </div>
+          {canReadAny && (
+            <div className="grid w-full gap-1.5 sm:w-44">
+              <label
+                htmlFor="attendance-view-scope"
+                className="text-muted-foreground text-xs"
+              >
+                Records
+              </label>
+              <SearchableSelect
+                id="attendance-view-scope"
+                value={scope}
+                options={[
+                  { value: 'all', label: 'All attendance' },
+                  { value: 'own', label: 'My attendance' },
+                ]}
+                onChange={(value) => setScope(value === 'own' ? 'own' : 'all')}
+              />
+            </div>
+          )}
+          {scope === 'all' && (
+            <div className="grid w-full gap-1.5 sm:w-52">
+              <label
+                htmlFor="attendance-employee"
+                className="text-muted-foreground text-xs"
+              >
+                Employee
+              </label>
+              <SearchableSelect
+                id="attendance-employee"
+                label="Employee"
+                value={employeeId || 'all'}
+                options={[
+                  { value: 'all', label: 'All employees' },
+                  ...(employeeId &&
+                  !employees.some((employee) => employee.id === employeeId)
+                    ? [{ value: employeeId, label: 'Selected employee' }]
+                    : []),
+                  ...employees.map((employee) => ({
+                    value: employee.id,
+                    label: `${employee.name} · ${employee.email}`,
+                  })),
+                ]}
+                onChange={(value) =>
+                  setEmployeeId(value === 'all' ? null : value)
+                }
+              />
+            </div>
+          )}
           <div className="grid gap-1.5">
             <label
               htmlFor="attendance-from"
@@ -196,87 +250,98 @@ export default function AttendanceView() {
               className="w-40"
             />
           </div>
-          {(employeeId || from || to) && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <XIcon />
+            Clear filters
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="sm:ml-auto"
+            disabled={exporting || invalidRange || loading || Boolean(error)}
+            onClick={exportAll}
+          >
+            <DownloadIcon />
+            {exporting ? 'Exporting…' : 'Export matching records'}
+          </Button>
+        </div>
+        {scope === 'all' && employeesError && (
+          <div role="alert" className="text-destructive text-sm">
+            {employeesError}{' '}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setEmployeeId(null)
-                setFrom('')
-                setTo('')
-              }}
+              onClick={() => setEmployeeAttempt((current) => current + 1)}
             >
-              <XIcon />
-              Clear scope
+              Retry employee list
             </Button>
-          )}
-        </div>
-        {from && to && from > to && (
+          </div>
+        )}
+        {invalidRange && (
           <p role="alert" className="text-destructive text-sm">
             The end date must not be before the start date.
           </p>
         )}
-        {view === 'table' ? (
-          <RecordsTable
-            table={table}
-            columnIds={ATTENDANCE_COLUMNS}
-            loading={!hydrated}
-            label="attendance records"
-            onOpen={(record) => setRecordId(record.id)}
-          />
+        {exportError && (
+          <p role="alert" className="text-destructive text-sm">
+            {exportError}
+          </p>
+        )}
+        {error && todayError ? (
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <ClockIcon className="text-muted-foreground mx-auto mb-3 size-5" />
+            <h3 className="text-sm font-medium">Attendance history</h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Your records will appear here once attendance is available.
+            </p>
+          </div>
+        ) : error ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
+          >
+            <p className="text-destructive text-sm">{error}</p>
+            <Button size="sm" variant="outline" onClick={retry}>
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </div>
         ) : (
-          <RecordCalendar
+          <AttendanceResults
             table={table}
-            getId={(record) => record.id}
-            getDate={(record) => record.checkIn}
-            getTitle={(record) => record.employeeName}
-            getMeta={(record) => record.checkIn.slice(11)}
-            onOpenRecord={(record) => setRecordId(record.id)}
-            testId="attendance-calendar"
-            renderCard={(record) => (
-              <Card className="gap-0 py-0 shadow-none">
-                <CardContent className="p-0">
-                  <button
-                    type="button"
-                    onClick={() => setRecordId(record.id)}
-                    className="hover:bg-muted/50 flex w-full min-w-0 flex-col gap-2 rounded-lg p-2.5 text-left focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <span className="flex w-full min-w-0 items-center gap-2">
-                      <PersonAvatar
-                        name={record.employeeName}
-                        src={record.avatar}
-                        className="size-5!"
-                      />
-                      <span className="truncate text-xs font-medium">
-                        {record.employeeName}
-                      </span>
-                    </span>
-                    <span className="text-muted-foreground text-xs tabular-nums">
-                      {record.checkIn.slice(11)} ·{' '}
-                      {hoursLabel(record.workedMinutes)}
-                    </span>
-                    <AttendanceStatusBadge status={record.status} />
-                  </button>
-                </CardContent>
-              </Card>
-            )}
+            loading={loading}
+            calendar={view === 'calendar'}
+            total={total}
+            onOpen={setRecordId}
           />
         )}
       </div>
       <RecordPanel
         title="Attendance details"
-        open={!!selected}
+        open={Boolean(recordId)}
         onClose={() => setRecordId(null)}
-        href={selected ? '/attendance/' + selected.id : undefined}
+        href={selected.record ? '/attendance/' + selected.record.id : undefined}
       >
-        {selected && (
+        {selected.loading && <p role="status">Loading attendance…</p>}
+        {selected.error && (
+          <div role="alert">
+            <p>{selected.error}</p>
+            <Button variant="outline" size="sm" onClick={selected.retry}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {selected.record && (
           <>
-            <AttendanceContent key={selected.id} record={selected} />
+            <AttendanceContent
+              key={selected.record.id}
+              record={selected.record}
+            />
             <div className="mt-4">
               <AttendanceActions
-                record={selected}
+                record={selected.record}
                 detail
-                onEdit={() => setEditor(selected)}
+                onEdit={() => setEditor(selected.record!)}
                 onDeleted={() => setRecordId(null)}
               />
             </div>
@@ -286,13 +351,9 @@ export default function AttendanceView() {
       {editor && (
         <AttendanceEditor
           record={editor === 'new' ? undefined : editor}
-          employeeId={employeeId || undefined}
+          employeeId={scope === 'all' ? employeeId || undefined : undefined}
           onClose={() => setEditor(null)}
-          onSaved={(id) => {
-            setRecordId(id)
-            table.setGlobalFilter('')
-            table.resetColumnFilters()
-          }}
+          onSaved={(id) => setRecordId(id)}
         />
       )}
     </div>

@@ -77,6 +77,10 @@ try {
   assert.deepEqual(mapSummary({ total: null }), { total: 0, active: 0, departments: 0, locations: 0, withManager: 0, withoutManager: 0 })
   assert.throws(() => mapEmployee({ ...raw, userId: 'generated-id' }), /valid employee account ID/)
   assert.equal(mapEmployee({ ...raw, employeeImage: { imageUrl: 'javascript:bad' } }).avatar, undefined)
+  const companyImage = { imageUrl: 'https://images.example.invalid/company.png' }
+  assert.equal(mapEmployee({ ...raw, companyImage }).companyImage, companyImage.imageUrl)
+  assert.equal(mapEmployee({ ...raw, companyImage: null }).companyImage, undefined)
+  assert.equal(mapEmployee({ ...raw, companyImage: { imageUrl: 'javascript:bad' } }).companyImage, undefined)
   assert.equal(employeeName({ firstName: '', lastName: '' }), 'Unnamed employee')
   for (const role of ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager']) {
     assert.equal(employeePermissions(role).canCreate, true)

@@ -11,6 +11,7 @@ import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select
 import { useEmployeesStore } from '../store'
 import type {
   Employee,
+  EmployeeAccount,
   EmployeeCreateInput,
   EmployeeProfileInput,
 } from '../types'
@@ -28,6 +29,7 @@ type ProfileValues = {
 
 type ProfileFormProps = {
   employee?: Employee
+  account?: EmployeeAccount
   onCancel: () => void
   onSaved: (id: string) => void
   onPendingChange: (pending: boolean) => void
@@ -107,13 +109,15 @@ function buildProfileInput(values: ProfileValues): EmployeeProfileInput {
 /** Shared profile fields for creation and editing; account identity stays read-only. */
 export default function ProfileForm({
   employee,
+  account,
   onCancel,
   onSaved,
   onPendingChange,
 }: ProfileFormProps) {
   const formId = useId()
   const [values, setValues] = useState(() => initialValues(employee))
-  const [accountId, setAccountId] = useState('')
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+  const accountId = account?.id || selectedAccountId
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const accounts = useEmployeesStore((state) => state.accounts)
@@ -207,7 +211,17 @@ export default function ProfileForm({
   return (
     <form onSubmit={submit} className="space-y-4" aria-busy={pending}>
       <fieldset disabled={pending} className="space-y-4">
-        {!employee && (
+        {account && !employee && (
+          <div className="bg-muted rounded-lg p-3 text-sm">
+            <p className="font-medium">{account.name}</p>
+            <p className="text-muted-foreground break-all">{account.email}</p>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Account created. Finish this profile to add the employee to the directory.
+              Retrying this step will not create another account.
+            </p>
+          </div>
+        )}
+        {!employee && !account && (
           <div className="grid gap-2">
             <Label htmlFor={`${formId}-account`}>Employee account</Label>
             <SearchableSelect
@@ -219,7 +233,7 @@ export default function ProfileForm({
               disabled={optionsLoading || Boolean(optionsError)}
               placeholder="Select an existing account"
               onChange={(id) => {
-                setAccountId(id)
+                setSelectedAccountId(id)
                 if (values.managerId === id)
                   setValues((previous) => ({ ...previous, managerId: '' }))
               }}
@@ -310,8 +324,7 @@ export default function ProfileForm({
           type="submit"
           disabled={
             pending ||
-            (!employee &&
-              (!accountId || optionsLoading || Boolean(optionsError)))
+            (!employee && !accountId)
           }
         >
           {pending && <LoaderCircleIcon className="size-4 animate-spin" />}

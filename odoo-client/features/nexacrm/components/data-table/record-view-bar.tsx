@@ -64,6 +64,7 @@ type RecordViewBarProps<TData> = {
 
   viewTypes?: readonly RecordViewType[]
   showSort?: boolean
+  showSearch?: boolean
 }
 
 export const VIEW_BAR_TRIGGER = 'max-sm:border-border max-sm:size-6 max-sm:border'
@@ -105,7 +106,8 @@ const RecordViewBar = <TData,>({
   viewTypes = ['table'],
   viewType = 'table',
   onViewTypeChange,
-  showSort = true
+  showSort = true,
+  showSearch = true
 }: RecordViewBarProps<TData>) => {
   const optionsFor = (column: Column<TData, unknown>) =>
     dynamicFilterOptions?.[column.id] ?? column.columnDef.meta?.filterOptions ?? []
@@ -234,7 +236,7 @@ const RecordViewBar = <TData,>({
               <ListFilterIcon /> <span className='max-sm:hidden'>Filter</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end' className='w-60'>
-              <div className='relative p-1'>
+              {showSearch && <div className='relative p-1'>
                 <SearchIcon className='text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2' />
                 <Input
                   value={globalFilter}
@@ -244,8 +246,8 @@ const RecordViewBar = <TData,>({
                   aria-label={searchPlaceholder}
                   className='input-sm pl-8'
                 />
-              </div>
-              <DropdownMenuSeparator />
+              </div>}
+              {showSearch && <DropdownMenuSeparator />}
               {renderFieldGroup('Visible fields', visible(filterableColumns), renderFilterField)}
               {renderFieldGroup('Hidden fields', hidden(filterableColumns), renderFilterField)}
             </DropdownMenuContent>

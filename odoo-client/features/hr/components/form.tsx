@@ -33,13 +33,31 @@ export function Choice({
   value,
   options,
   onChange,
+  placeholder,
+  disabled,
+  searchable,
 }: {
   id: string
   value: string
   options: { value: string; label: string }[]
   onChange: (value: string) => void
+  placeholder?: string
+  disabled?: boolean
+  // Omit to let SearchableSelect decide by list length; set for pickers that
+  // should always be searchable regardless of how small the list happens to be.
+  searchable?: boolean
 }) {
-  return <SearchableSelect id={id} value={value} options={options} onChange={onChange} />
+  return (
+    <SearchableSelect
+      id={id}
+      value={value}
+      options={options}
+      onChange={onChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      searchable={searchable}
+    />
+  )
 }
 
 // Matches the employee/contract modal: only the body scrolls, actions remain visible.
@@ -49,6 +67,7 @@ export function EditorDialog({
   children,
   error,
   submitLabel = 'Save',
+  pending = false,
   onSubmit,
   onClose,
 }: {
@@ -57,7 +76,9 @@ export function EditorDialog({
   children: ReactNode
   error?: string | null
   submitLabel?: string
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  // Optional: set while an async onSubmit is in flight to block re-submission.
+  pending?: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
   onClose: () => void
 }) {
   return (
@@ -82,10 +103,12 @@ export function EditorDialog({
             </p>
           )}
           <DialogFooter className="mb-0 shrink-0">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">{submitLabel}</Button>
+            <Button type="submit" disabled={pending}>
+              {submitLabel}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

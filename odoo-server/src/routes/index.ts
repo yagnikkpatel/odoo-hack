@@ -5,7 +5,11 @@ import { userRouter } from "./user.routes";
 import { employeeRouter } from "./employee.routes";
 import { contractRouter } from "./contract.routes";
 import { attendanceRouter } from "./attendance.routes";
+<<<<<<< Updated upstream
 import { timeOffRouter } from "./timeOff.routes";
+=======
+import { timeOffRouter } from "./time-off.routes";
+>>>>>>> Stashed changes
 
 export const apiRouter = Router();
 

@@ -13,13 +13,13 @@ import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/features/nexacrm/components/ui/chart'
 import { useEmployeesStore } from '@/features/employees/store'
 import { EMPLOYMENT_TYPE_LABELS } from '@/features/employees/types'
-import { useContractsStore } from '@/features/contracts/store'
 import { today } from '@/features/contracts/types'
-import { useAttendanceStore } from '@/features/attendance/store'
+import { payrollAttendanceInputs } from '../attendance-input'
 import { hoursLabel } from '@/features/attendance/types'
 import { useSchedulesStore } from '@/features/working-schedules/store'
 import { useTimeOffStore } from '@/features/time-off/store'
 import { usePayrollStore } from '../store'
+import { payrollContractInputs } from '../contract-input'
 import { usePayrollPermissions } from '../permissions'
 import { money, PAYRUN_STATUSES } from '../types'
 import { payrollReport } from './data'
@@ -29,8 +29,8 @@ const chartConfig = { net: { label: 'Net salary paid', color: 'var(--chart-1)' }
 
 export default function PayrollReports() {
   const employees = useEmployeesStore(state => state.employees)
-  const contracts = useContractsStore(state => state.contracts)
-  const attendance = useAttendanceStore(state => state.records)
+  const contracts = payrollContractInputs
+  const attendance = payrollAttendanceInputs
   const { schedules, assignments } = useSchedulesStore()
   const leave = useTimeOffStore()
   const { payruns, payslips } = usePayrollStore()

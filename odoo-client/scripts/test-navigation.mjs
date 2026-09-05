@@ -11,7 +11,7 @@ const output = ts.transpileModule(source, {
 }).outputText
 const loaded = { exports: {} }
 new Function('require', 'module', 'exports', output)(createRequire(import.meta.url), loaded, loaded.exports)
-const { appNavigation, navigationDestinations, getActiveNavigationDestination, isNavigationItemActive } = loaded.exports
+const { appNavigation, navigationDestinations, getActiveNavigationDestination, isNavigationItemActive, getNavigationForRole, getNavigationLabel } = loaded.exports
 const main = appNavigation.find(group => group.id === 'main')
 const items = appNavigation.flatMap(group => group.items)
 assert.equal(new Set(items.map(item => item.iconClassName)).size, items.length, 'Each module keeps its own icon colour')
@@ -48,4 +48,24 @@ for (const [pathname, expected] of [
 ]) assert.equal(getActiveNavigationDestination(pathname)?.id, expected, pathname)
 assert.equal(isNavigationItemActive(main.items.find(item => item.id === 'payroll'), '/payroll/rules'), true)
 assert.equal(isNavigationItemActive(main.items.find(item => item.id === 'reports'), '/dashboards/analytics'), true)
-console.log('PASS: six main modules, required setup menus, unique destinations, ready routes, aliases and nested active states.')
+const employeeGroups = getNavigationForRole('employee')
+const employeeItems = employeeGroups.flatMap(group => group.items)
+assert.deepEqual(employeeItems.map(item => item.label), ['My Attendance', 'My Profile'])
+assert.ok(employeeItems.every(item => !('children' in item)), 'Employee destinations are direct links, not nested management menus')
+assert.equal(employeeItems[0].href, '/attendance')
+assert.equal(employeeItems[1].href, '/employees')
+assert.equal(isNavigationItemActive(employeeItems[0], '/attendance'), true)
+assert.equal(isNavigationItemActive(employeeItems[0], '/attendance/record-id'), true)
+assert.equal(isNavigationItemActive(employeeItems[0], '/attendance/schedules'), false)
+assert.equal(getNavigationLabel('/attendance', 'employee'), 'My Attendance')
+assert.equal(getNavigationLabel('/employees', 'employee'), 'My Profile')
+assert.equal(getNavigationLabel('/contracts', 'employee'), undefined)
+for (const role of ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager']) {
+  assert.equal(getNavigationForRole(role), appNavigation, `${role} keeps management navigation`)
+  assert.equal(getNavigationLabel('/attendance', role), 'Attendance records')
+}
+assert.deepEqual(getNavigationForRole('unknown'), [])
+for (const file of ['components/layout/app-sidebar.tsx', 'components/layout/app-header.tsx']) {
+  assert.match(readFileSync(root + file, 'utf8'), /getNavigationForRole|getNavigationLabel/)
+}
+console.log('PASS: role-specific navigation, flat employee links, matching header labels, management menus, ready routes and active states.')

@@ -90,6 +90,10 @@ assert.match(read('features/employees/table/employees-table.tsx'), /<EmployeePag
 assert.match(read('features/employees/table/table-toolbar.tsx'), /Export current page to CSV/)
 assert.match(read('features/employees/index.tsx'), /if \(!canReadAll\)/)
 assert.match(read('features/employees/stats-cards.tsx'), /state.summary/)
+const companyColumn = read('features/employees/table/columns.tsx').split("accessorKey: 'companyName'")[1].split("accessorKey: 'department'")[0]
+assert.match(companyColumn, /<EmployeeCompany employee=\{row.original\}/, 'The company column must show the shared logo and name component')
+assert.match(read('features/employees/components/employee-company.tsx'), /<AvatarImage src=\{employee.companyImage\}/)
+assert.match(read('features/employees/components/employee-company.tsx'), /aspect-auto h-auto w-auto max-h-6 max-w-16 rounded-sm object-contain/, 'Company logos must keep their proportions with subtly rounded corners, not a circular crop')
 assert.doesNotMatch(read('features/employees/csv.ts'), /ImportField|ParsedRow|createEmployeeRowParser/)
 for (const file of [
   'index.tsx', 'csv.ts', 'stats.ts', 'stats-cards.tsx', 'table/columns.tsx',

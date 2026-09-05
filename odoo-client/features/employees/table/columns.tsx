@@ -11,6 +11,7 @@ import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import { ROLE_LABELS } from '@/features/nexacrm/types/rbac-types'
 import { employeeName } from '../types'
 import type { Employee } from '../types'
+import EmployeeCompany from '../components/employee-company'
 import EmployeeStatusBadge from '../components/status-badge'
 import EmployeeRowActions from './row-actions'
 
@@ -90,7 +91,7 @@ export const columns: ColumnDef<Employee>[] = [
     size: 170,
     meta: { label: 'Company', icon: Building2Icon },
     header: ({ column }) => <DataTableColumnHeader column={column} title="Company" />,
-    cell: ({ row }) => <TextCell value={row.original.companyName} />,
+    cell: ({ row }) => <EmployeeCompany employee={row.original} />,
   },
   {
     accessorKey: 'department',

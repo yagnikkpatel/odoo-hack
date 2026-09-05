@@ -1,17 +1,17 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useContractsStore } from '@/features/contracts/store'
-import { useAttendanceStore } from '@/features/attendance/store'
 import { useSchedulesStore } from '@/features/working-schedules/store'
-import { useTimeOffStore } from '@/features/time-off/store'
 
-/** Resolve loading states without fabricating business records or schedules. */
+/**
+ * Resolve loading states without fabricating business records or schedules.
+ *
+ * Time off is no longer seeded here — it loads its own snapshot from the API on mount.
+ * Keep this function synchronous: `useEffect` receives it directly and an effect callback
+ * must not return a promise. Wrap it if it ever needs to await something.
+ */
 export function initializeEmptyDataStores() {
-  useContractsStore.getState().initialize([])
-  useAttendanceStore.getState().initialize([])
   useSchedulesStore.getState().initialize([], {})
-  useTimeOffStore.getState().initialize({ types: [], allocations: [], requests: [] })
 }
 
 export default function DataStoresInitializer() {

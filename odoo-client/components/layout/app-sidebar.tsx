@@ -15,7 +15,7 @@ import {
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarNavigationItem } from "@/components/layout/sidebar-navigation-item";
-import { appNavigation, isNavigationItemActive } from "@/config/app-navigation";
+import { getNavigationForRole, isNavigationItemActive } from "@/config/app-navigation";
 import { cn } from "@/lib/utils";
 
 type AppSidebarProps = {
@@ -43,6 +43,7 @@ export function AppSidebar({
   user,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const navigation = getNavigationForRole(user.role);
   const [loggingOut, setLoggingOut] = useState(false);
   async function signOut() {
     if (loggingOut) return;
@@ -60,7 +61,7 @@ export function AppSidebar({
     }
   }
   const initial = user.email.charAt(0).toUpperCase();
-  const activeBranch = appNavigation
+  const activeBranch = navigation
     .flatMap(group => group.items)
     .find(item => "children" in item && isNavigationItemActive(item, pathname));
   const [menuState, setMenuState] = useState<{
@@ -110,7 +111,7 @@ export function AppSidebar({
             <div className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
               <p className="truncate text-sm font-semibold">PeoplePay360</p>
               <p className="text-muted-foreground truncate text-xs">
-                HR workspace
+                {user.role === "employee" ? "Employee workspace" : "HR workspace"}
               </p>
             </div>
             <IconSelector
@@ -127,7 +128,7 @@ export function AppSidebar({
           aria-label="Main navigation"
           className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4"
         >
-          {appNavigation.map(group => (
+          {navigation.map(group => (
             <div
               key={group.id}
               className={cn(

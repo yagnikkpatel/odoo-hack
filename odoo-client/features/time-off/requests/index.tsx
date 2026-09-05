@@ -16,12 +16,12 @@ import { Button } from '@/features/nexacrm/components/ui/button'
 import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
 import { parseAsString, useQueryState } from '@/features/nexacrm/adapters/query-state'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
 import { Choice } from '@/features/hr/components/form'
 import RecordPanel from '@/features/hr/components/record-panel'
 import { useEmployeesStore } from '@/features/employees/store'
 import { employeeName } from '@/features/employees/types'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { STATUS_LABELS } from '../model'
 import type { TimeOffRequest } from '../model'
@@ -40,7 +40,7 @@ export default function RequestsView() {
   const employees = useEmployeesStore(state => state.employees)
   const requests = useTimeOffStore(state => state.requests)
   const types = useTimeOffStore(state => state.types)
-  const { can } = useCurrentUser()
+  const { canCreateAny } = useTimeOffPermissions()
   const [employeeId, setEmployeeId] = useQueryState(
     'employee',
     parseAsString.withOptions({ history: 'push', shallow: true })
@@ -138,7 +138,7 @@ export default function RequestsView() {
         columnIds={COLUMN_IDS}
         onOpen={record => setRecordId(record.id)}
         actions={
-          can('records:create') ? (
+          canCreateAny ? (
             <Button size='sm' className={ACCENT_ICON_BUTTON} onClick={() => setEditor('new')}>
               <PlusIcon />
               <span className='max-sm:hidden'>New request</span>
@@ -219,6 +219,8 @@ export default function RequestsView() {
           typeId={typeId || undefined}
           onClose={() => setEditor(null)}
           onSaved={id => {
+            // The editor awaits the save before calling back, so the store already holds the
+            // record; reading it synchronously here no longer races the mutation.
             const saved = useTimeOffStore.getState().requests.find(request => request.id === id)
             if (saved && employeeId) setEmployeeId(saved.employeeId)
             if (saved && typeId) setTypeId(saved.typeId)

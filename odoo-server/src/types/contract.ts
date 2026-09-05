@@ -7,6 +7,7 @@ export type ContractRecord = {
   employeeId: string;
   employeeName: string;
   employeeEmail: string;
+  employeeAvatar: string | null;
   startDate: string;
   endDate: string;
   wage: number;

@@ -6,6 +6,7 @@ const CONTRACT_COLUMNS = `
     c.employee_id AS "employeeId",
     u.name AS "employeeName",
     u.email AS "employeeEmail",
+    p.employee_image_url AS "employeeAvatar",
     to_char(c.start_date, 'YYYY-MM-DD') AS "startDate",
     to_char(c.end_date, 'YYYY-MM-DD') AS "endDate",
     c.wage::float8 AS "wage",
@@ -17,6 +18,7 @@ const CONTRACT_COLUMNS = `
 const CONTRACT_FROM = `
   FROM contracts c
   JOIN users u ON u.id = c.employee_id
+  LEFT JOIN employee_profiles p ON p.user_id = c.employee_id
 `;
 
 const UPDATABLE_COLUMNS: Record<string, string> = {
@@ -48,7 +50,8 @@ export async function insertContract(input: {
      )
      SELECT ${CONTRACT_COLUMNS}
      FROM inserted c
-     JOIN users u ON u.id = c.employee_id`,
+     JOIN users u ON u.id = c.employee_id
+     LEFT JOIN employee_profiles p ON p.user_id = c.employee_id`,
     [
       input.employeeId,
       input.startDate,
@@ -149,7 +152,8 @@ export async function updateContractById(
      )
      SELECT ${CONTRACT_COLUMNS}
      FROM updated c
-     JOIN users u ON u.id = c.employee_id`,
+     JOIN users u ON u.id = c.employee_id
+     LEFT JOIN employee_profiles p ON p.user_id = c.employee_id`,
     values,
   );
 

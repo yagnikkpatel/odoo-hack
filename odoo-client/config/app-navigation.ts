@@ -34,7 +34,7 @@ export type NavigationGroup = {
   items: readonly NavigationItem[];
 };
 
-// All roles share this navigation during the UI phase; this is not authorization.
+// Management navigation. API permissions remain the authorization boundary.
 export const appNavigation: readonly NavigationGroup[] = [
   {
     id: "main",
@@ -86,19 +86,19 @@ export const appNavigation: readonly NavigationGroup[] = [
             id: "time-off-requests",
             label: "Requests",
             href: "/time-off/requests",
-            status: "planned",
+            status: "ready",
           },
           {
             id: "time-off-allocations",
             label: "Allocations",
             href: "/time-off/allocations",
-            status: "planned",
+            status: "ready",
           },
           {
             id: "time-off-types",
             label: "Time off types",
             href: "/time-off/types",
-            status: "planned",
+            status: "ready",
           },
         ],
       },
@@ -112,25 +112,25 @@ export const appNavigation: readonly NavigationGroup[] = [
             id: "payruns",
             label: "Payruns",
             href: "/payroll",
-            status: "planned",
+            status: "ready",
           },
           {
             id: "payslips",
             label: "Payslips",
             href: "/payslips",
-            status: "planned",
+            status: "ready",
           },
           {
             id: "salary-structures",
             label: "Salary structures",
             href: "/payroll/structures",
-            status: "planned",
+            status: "ready",
           },
           {
             id: "salary-rules",
             label: "Salary rules",
             href: "/payroll/rules",
-            status: "planned",
+            status: "ready",
           },
         ],
       },
@@ -145,13 +145,13 @@ export const appNavigation: readonly NavigationGroup[] = [
             label: "Dashboard",
             href: "/dashboards/analytics",
             aliases: ["/dashboard"],
-            status: "planned",
+            status: "ready",
           },
           {
             id: "hr-payroll-reports",
             label: "HR & payroll reports",
             href: "/reports",
-            status: "planned",
+            status: "ready",
           },
         ],
       },
@@ -199,6 +199,47 @@ export const navigationDestinations = appNavigation.flatMap((group) =>
     "children" in item ? [...item.children] : [item],
   ),
 );
+
+const employeeNavigation: readonly NavigationGroup[] = [
+  {
+    id: "main",
+    label: "My workspace",
+    items: [
+      {
+        id: "attendance-records",
+        label: "My Attendance",
+        href: "/attendance",
+        icon: IconClockHour4,
+        iconClassName: "text-emerald-600",
+        status: "ready",
+      },
+      {
+        id: "employees",
+        label: "My Profile",
+        href: "/employees",
+        icon: IconUsersGroup,
+        iconClassName: "text-blue-600",
+        status: "ready",
+      },
+    ],
+  },
+];
+
+export function getNavigationForRole(role: string): readonly NavigationGroup[] {
+  if (role === "employee") return employeeNavigation;
+  if (["admin", "hr_manager", "hr_payroll_user", "hr_payroll_manager"].includes(role)) {
+    return appNavigation;
+  }
+  return [];
+}
+
+export function getNavigationLabel(pathname: string, role: string) {
+  const active = getActiveNavigationDestination(pathname);
+  const destinations = getNavigationForRole(role).flatMap(group =>
+    group.items.flatMap(item => "children" in item ? [...item.children] : [item]),
+  );
+  return destinations.find(item => item.id === active?.id)?.label;
+}
 
 export function getActiveNavigationDestination(pathname: string) {
   // Longest matching path wins: /payroll/rules must not activate Payruns too.

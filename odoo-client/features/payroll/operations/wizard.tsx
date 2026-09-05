@@ -9,13 +9,13 @@ import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
 import { Choice, EditorDialog, FormField } from '@/features/hr/components/form'
 import { useEmployeesStore } from '@/features/employees/store'
 import { employeeName } from '@/features/employees/types'
-import { useContractsStore } from '@/features/contracts/store'
 import { usePayrollStore } from '../store'
 import { eligibleEmployees } from '../engine'
+import { payrollContractInputs } from '../contract-input'
 import type { Payrun } from '../types'
 export default function PayrunWizard({onClose,run}:{onClose:()=>void;run?:Payrun}) {
  const router=useRouter(); const structures=usePayrollStore(s=>s.structures); const create=usePayrollStore(s=>s.createPayrun); const update=usePayrollStore(s=>s.updatePayrun)
- const employees=useEmployeesStore(s=>s.employees); const contracts=useContractsStore(s=>s.contracts)
+ const employees=useEmployeesStore(s=>s.employees); const contracts=payrollContractInputs
  const now=new Date(); const month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
  const [step,setStep]=useState(1);const [name,setName]=useState(run?.name||`${now.toLocaleString('en',{month:'long'})} ${now.getFullYear()} payroll`);const [structureId,setStructure]=useState(run?.structureId||'');const [startDate,setStart]=useState(run?.startDate||`${month}-01`);const [endDate,setEnd]=useState(run?.endDate||`${month}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`);const [selected,setSelected]=useState<string[]>(run?.employeeIds||[]);const [search,setSearch]=useState('');const [department,setDepartment]=useState('all');const [error,setError]=useState<string|null>(null)
  const structure=structures.find(s=>s.id===structureId);const eligible=structure?eligibleEmployees(employees,contracts,structure,startDate,endDate):[]

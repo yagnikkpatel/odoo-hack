@@ -1,7 +1,7 @@
 import type { Employee } from '@/features/employees/types'
-import type { Contract } from '@/features/contracts/types'
-import type { Attendance } from '@/features/attendance/types'
-import { workedMinutes } from '@/features/attendance/types'
+import type { PayrollContractInput } from '../contract-input'
+import type { PayrollAttendanceInput as Attendance } from '../attendance-input'
+import { workedMinutes } from '../attendance-input'
 import type { WorkingSchedule } from '@/features/working-schedules/types'
 import { slotMinutes, timeMinutes } from '@/features/working-schedules/types'
 import type { TimeOffData } from '@/features/time-off/model'
@@ -9,7 +9,7 @@ import { employeeBalance } from '@/features/time-off/logic'
 import type { Payrun, Payslip } from '../types'
 
 export type ReportFilters = { from: string; to: string; department: string; employmentType: string; currency: string }
-export type ReportSources = { employees: Employee[]; contracts: Contract[]; attendance: Attendance[]; schedules: WorkingSchedule[]; assignments: Record<string, string>; leave: TimeOffData; payruns: Payrun[]; payslips: Payslip[] }
+export type ReportSources = { employees: Employee[]; contracts: PayrollContractInput[]; attendance: Attendance[]; schedules: WorkingSchedule[]; assignments: Record<string, string>; leave: TimeOffData; payruns: Payrun[]; payslips: Payslip[] }
 const overlap = (start: string, end: string, from: string, to: string) => start <= to && end >= from
 export function payrollReport(source: ReportSources, filter: ReportFilters, today: string) {
   const periodContracts = source.contracts.filter(contract => contract.state === 'active' && overlap(contract.startDate, contract.endDate || '9999-12-31', filter.from, filter.to))

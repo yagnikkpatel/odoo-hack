@@ -7,14 +7,6 @@ export function proxy(request: NextRequest) {
   if (!request.cookies.get(SESSION_COOKIE_NAME)?.value) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  // Preserve the existing module availability redirects.
-  if (
-    /^\/(time-off|payroll|payslips|reports|dashboard|dashboards)(\/|$)/.test(
-      request.nextUrl.pathname,
-    )
-  ) {
-    return NextResponse.redirect(new URL("/employees", request.url));
-  }
   return NextResponse.next();
 }
 

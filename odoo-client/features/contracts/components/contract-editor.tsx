@@ -1,9 +1,13 @@
 'use client'
-import { useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+
+import { useActionState, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { useFormStatus } from 'react-dom'
+import { LoaderCircleIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Input } from '@/features/nexacrm/components/ui/input'
 import { Label } from '@/features/nexacrm/components/ui/label'
+import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -13,12 +17,11 @@ import {
   DialogTitle,
 } from '@/features/nexacrm/components/ui/dialog'
 import { Choice } from '@/features/hr/components/form'
-import { useEmployeesStore } from '@/features/employees/store'
 import { employeeName } from '@/features/employees/types'
-import { usePayrollStore } from '@/features/payroll/store'
-import { useSchedulesStore } from '@/features/working-schedules/store'
+import type { Employee } from '@/features/employees/types'
+import { listContractEmployees } from '../service'
 import { useContractsStore } from '../store'
-import { CONTRACT_STATES, CURRENCIES, WAGE_PERIODS, today } from '../types'
+import { CONTRACT_STATUSES, today } from '../types'
 import type { Contract, ContractInput } from '../types'
 
 function Field({
@@ -37,7 +40,26 @@ function Field({
     </div>
   )
 }
-// Mount only while open: every opening starts a fresh draft, and Cancel never writes a record.
+
+function initialInput(contract?: Contract, employeeId?: string): ContractInput {
+  if (contract) {
+    return {
+      employeeId: contract.employeeId,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      wage: contract.wage,
+      status: contract.status,
+    }
+  }
+  return {
+    employeeId: employeeId || '',
+    startDate: today(),
+    endDate: '',
+    wage: Number.NaN,
+    status: 'running',
+  }
+}
+
 export default function ContractEditor({
   contract,
   employeeId,
@@ -49,248 +71,215 @@ export default function ContractEditor({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const structures = usePayrollStore(state => state.structures)
-  const schedules = useSchedulesStore(state => state.schedules)
-  const employees = useEmployeesStore((state) => state.employees)
-  const initialEmployee = employees.find(
-    (employee) => employee.id === employeeId,
-  )
-  const [draft, setDraft] = useState<ContractInput>(() =>
-    contract
-      ? { ...contract }
-      : {
-          name: '',
-          employeeId: initialEmployee?.id || '',
-          startDate: today(),
-          endDate: '',
-          department: initialEmployee?.department || '',
-          jobPosition: initialEmployee?.jobTitle || '',
-          wage: 0,
-          currency: 'INR',
-          wagePeriod: 'month',
-          salaryStructure: '',
-          workingSchedule: '',
-          state: 'draft',
-        },
-  )
+  const [draft, setDraft] = useState(() => initialInput(contract, employeeId))
   const [wage, setWage] = useState(contract ? String(contract.wage) : '')
-  const [error, setError] = useState<string | null>(null)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employeesLoading, setEmployeesLoading] = useState(!contract)
+  const [employeeError, setEmployeeError] = useState<string | null>(null)
   const save = useContractsStore((state) => state.save)
-  const set = (input: Partial<ContractInput>) => {
-    setDraft((current) => ({ ...current, ...input }))
-    setError(null)
-  }
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const result = save(
-      { ...draft, wage: wage.trim() ? Number(wage) : Number.NaN },
-      contract?.id,
-    )
-    if (!result.ok) {
-      setError(result.error)
-      return
+
+  useEffect(() => {
+    if (contract) return
+    let active = true
+    void listContractEmployees()
+      .then((records) => {
+        if (active) setEmployees(records)
+      })
+      .catch((cause) => {
+        if (!active) return
+        setEmployeeError(
+          cause instanceof Error
+            ? cause.message
+            : 'Employees could not be loaded.',
+        )
+      })
+      .finally(() => {
+        if (active) setEmployeesLoading(false)
+      })
+    return () => {
+      active = false
     }
-    onSaved(result.id)
-    onClose()
+  }, [contract])
+
+  function set(input: Partial<ContractInput>) {
+    setDraft((current) => ({ ...current, ...input }))
   }
+
+  async function saveContract() {
+    try {
+      const id = await save(
+        { ...draft, wage: wage.trim() ? Number(wage) : Number.NaN },
+        contract?.id,
+      )
+      onSaved(id)
+      onClose()
+      return { error: null }
+    } catch (cause) {
+      return {
+        error:
+          cause instanceof Error
+            ? cause.message
+            : 'The contract could not be saved. Please try again.',
+      }
+    }
+  }
+  const [submitState, formAction, isPending] = useActionState(saveContract, {
+    error: null,
+  })
+
+  const employeeOptions = employees.map((employee) => ({
+    value: employee.id,
+    label: `${employeeName(employee)} · ${employee.email}`,
+  }))
+  if (
+    draft.employeeId &&
+    !employeeOptions.some((option) => option.value === draft.employeeId)
+  ) {
+    employeeOptions.unshift({
+      value: draft.employeeId,
+      label: 'Selected employee',
+    })
+  }
+
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open && !isPending) onClose()
       }}
     >
-      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden pb-0 sm:max-w-xl">
+      <DialogContent
+        className="flex max-h-[90dvh] flex-col overflow-hidden pb-0 sm:max-w-xl"
+        showCloseButton={!isPending}
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle>
             {contract ? 'Edit contract' : 'New contract'}
           </DialogTitle>
           <DialogDescription>
-            Employment terms for one employee. Nothing is saved until you
-            submit.
+            Add the employee, effective dates, wage, and backend contract
+            status.
           </DialogDescription>
         </DialogHeader>
-        <form className="flex min-h-0 flex-col gap-4" onSubmit={submit}>
+        <form className="flex min-h-0 flex-col gap-4" action={formAction}>
           <div className="-mx-1 min-h-0 space-y-5 overflow-y-auto px-1">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Contract name" id="contract-name">
+            <Field label="Employee" id="contract-employee">
+              {contract ? (
                 <Input
-                  id="contract-name"
-                  required
-                  value={draft.name}
-                  onChange={(event) => set({ name: event.target.value })}
-                  placeholder="Employment agreement"
+                  id="contract-employee"
+                  value={`${contract.employeeName} · ${contract.employeeEmail}`}
+                  disabled
                 />
-              </Field>
-              <Field label="Employee" id="contract-employee">
+              ) : employeesLoading ? (
+                <Button type="button" variant="outline" disabled>
+                  <LoaderCircleIcon className="animate-spin" />
+                  Loading employees…
+                </Button>
+              ) : (
                 <Choice
                   id="contract-employee"
                   value={draft.employeeId}
-                  options={employees.map((employee) => ({
-                    value: employee.id,
-                    label: employeeName(employee),
-                  }))}
-                  onChange={(employeeId) => {
-                    const employee = employees.find(
-                      (item) => item.id === employeeId,
-                    )
-                    set({
-                      employeeId,
-                      department: employee?.department || draft.department,
-                      jobPosition: employee?.jobTitle || draft.jobPosition,
-                    })
-                  }}
+                  options={employeeOptions}
+                  onChange={(value) => set({ employeeId: value })}
                 />
-              </Field>
-              <Field label="Start date" id="contract-start">
-                <Input
-                  id="contract-start"
-                  required
-                  type="date"
-                  value={draft.startDate}
-                  onChange={(event) => set({ startDate: event.target.value })}
-                />
-              </Field>
-              <Field label="End date (optional)" id="contract-end">
-                <Input
-                  id="contract-end"
-                  type="date"
-                  min={draft.startDate}
-                  value={draft.endDate || ''}
-                  onChange={(event) => set({ endDate: event.target.value })}
-                />
-              </Field>
-              <Field label="Department" id="contract-department">
-                <Input
-                  id="contract-department"
-                  required
-                  value={draft.department}
-                  onChange={(event) => set({ department: event.target.value })}
-                />
-              </Field>
-              <Field label="Job position" id="contract-position">
-                <Input
-                  id="contract-position"
-                  required
-                  value={draft.jobPosition}
-                  onChange={(event) => set({ jobPosition: event.target.value })}
-                />
-              </Field>
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <Field label="Wage" id="contract-wage">
-                  <Input
-                    id="contract-wage"
-                    required
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={wage}
-                    onChange={(event) => {
-                      setWage(event.target.value)
-                      setError(null)
-                    }}
-                    placeholder="0.00"
-                  />
-                </Field>
-                <Field label="Currency" id="contract-currency">
-                  <Choice
-                    id="contract-currency"
-                    value={draft.currency}
-                    options={CURRENCIES.map((value) => ({
-                      value,
-                      label: value,
-                    }))}
-                    onChange={(currency) =>
-                      set({ currency: currency as ContractInput['currency'] })
-                    }
-                  />
-                </Field>
-                <Field label="Wage period" id="contract-period">
-                  <Choice
-                    id="contract-period"
-                    value={draft.wagePeriod}
-                    options={Object.entries(WAGE_PERIODS).map(
-                      ([value, label]) => ({ value, label }),
-                    )}
-                    onChange={(wagePeriod) =>
-                      set({
-                        wagePeriod: wagePeriod as ContractInput['wagePeriod'],
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Salary structure" id="contract-structure">
-                  <Choice
-                    id="contract-structure"
-                    value={draft.salaryStructure}
-                    options={[
-                      { value: '', label: 'Choose salary structure' },
-                      ...structures.filter(item => item.active || item.id === draft.salaryStructure).map(item => ({ value: item.id, label: item.name })),
-                      ...(draft.salaryStructure && !structures.some(item => item.id === draft.salaryStructure) ? [{ value: draft.salaryStructure, label: draft.salaryStructure }] : []),
-                    ]}
-                    onChange={salaryStructure => set({ salaryStructure })}
-                  />
-                </Field>
-                <Field
-                  label="Working schedule (optional)"
-                  id="contract-schedule"
-                >
-                  <Choice
-                    id="contract-schedule"
-                    value={draft.workingSchedule || ''}
-                    options={[
-                      { value: '', label: 'Use employee schedule' },
-                      ...schedules.map(item => ({ value: item.id, label: item.name })),
-                      ...(draft.workingSchedule && !schedules.some(item => item.id === draft.workingSchedule) ? [{ value: draft.workingSchedule, label: draft.workingSchedule }] : []),
-                    ]}
-                    onChange={workingSchedule => set({ workingSchedule })}
-                  />
-                </Field>
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Payroll uses the structure and working schedule assigned to the contract for the selected period.
+              )}
+            </Field>
+            {employeeError && (
+              <p role="alert" className="text-destructive text-sm">
+                {employeeError}
               </p>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Start date" id="contract-start">
+                <DatePicker
+                  id="contract-start"
+                  label="Start date"
+                  required
+                  value={draft.startDate}
+                  onChange={(value) => set({ startDate: value })}
+                />
+              </Field>
+              <Field label="End date" id="contract-end">
+                <DatePicker
+                  id="contract-end"
+                  label="End date"
+                  required
+                  min={draft.startDate}
+                  value={draft.endDate}
+                  onChange={(value) => set({ endDate: value })}
+                />
+              </Field>
+              <Field label="Wage" id="contract-wage">
+                <Input
+                  id="contract-wage"
+                  required
+                  type="number"
+                  min="0.01"
+                  max="9999999999.99"
+                  step="0.01"
+                  value={wage}
+                  onChange={(event) => {
+                    setWage(event.target.value)
+                  }}
+                  placeholder="0.00"
+                />
+              </Field>
               <Field label="Status" id="contract-status">
                 <Choice
                   id="contract-status"
-                  value={draft.state}
-                  options={Object.entries(CONTRACT_STATES).map(
+                  value={draft.status}
+                  options={Object.entries(CONTRACT_STATUSES).map(
                     ([value, label]) => ({ value, label }),
                   )}
-                  onChange={(state) =>
-                    set({ state: state as ContractInput['state'] })
+                  onChange={(value) =>
+                    set({ status: value as ContractInput['status'] })
                   }
                 />
               </Field>
-              <p className="text-muted-foreground text-xs">
-                Active contracts appear as Scheduled before their start date and
-                Expired after their end date. Leave the end date empty for an
-                ongoing contract.
-              </p>
             </div>
           </div>
-          {error && (
+          {submitState.error && (
             <p
               role="alert"
               className="border-destructive/20 bg-destructive/5 text-destructive shrink-0 rounded-lg border p-3 text-sm"
             >
-              {error}
+              {submitState.error}
             </p>
           )}
           <DialogFooter className="mb-0 shrink-0">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={onClose}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              {contract ? 'Save changes' : 'Create contract'}
-            </Button>
+            <ContractSubmitButton
+              editing={Boolean(contract)}
+              disabled={
+                employeesLoading || Boolean(employeeError) || !draft.employeeId
+              }
+            />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ContractSubmitButton({
+  editing,
+  disabled,
+}: {
+  editing: boolean
+  disabled: boolean
+}) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" disabled={disabled || pending}>
+      {pending && <LoaderCircleIcon className="animate-spin" />}
+      {pending ? 'Saving…' : editing ? 'Save changes' : 'Create contract'}
+    </Button>
   )
 }

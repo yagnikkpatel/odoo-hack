@@ -9,7 +9,7 @@ import { DropdownMenuItem } from '@/features/nexacrm/components/ui/dropdown-menu
 import ConfirmDialog from '@/features/nexacrm/components/ui/confirm-dialog'
 import RowActionShell from '@/features/nexacrm/components/data-table/row-action-shell'
 import { EditorDialog, FormField } from '@/features/hr/components/form'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { formatAmount } from '../logic'
 import type { TimeOffRequest } from '../model'
@@ -25,40 +25,41 @@ export default function RequestActions({
   onDeleted?: () => void
   detail?: boolean
 }) {
-  const { can } = useCurrentUser()
+  const { canUpdate, canDelete, canApprove } = useTimeOffPermissions()
   const [decision, setDecision] = useState<'refuse' | 'cancel' | null>(null)
   const [approvalOpen, setApprovalOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const canManage = can('records:update')
-  const editable = canManage && (record.status === 'pending' || record.status === 'refused')
+  const [submitting, setSubmitting] = useState(false)
+  const editable = canUpdate && (record.status === 'pending' || record.status === 'refused')
   const openDecision = (action: 'refuse' | 'cancel') => {
     setDecision(action)
     setReason('')
     setError(null)
   }
-  const decisionItems = canManage ? (
-    <>
-      {record.status === 'pending' && (
-        <>
-          <DropdownMenuItem onClick={() => setApprovalOpen(true)}>
-            <CheckIcon />
-            Approve
+  const decisionItems =
+    canApprove || canUpdate ? (
+      <>
+        {canApprove && record.status === 'pending' && (
+          <>
+            <DropdownMenuItem onClick={() => setApprovalOpen(true)}>
+              <CheckIcon />
+              Approve
+            </DropdownMenuItem>
+            <DropdownMenuItem variant='destructive' onClick={() => openDecision('refuse')}>
+              <XIcon />
+              Refuse
+            </DropdownMenuItem>
+          </>
+        )}
+        {canUpdate && record.status === 'approved' && (
+          <DropdownMenuItem variant='destructive' onClick={() => openDecision('cancel')}>
+            <BanIcon />
+            Cancel leave
           </DropdownMenuItem>
-          <DropdownMenuItem variant='destructive' onClick={() => openDecision('refuse')}>
-            <XIcon />
-            Refuse
-          </DropdownMenuItem>
-        </>
-      )}
-      {record.status === 'approved' && (
-        <DropdownMenuItem variant='destructive' onClick={() => openDecision('cancel')}>
-          <BanIcon />
-          Cancel leave
-        </DropdownMenuItem>
-      )}
-    </>
-  ) : undefined
+        )}
+      </>
+    ) : undefined
   return (
     <div className='flex flex-wrap items-center gap-1'>
       {detail && editable && (
@@ -66,7 +67,7 @@ export default function RequestActions({
           Edit request
         </Button>
       )}
-      {detail && canManage && record.status === 'pending' && (
+      {detail && canApprove && record.status === 'pending' && (
         <>
           <Button size='sm' onClick={() => setApprovalOpen(true)}>
             <CheckIcon />
@@ -83,9 +84,9 @@ export default function RequestActions({
         onEdit={!detail && editable ? onEdit : undefined}
         extraItems={detail && record.status === 'pending' ? undefined : decisionItems}
         onDelete={
-          can('records:delete') && record.status !== 'approved'
-            ? () => {
-                const result = useTimeOffStore.getState().removeRequest(record.id)
+          canDelete && record.status !== 'approved'
+            ? async () => {
+                const result = await useTimeOffStore.getState().removeRequest(record.id)
                 if (!result.ok) {
                   toast.error(result.error)
                   return
@@ -104,9 +105,12 @@ export default function RequestActions({
         title='Approve this request?'
         variant='default'
         confirmLabel='Approve request'
+        pending={submitting}
         description={`Approve ${formatAmount(record.duration, record.unit)} of leave. If an allocation is required, the available balance will be checked and deducted immediately.`}
-        onConfirm={() => {
-          const result = useTimeOffStore.getState().approveRequest(record.id)
+        onConfirm={async () => {
+          setSubmitting(true)
+          const result = await useTimeOffStore.getState().approveRequest(record.id)
+          setSubmitting(false)
           if (!result.ok) {
             toast.error(result.error)
             return
@@ -124,16 +128,20 @@ export default function RequestActions({
           }
           submitLabel={decision === 'refuse' ? 'Confirm refusal' : 'Confirm cancellation'}
           error={error}
+          pending={submitting}
           onClose={() => setDecision(null)}
-          onSubmit={event => {
+          onSubmit={async event => {
             event.preventDefault()
             if (!reason.trim()) {
               setError('Add a reason for this decision.')
               return
             }
+            setSubmitting(true)
             const state = useTimeOffStore.getState()
-            const result =
-              decision === 'refuse' ? state.refuseRequest(record.id, reason) : state.cancelRequest(record.id, reason)
+            const result = await (decision === 'refuse'
+              ? state.refuseRequest(record.id, reason)
+              : state.cancelRequest(record.id, reason))
+            setSubmitting(false)
             if (!result.ok) {
               setError(result.error)
               return

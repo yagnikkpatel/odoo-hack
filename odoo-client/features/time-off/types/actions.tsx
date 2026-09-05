@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner'
 import RowActionShell from '@/features/nexacrm/components/data-table/row-action-shell'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import type { TimeOffType } from '../model'
 
@@ -17,17 +17,17 @@ export default function TypeActions({
   onDeleted?: () => void
   detail?: boolean
 }) {
-  const { can } = useCurrentUser()
-  if (detail && !can('records:update') && !can('records:delete')) return null
+  const { canManageTypes } = useTimeOffPermissions()
+  if (detail && !canManageTypes) return null
   return (
     <RowActionShell
       label={'Actions for ' + type.name}
       viewHref={detail ? undefined : '/time-off/types/' + type.id}
-      onEdit={can('records:update') ? onEdit : undefined}
+      onEdit={canManageTypes ? onEdit : undefined}
       onDelete={
-        can('records:delete')
-          ? () => {
-              const result = useTimeOffStore.getState().removeType(type.id)
+        canManageTypes
+          ? async () => {
+              const result = await useTimeOffStore.getState().removeType(type.id)
               if (!result.ok) {
                 toast.error(result.error)
                 return

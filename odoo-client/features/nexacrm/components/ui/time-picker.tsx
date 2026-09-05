@@ -18,6 +18,7 @@ type Props = {
   required?: boolean
   disabled?: boolean
   className?: string
+  placeholder?: string
 }
 
 const numbers = (length: number) =>
@@ -28,7 +29,7 @@ const numbers = (length: number) =>
 const hours = numbers(24)
 const minutes = numbers(60)
 
-export function TimePicker({ id, label, value, onChange, required, disabled, className }: Props) {
+export function TimePicker({ id, label, value, onChange, required, disabled, className, placeholder = 'Select time' }: Props) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value || '09:00')
   const inputId = useId()
@@ -63,7 +64,7 @@ export function TimePicker({ id, label, value, onChange, required, disabled, cla
           />
         }
       >
-        <span className={cn('truncate', !value && 'text-muted-foreground')}>{value || 'Select time'}</span>
+        <span className={cn('truncate', !value && 'text-muted-foreground')}>{value || placeholder}</span>
         <ClockIcon className='text-muted-foreground size-4 shrink-0' />
       </PopoverTrigger>
       <PopoverContent

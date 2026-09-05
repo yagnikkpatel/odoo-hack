@@ -25,7 +25,7 @@ import {
 type RowActionShellProps = {
   viewHref?: string
   onEdit?: () => void
-  onDelete?: () => void
+  onDelete?: () => void | Promise<void>
   label?: string
   deleteTitle?: string
   deleteDescription?: ReactNode
@@ -44,6 +44,21 @@ const RowActionShell = ({
 }: RowActionShellProps) => {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // onDelete may be async, so hold the in-flight state here and let the dialog block
+  // a second confirm until it settles.
+  const handleDelete = async () => {
+    if (!onDelete) return
+
+    setDeleting(true)
+
+    try {
+      await onDelete()
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className='flex items-center justify-center'>
@@ -98,7 +113,8 @@ const RowActionShell = ({
           title={deleteTitle}
           description={deleteDescription}
           confirmLabel='Delete'
-          onConfirm={onDelete}
+          pending={deleting}
+          onConfirm={handleDelete}
         />
       ) : null}
     </div>

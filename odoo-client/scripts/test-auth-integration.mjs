@@ -16,8 +16,8 @@ function load(relative) {
   let file = path.resolve(root, relative)
   if (!existsSync(file)) file += existsSync(file + '.ts') ? '.ts' : '.tsx'
   if (modules.has(file)) return modules.get(file).exports
-  const module = { exports: {} }
-  modules.set(file, module)
+  const loadedModule = { exports: {} }
+  modules.set(file, loadedModule)
   const source = ts.transpileModule(readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX }
   }).outputText
@@ -29,8 +29,8 @@ function load(relative) {
         : spec.startsWith('.')
           ? load(path.resolve(path.dirname(file), spec))
           : requirePackage(spec)
-  new Function('require', 'module', 'exports', source)(requireLocal, module, module.exports)
-  return module.exports
+  new Function('require', 'module', 'exports', source)(requireLocal, loadedModule, loadedModule.exports)
+  return loadedModule.exports
 }
 
 const { proxy } = load('proxy.ts')

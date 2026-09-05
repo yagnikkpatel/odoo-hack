@@ -59,6 +59,7 @@ import { useMediaQuery } from '@/features/nexacrm/hooks/use-media-query'
 
 // Util Imports
 import { cn } from '@/features/nexacrm/lib/utils'
+import { companyDateTime } from './types'
 
 /*
  * ! ROW MODELS: any renderer without its own pager must use `getPrePaginationRowModel()`. The other
@@ -68,9 +69,7 @@ import { cn } from '@/features/nexacrm/lib/utils'
  * !   • `getFilteredRowModel()` is PRE-SORT - TanStack's pipeline is filtered → grouped → sorted →
  * !     expanded → paginated, so it silently drops the user's sort.
  *
- * ! FILTERING IS CLIENT-SIDE, over rows already in memory, rather than a re-query per visible range.
- * ! That is what gives the calendar the view bar's search and filter behaviour for free. Keep it
- * ! that way unless a real backend arrives.
+ * The attendance directory loads all pages for the visible grid range.
  *
  * ! A record whose date field is unset is HIDDEN, and there is deliberately no "Unscheduled" tray.
  *
@@ -80,6 +79,7 @@ import { cn } from '@/features/nexacrm/lib/utils'
 export type RecordCalendarProps<TData> = {
   onOpenRecord: (record: TData) => void
   table: Table<TData>
+  loading?: boolean
 
   /** Stable id, as on the board - used for React keys and as the drag id. */
   getId: (record: TData) => string
@@ -106,6 +106,7 @@ export type RecordCalendarProps<TData> = {
 }
 
 const MONTH_PARAM_FORMAT = 'yyyy-MM'
+const companyToday = () => new Date(companyDateTime().slice(0, 10) + 'T12:00:00')
 
 /** How far the month dropdown reaches either side of today. */
 const MONTH_PICKER_RANGE = 12
@@ -147,7 +148,7 @@ const DayCell = <TData,>({
   })
   const [expanded, setExpanded] = useState(false)
 
-  const isToday = isSameDay(day, new Date())
+  const isToday = isSameDay(day, companyToday())
 
   const shown = expanded ? records : records.slice(0, VISIBLE_RECORDS_PER_DAY)
   const hidden = records.length - shown.length
@@ -298,6 +299,7 @@ const RecordCalendar = <TData,>({
   onDateChange,
   canEdit = false,
   testId = 'record-calendar',
+  loading = false,
 }: RecordCalendarProps<TData>) => {
   const isGrid = useMediaQuery(GRID_QUERY)
   const showsFullCard = useMediaQuery(FULL_CARD_QUERY)
@@ -311,12 +313,12 @@ const RecordCalendar = <TData,>({
   )
 
   const month = useMemo(() => {
-    if (!monthParam) return startOfMonth(new Date())
+    if (!monthParam) return startOfMonth(companyToday())
 
     const parsed = parse(monthParam, MONTH_PARAM_FORMAT, new Date())
 
     return Number.isNaN(parsed.getTime())
-      ? startOfMonth(new Date())
+      ? startOfMonth(companyToday())
       : startOfMonth(parsed)
   }, [monthParam])
 
@@ -413,7 +415,7 @@ const RecordCalendar = <TData,>({
   )
 
   const monthOptions = useMemo(() => {
-    const base = startOfMonth(new Date())
+    const base = startOfMonth(companyToday())
 
     return Array.from({ length: MONTH_PICKER_RANGE * 2 + 1 }, (_, index) =>
       addMonths(base, index - MONTH_PICKER_RANGE),
@@ -424,7 +426,7 @@ const RecordCalendar = <TData,>({
     const start = startOfMonth(next)
 
     setMonthParam(
-      isSameMonth(start, new Date()) ? '' : format(start, MONTH_PARAM_FORMAT),
+      isSameMonth(start, companyToday()) ? '' : format(start, MONTH_PARAM_FORMAT),
     )
   }
 
@@ -513,7 +515,7 @@ const RecordCalendar = <TData,>({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => goToMonth(new Date())}
+            onClick={() => goToMonth(companyToday())}
           >
             Today
           </Button>
@@ -528,7 +530,7 @@ const RecordCalendar = <TData,>({
         </div>
       </div>
 
-      {isGrid ? (
+      {loading ? <p role="status" className="text-muted-foreground rounded-lg border px-4 py-10 text-center text-sm">Loading attendance for this month…</p> : isGrid ? (
         monthGrid
       ) : (
         <CalendarAgenda

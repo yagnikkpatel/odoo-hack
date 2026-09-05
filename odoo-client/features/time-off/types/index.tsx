@@ -7,13 +7,13 @@ import { Button } from '@/features/nexacrm/components/ui/button'
 import { Badge } from '@/features/nexacrm/components/ui/badge'
 import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
 import { parseAsString, useQueryState } from '@/features/nexacrm/adapters/query-state'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
 import { downloadCsv } from '@/features/nexacrm/utils/csv'
 import RecordPanel from '@/features/hr/components/record-panel'
 import TimeOffListPage from '../components/list-page'
 import { APPROVAL_LABELS, PAYROLL_LABELS, UNIT_LABELS } from '../model'
 import type { TimeOffType } from '../model'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import TypeEditor from './editor'
 import TypeActions from './actions'
@@ -24,7 +24,7 @@ const csvSafe = (value: string) => (/^\s*[=+\-@]/.test(value) ? "'" + value : va
 
 export default function TypesView() {
   const types = useTimeOffStore(state => state.types)
-  const { can } = useCurrentUser()
+  const { canManageTypes } = useTimeOffPermissions()
   const [editor, setEditor] = useState<TimeOffType | 'new' | null>(null)
   const [record, setRecord] = useQueryState('record', parseAsString.withOptions({ history: 'push', shallow: true }))
   const selected = types.find(type => type.id === record)
@@ -139,7 +139,7 @@ export default function TypesView() {
         columnIds={COLUMN_IDS}
         onOpen={type => setRecord(type.id)}
         actions={
-          can('records:create') ? (
+          canManageTypes ? (
             <Button size='sm' className={ACCENT_ICON_BUTTON} onClick={() => setEditor('new')}>
               <PlusIcon />
               <span className='max-sm:hidden'>New type</span>

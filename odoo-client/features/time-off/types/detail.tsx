@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/features/nexacrm/components/ui/button'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import TimeOffDetailPage from '../components/detail-page'
 import TypeContent from './content'
@@ -13,8 +13,9 @@ import TypeActions from './actions'
 export default function TypeDetail({ typeId }: { typeId: string }) {
   const type = useTimeOffStore(state => state.types.find(item => item.id === typeId))
   const hydrated = useTimeOffStore(state => state.hasHydrated)
+  const error = useTimeOffStore(state => state.error)
   const [editing, setEditing] = useState(false)
-  const { can } = useCurrentUser()
+  const { canManageTypes } = useTimeOffPermissions()
   const router = useRouter()
   return (
     <TimeOffDetailPage
@@ -23,10 +24,11 @@ export default function TypeDetail({ typeId }: { typeId: string }) {
       backLabel='Time off types'
       loading={!hydrated}
       missing={hydrated && !type}
+      error={error}
       actions={
         type ? (
           <>
-            {can('records:update') && (
+            {canManageTypes && (
               <Button variant='outline' size='sm' onClick={() => setEditing(true)}>
                 Edit type
               </Button>

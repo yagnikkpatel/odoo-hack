@@ -1,24 +1,26 @@
 import { downloadCsv } from '@/features/nexacrm/utils/csv'
-import { CONTRACT_STATUSES, WAGE_PERIODS } from './types'
-import type { ContractRow } from './types'
+import { CONTRACT_STATUSES } from './types'
+import type { Contract } from './types'
 
-const safe = (value: string | undefined) =>
-  value && /^\s*[=+\-@]/.test(value) ? "'" + value : value
-export const contractCsvRows = (contracts: ContractRow[]) =>
-  contracts.map((contract) => ({
-    Contract: safe(contract.name),
+function safe(value: string) {
+  return /^\s*[=+\-@]/.test(value) ? `'${value}` : value
+}
+
+export function contractCsvRows(contracts: Contract[]) {
+  return contracts.map((contract) => ({
+    'Contract ID': contract.id,
     Employee: safe(contract.employeeName),
+    'Employee email': safe(contract.employeeEmail),
     'Employee ID': contract.employeeId,
     'Start date': contract.startDate,
     'End date': contract.endDate,
-    Department: safe(contract.department),
-    'Job position': safe(contract.jobPosition),
     Wage: contract.wage,
-    Currency: contract.currency,
-    'Wage period': WAGE_PERIODS[contract.wagePeriod],
-    'Salary structure': safe(contract.salaryStructure),
-    'Working schedule': safe(contract.workingSchedule),
     Status: CONTRACT_STATUSES[contract.status],
+    Created: contract.createdAt,
+    Updated: contract.updatedAt,
   }))
-export const downloadContractsCsv = (contracts: ContractRow[]) =>
+}
+
+export function downloadContractsCsv(contracts: Contract[]) {
   downloadCsv('contracts.csv', contractCsvRows(contracts))
+}

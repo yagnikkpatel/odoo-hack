@@ -7,8 +7,7 @@ import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
 import { TimePicker } from '@/features/nexacrm/components/ui/time-picker'
 import { Textarea } from '@/features/nexacrm/components/ui/textarea'
 import { dateValue } from '@/features/nexacrm/lib/date-time'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import { useEmployeeOptions } from '@/features/hr/employee-options'
 import { useSchedulesStore } from '@/features/working-schedules/store'
 import { useTimeOffStore } from '../store'
 import { APPROVAL_LABELS, PAYROLL_LABELS } from '../model'
@@ -29,7 +28,7 @@ export default function RequestEditor({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const employees = useEmployeesStore(state => state.employees)
+  const { employees, loading: employeesLoading, error: employeesError, reload: reloadEmployees } = useEmployeeOptions()
   const state = useTimeOffStore()
   const schedules = useSchedulesStore(state => state.schedules)
   const assignments = useSchedulesStore(state => state.assignments)
@@ -55,6 +54,7 @@ export default function RequestEditor({
         }
   )
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const type = state.types.find(type => type.id === draft.typeId)
   const schedule = schedules.find(schedule => schedule.id === assignments[draft.employeeId])
   const preview = state.previewRequest(draft)
@@ -76,11 +76,14 @@ export default function RequestEditor({
       }
       submitLabel={type?.approval === 'none' ? 'Submit and approve' : record ? 'Resubmit request' : 'Submit request'}
       error={error}
+      pending={submitting}
       onClose={onClose}
-      onSubmit={event => {
+      onSubmit={async event => {
         event.preventDefault()
-        const result = useTimeOffStore.getState().saveRequest(draft, record?.id)
+        setSubmitting(true)
+        const result = await useTimeOffStore.getState().saveRequest(draft, record?.id)
         if (!result.ok) {
+          setSubmitting(false)
           setError(result.error)
           return
         }
@@ -91,12 +94,24 @@ export default function RequestEditor({
     >
       <div className='grid gap-4 sm:grid-cols-2'>
         <FormField label='Employee' id='request-employee'>
-          <Choice
-            id='request-employee'
-            value={draft.employeeId}
-            options={employees.map(employee => ({ value: employee.id, label: employeeName(employee) }))}
-            onChange={employeeId => update({ employeeId })}
-          />
+          {employeesError ? (
+            <p className='text-destructive text-sm'>
+              {employeesError}{' '}
+              <button type='button' className='underline' onClick={reloadEmployees}>
+                Retry
+              </button>
+            </p>
+          ) : (
+            <Choice
+              id='request-employee'
+              value={draft.employeeId}
+              searchable
+              disabled={employeesLoading}
+              placeholder={employeesLoading ? 'Loading employees…' : 'Choose…'}
+              options={employees.map(employee => ({ value: employee.id, label: employee.name }))}
+              onChange={employeeId => update({ employeeId })}
+            />
+          )}
         </FormField>
         <FormField label='Time off type' id='request-type'>
           <Choice

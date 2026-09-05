@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -15,29 +16,37 @@ import SidePanel, {
 } from '@/features/nexacrm/components/layout/side-panel'
 import RecordNotFound from '@/features/nexacrm/components/record/record-not-found'
 import RecordNavigation from '@/features/nexacrm/components/record/record-navigation'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
-import { useContract, useContractsStore } from './store'
+import { useContractsStore } from './store'
+import { contractTitle } from './types'
+import { useContractPermissions } from './permissions'
 import ContractActions from './components/contract-actions'
 import ContractFields from './components/contract-fields'
 import ContractHistory from './components/contract-history'
 import ContractEditor from './components/contract-editor'
+import { useContractRecord } from './components/use-contract-record'
 
 export default function ContractDetail({ contractId }: { contractId: string }) {
+  const { canRead } = useContractPermissions()
+  if (!canRead) {
+    return (
+      <p role="alert" className="text-muted-foreground py-12">
+        You do not have access to contracts.
+      </p>
+    )
+  }
+  return <ContractRecord contractId={contractId} />
+}
+
+function ContractRecord({ contractId }: { contractId: string }) {
   const router = useRouter()
-  const { can } = useCurrentUser()
-  const contract = useContract(contractId)
+  const { canUpdate } = useContractPermissions()
+  const { contract, loading, error } = useContractRecord(contractId)
   const contracts = useContractsStore((state) => state.contracts)
-  const hasHydrated = useContractsStore((state) => state.hasHydrated)
   const [railOpen, setRailOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  if (!contract)
-    return hasHydrated ? (
-      <RecordNotFound
-        label="Contract"
-        backHref="/contracts"
-        backLabel="Contracts"
-      />
-    ) : (
+
+  if (loading) {
+    return (
       <div className="flex flex-1 justify-center py-16">
         <LoaderCircleIcon
           className="text-muted-foreground size-5 animate-spin"
@@ -45,7 +54,29 @@ export default function ContractDetail({ contractId }: { contractId: string }) {
         />
       </div>
     )
+  }
+  if (!contract) {
+    if (error) {
+      return (
+        <div role="alert" className="space-y-3 py-12">
+          <p className="text-destructive text-sm">{error}</p>
+          <Button variant="outline" size="sm" render={<Link href="/contracts" />}>
+            Back to contracts
+          </Button>
+        </div>
+      )
+    }
+    return (
+      <RecordNotFound
+        label="Contract"
+        backHref="/contracts"
+        backLabel="Contracts"
+      />
+    )
+  }
+
   const index = contracts.findIndex((item) => item.id === contractId)
+  const title = contractTitle(contract)
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b py-2">
@@ -60,22 +91,24 @@ export default function ContractDetail({ contractId }: { contractId: string }) {
         </Button>
         <FileTextIcon className="size-4 shrink-0 text-violet-600" />
         <h1 className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">
-          {contract.name}
+          {title}
         </h1>
         <div className="flex shrink-0 items-center gap-1">
-          <RecordNavigation
-            index={index}
-            total={contracts.length}
-            moduleLabel="Contracts"
-            previousHref={
-              index > 0 ? '/contracts/' + contracts[index - 1].id : undefined
-            }
-            nextHref={
-              index < contracts.length - 1
-                ? '/contracts/' + contracts[index + 1].id
-                : undefined
-            }
-          />
+          {index >= 0 && (
+            <RecordNavigation
+              index={index}
+              total={contracts.length}
+              moduleLabel="Contracts"
+              previousHref={
+                index > 0 ? `/contracts/${contracts[index - 1].id}` : undefined
+              }
+              nextHref={
+                index < contracts.length - 1
+                  ? `/contracts/${contracts[index + 1].id}`
+                  : undefined
+              }
+            />
+          )}
           <SidePanelTrigger
             side="left"
             breakpoint="xl"
@@ -96,32 +129,28 @@ export default function ContractDetail({ contractId }: { contractId: string }) {
           breakpoint="xl"
           open={railOpen}
           onOpenChange={setRailOpen}
-          title={contract.name + ' details'}
-          description="Employment terms and salary information."
+          title={`${title} details`}
+          description="Employee, effective dates, wage, and status."
           className="xl:min-h-0 xl:border-r"
         >
           <ScrollArea className="xl:h-full">
             <div className="xl:py-4 xl:pr-4">
               <ContractFields contract={contract} />
-              {can('records:update') && (
+              {canUpdate && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="mt-4 w-full"
                   onClick={() => setEditOpen(true)}
                 >
-                  <PencilIcon />
-                  Edit contract
+                  <PencilIcon /> Edit contract
                 </Button>
               )}
             </div>
           </ScrollArea>
         </SidePanel>
         <ScrollArea className="xl:min-h-0 xl:flex-1">
-          <div className="space-y-5 py-4 xl:px-4">
-            <p className="text-muted-foreground text-xs">
-              Data connection pending
-            </p>
+          <div className="py-4 xl:px-4">
             <ContractHistory contract={contract} />
           </div>
         </ScrollArea>

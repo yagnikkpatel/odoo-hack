@@ -21,13 +21,17 @@ import {
 import { ContractListResult, ContractRecord } from "../types/contract";
 
 const CONTRACT_LIST_NAMESPACE = "contract-list";
+// Employee image uploads/deletions already bump this version.
+const EMPLOYEE_LIST_NAMESPACE = "employee-list";
 
-function contractCacheKey(id: string): string {
-  return `contract:${id}`;
+async function contractCacheKey(id: string): Promise<string> {
+  const employeeVersion = await getCacheVersion(EMPLOYEE_LIST_NAMESPACE);
+  return `contract:with-avatar:${id}:employees-v${employeeVersion}`;
 }
 
 function contractListCacheKey(
   version: number,
+  employeeVersion: number,
   query: ListContractsQuery,
 ): string {
   const parts = [
@@ -38,7 +42,7 @@ function contractListCacheKey(
     `search=${query.search ?? ""}`,
   ];
 
-  return `${CONTRACT_LIST_NAMESPACE}:v${version}:${parts.join("&")}`;
+  return `${CONTRACT_LIST_NAMESPACE}:with-avatar:v${version}:employees-v${employeeVersion}:${parts.join("&")}`;
 }
 
 function getErrorCode(error: unknown): string | undefined {
@@ -88,7 +92,7 @@ function toDomainError(error: unknown): AppError | null {
 }
 
 async function invalidateContractCaches(id: string): Promise<void> {
-  await invalidateCache([contractCacheKey(id)]);
+  await invalidateCache([await contractCacheKey(id)]);
   await bumpCacheVersion(CONTRACT_LIST_NAMESPACE);
 }
 
@@ -115,8 +119,11 @@ export async function createContract(
 export async function listContracts(
   query: ListContractsQuery,
 ): Promise<ContractListResult> {
-  const version = await getCacheVersion(CONTRACT_LIST_NAMESPACE);
-  const cacheKey = contractListCacheKey(version, query);
+  const [version, employeeVersion] = await Promise.all([
+    getCacheVersion(CONTRACT_LIST_NAMESPACE),
+    getCacheVersion(EMPLOYEE_LIST_NAMESPACE),
+  ]);
+  const cacheKey = contractListCacheKey(version, employeeVersion, query);
   const cached = await getCached<ContractListResult>(cacheKey);
 
   if (cached) {
@@ -141,7 +148,7 @@ export async function listContracts(
 }
 
 export async function getContract(id: string): Promise<ContractRecord> {
-  const cacheKey = contractCacheKey(id);
+  const cacheKey = await contractCacheKey(id);
   const cached = await getCached<ContractRecord>(cacheKey);
 
   if (cached) {

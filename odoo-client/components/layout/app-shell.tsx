@@ -31,6 +31,7 @@ export function AppShell({ children, user }: AppShellProps) {
         />
         <div className="bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:border xl:rounded-tl-3xl">
           <AppHeader
+            role={user.role}
             collapsed={collapsed}
             onDesktopToggle={() => setCollapsed((current) => !current)}
             onMobileOpen={() => setMobileOpen(true)}

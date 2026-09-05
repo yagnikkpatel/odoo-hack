@@ -1,20 +1,12 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
-import { getActorId } from '@/features/nexacrm/store/use-current-actor-store'
 import { useEmployeesStore } from '@/features/employees/store'
 import { useSchedulesStore } from '@/features/working-schedules/store'
-import { DATA_API_CONNECTED, DATA_CONNECTION_MESSAGE } from '@/features/hr/data-availability'
-import {
-  calculateRequest,
-  hourlyCapacityError,
-  planConsumption,
-  requestsOverlap,
-  validateAllocation,
-  validateType
-} from './logic'
+import { calculateRequest, planConsumption } from './logic'
+import * as service from './service'
 import type {
   Allocation,
   AllocationInput,
-  Decision,
+  LeaveUnit,
   RequestInput,
   RequestPreview,
   Result,
@@ -26,291 +18,186 @@ import type {
 
 type TimeOffStore = TimeOffData & {
   hasHydrated: boolean
-  initialize: (data: TimeOffData) => void
-  saveType: (input: TimeOffTypeInput, id?: string) => Result
-  removeType: (id: string) => Result
-  saveAllocation: (input: AllocationInput, id?: string) => Result
-  approveAllocation: (id: string) => Result
-  refuseAllocation: (id: string, reason: string) => Result
-  removeAllocation: (id: string) => Result
-  saveRequest: (input: RequestInput, id?: string) => Result
-  approveRequest: (id: string) => Result
-  refuseRequest: (id: string, reason: string) => Result
-  cancelRequest: (id: string, reason: string) => Result
-  removeRequest: (id: string) => Result
+  isLoading: boolean
+  error: string | null
+  load: () => Promise<void>
+  saveType: (input: TimeOffTypeInput, id?: string) => Promise<Result>
+  removeType: (id: string) => Promise<Result>
+  saveAllocation: (input: AllocationInput, id?: string) => Promise<Result>
+  approveAllocation: (id: string) => Promise<Result>
+  refuseAllocation: (id: string, reason: string) => Promise<Result>
+  removeAllocation: (id: string) => Promise<Result>
+  saveRequest: (input: RequestInput, id?: string) => Promise<Result>
+  approveRequest: (id: string) => Promise<Result>
+  refuseRequest: (id: string, reason: string) => Promise<Result>
+  cancelRequest: (id: string, reason: string) => Promise<Result>
+  removeRequest: (id: string) => Promise<Result>
   previewRequest: (input: RequestInput) => RequestPreview
 }
-const failure = (error: string): Result => ({ ok: false, error })
-const now = () => new Date().toISOString()
-const decision = (action: string, at: string, reason?: string): Decision => ({
-  at,
-  actorId: getActorId(),
-  action,
-  ...(reason ? { reason } : {})
-})
+
+type Stored = { id: string; updatedAt: string }
+
+const LOAD_ERROR = 'Unable to load time off. Please try again.'
+const ACTION_ERROR = 'Something went wrong. Please try again.'
+
+// The API supplies human-readable messages; the fallback only covers errors that carry none.
+function message(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message.trim() ? error.message : fallback
+}
+
+function latest<T extends Stored>(record: T, cached?: T): T {
+  if (cached && Date.parse(cached.updatedAt) > Date.parse(record.updatedAt)) return cached
+  return record
+}
+
+// A snapshot that started before a write must not roll that write back.
+function reconcile<T extends Stored>(incoming: T[], current: T[]): T[] {
+  const cached = new Map(current.map(item => [item.id, item]))
+  return incoming.map(item => latest(item, cached.get(item.id)))
+}
+
+function merge<T extends Stored>(list: T[], record: T): T[] {
+  return list.some(item => item.id === record.id)
+    ? list.map(item => (item.id === record.id ? record : item))
+    : [record, ...list]
+}
+
 const context = () => ({
   employeeIds: useEmployeesStore.getState().employees.map(employee => employee.id),
   schedules: useSchedulesStore.getState().schedules,
   assignments: useSchedulesStore.getState().assignments
 })
-const typeFields = (raw: TimeOffTypeInput): TimeOffTypeInput => ({
-  name: raw.name.trim(),
-  code: raw.code.trim().toUpperCase(),
-  unit: raw.unit,
-  requiresAllocation: raw.requiresAllocation,
-  approval: raw.approval,
-  payroll: raw.payroll,
-  active: raw.active,
-  description: raw.description.trim()
-})
-const allocationFields = (raw: AllocationInput): AllocationInput => ({
-  employeeId: raw.employeeId,
-  typeId: raw.typeId,
-  amount: raw.amount,
-  validFrom: raw.validFrom,
-  validTo: raw.validTo,
-  note: raw.note.trim()
-})
-const requestFields = (raw: RequestInput, unit?: string): RequestInput => ({
-  employeeId: raw.employeeId,
-  typeId: raw.typeId,
-  startDate: raw.startDate,
-  endDate: raw.endDate,
-  startTime: unit === 'days' ? '' : raw.startTime,
-  endTime: unit === 'days' ? '' : raw.endTime,
-  reason: raw.reason.trim()
-})
 
-export const useTimeOffStore = create<TimeOffStore>()((set, get) => ({
-  types: [],
-  allocations: [],
-  requests: [],
-  hasHydrated: false,
-  initialize: data => {
-    if (!get().hasHydrated) set({ ...structuredClone(data), hasHydrated: true })
-  },
-  saveType: (raw, id) => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().types.find(item => item.id === id)
-    if (id && !before) return failure('This time off type no longer exists.')
-    const input = typeFields(raw)
-    const error = validateType(input, get(), id)
-    if (error) return failure(error)
-    const at = now()
-    const type: TimeOffType = {
-      ...input,
-      id: id || 'leave_type_' + crypto.randomUUID(),
-      createdAt: before?.createdAt || at,
-      updatedAt: at
-    }
-    set(state => ({ types: before ? state.types.map(item => (item.id === id ? type : item)) : [type, ...state.types] }))
-    return { ok: true, id: type.id }
-  },
-  removeType: id => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    if (!get().types.some(item => item.id === id)) return failure('This time off type no longer exists.')
-    if (get().allocations.some(item => item.typeId === id) || get().requests.some(item => item.typeId === id))
-      return failure('This type is referenced by allocations or requests. Archive it instead.')
-    set(state => ({ types: state.types.filter(item => item.id !== id) }))
-    return { ok: true, id }
-  },
-  saveAllocation: (raw, id) => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().allocations.find(item => item.id === id)
-    if (id && !before) return failure('This allocation no longer exists.')
-    if (before?.status === 'approved')
-      return failure('Approved allocations cannot be edited. Create a separate allocation instead.')
-    const input = allocationFields(raw)
-    const error = validateAllocation(input, get(), context().employeeIds)
-    if (error) return failure(error)
-    const at = now()
-    const allocation: Allocation = {
-      ...input,
-      id: id || 'leave_allocation_' + crypto.randomUUID(),
-      status: 'pending',
-      createdAt: before?.createdAt || at,
-      updatedAt: at,
-      history: [...(before?.history || []), decision(before ? 'Resubmitted' : 'Submitted', at)]
-    }
-    set(state => ({
-      allocations: before
-        ? state.allocations.map(item => (item.id === id ? allocation : item))
-        : [allocation, ...state.allocations]
-    }))
-    return { ok: true, id: allocation.id }
-  },
-  approveAllocation: id => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().allocations.find(item => item.id === id)
-    if (!before || before.status !== 'pending') return failure('Only pending allocations can be approved.')
-    const error = validateAllocation(before, get(), context().employeeIds)
-    if (error) return failure(error)
-    const at = now()
-    set(state => ({
-      allocations: state.allocations.map(item =>
-        item.id === id
-          ? { ...item, status: 'approved', updatedAt: at, history: [...item.history, decision('Approved', at)] }
-          : item
-      )
-    }))
-    return { ok: true, id }
-  },
-  refuseAllocation: (id, rawReason) => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().allocations.find(item => item.id === id)
-    if (!before || before.status !== 'pending') return failure('Only pending allocations can be refused.')
-    const reason = rawReason.trim()
-    if (!reason) return failure('Add a reason for refusing the allocation.')
-    const at = now()
-    set(state => ({
-      allocations: state.allocations.map(item =>
-        item.id === id
-          ? { ...item, status: 'refused', updatedAt: at, history: [...item.history, decision('Refused', at, reason)] }
-          : item
-      )
-    }))
-    return { ok: true, id }
-  },
-  removeAllocation: id => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().allocations.find(item => item.id === id)
-    if (!before) return failure('This allocation no longer exists.')
-    if (get().requests.some(item => item.consumptions.some(charge => charge.allocationId === id)))
-      return failure('This allocation is linked to approved leave history and cannot be deleted.')
-    if (before.status === 'approved')
-      return failure('Approved allocations are historical records and cannot be deleted.')
-    set(state => ({ allocations: state.allocations.filter(item => item.id !== id) }))
-    return { ok: true, id }
-  },
-  previewRequest: input => {
-    const preview = calculateRequest(input, get(), context())
-    if (!preview.ok) return preview
-    const plan = planConsumption(get(), input.employeeId, input.typeId, preview.charges)
-    return plan.ok ? preview : plan
-  },
-  saveRequest: (raw, id) => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().requests.find(item => item.id === id)
-    if (id && !before) return failure('This request no longer exists.')
-    if (before && !['pending', 'refused'].includes(before.status))
-      return failure(
-        'Only pending or refused requests can be edited. Cancel approved leave before submitting a replacement.'
-      )
-    const type = get().types.find(item => item.id === raw.typeId)
-    const input = requestFields(raw, type?.unit)
-    if (!input.reason) return failure('Add a reason for the time off request.')
-    const preview = calculateRequest(input, get(), context())
-    if (!preview.ok) return preview
-    const candidate = { ...input, ...preview }
-    if (get().requests.some(item => item.id !== id && requestsOverlap(candidate, item)))
-      return failure('This employee already has pending or approved time off during this period.')
-    const capacityError = hourlyCapacityError(candidate, get(), context(), id)
-    if (capacityError) return failure(capacityError)
-    const plan = planConsumption(get(), input.employeeId, input.typeId, preview.charges)
-    if (!plan.ok) return plan
-    const at = now()
-    const automatic = type?.approval === 'none'
-    const request: TimeOffRequest = {
-      ...input,
-      id: id || 'leave_request_' + crypto.randomUUID(),
-      unit: preview.unit,
-      duration: preview.duration,
-      charges: preview.charges,
-      consumptions: automatic ? plan.consumptions : [],
-      status: automatic ? 'approved' : 'pending',
-      createdAt: before?.createdAt || at,
-      updatedAt: at,
-      history: [
-        ...(before?.history || []),
-        decision(before ? 'Resubmitted' : 'Submitted', at),
-        ...(automatic ? [decision('Automatically approved', at)] : [])
-      ]
-    }
-    set(state => ({
-      requests: before ? state.requests.map(item => (item.id === id ? request : item)) : [request, ...state.requests]
-    }))
-    return { ok: true, id: request.id }
-  },
-  approveRequest: id => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().requests.find(item => item.id === id)
-    if (!before || before.status !== 'pending') return failure('Only pending requests can be approved.')
-    const preview = calculateRequest(before, get(), context())
-    if (!preview.ok) return preview
-    if (
-      preview.unit !== before.unit ||
-      preview.duration !== before.duration ||
-      JSON.stringify(preview.charges) !== JSON.stringify(before.charges)
-    )
-      return failure('The working schedule changed. Edit and resubmit this request to review its updated duration.')
-    if (get().requests.some(item => item.id !== id && requestsOverlap(before, item)))
-      return failure('This employee has another pending or approved request during this period.')
-    const capacityError = hourlyCapacityError(before, get(), context(), id)
-    if (capacityError) return failure(capacityError)
-    const plan = planConsumption(get(), before.employeeId, before.typeId, before.charges)
-    if (!plan.ok) return plan
-    const at = now()
-    set(state => ({
-      requests: state.requests.map(item =>
-        item.id === id
-          ? {
-              ...item,
-              consumptions: plan.consumptions,
-              status: 'approved',
-              updatedAt: at,
-              history: [...item.history, decision('Approved', at)]
-            }
-          : item
-      )
-    }))
-    return { ok: true, id }
-  },
-  refuseRequest: (id, rawReason) => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().requests.find(item => item.id === id)
-    if (!before || before.status !== 'pending') return failure('Only pending requests can be refused.')
-    const reason = rawReason.trim()
-    if (!reason) return failure('Add a reason for refusing the request.')
-    const at = now()
-    set(state => ({
-      requests: state.requests.map(item =>
-        item.id === id
-          ? { ...item, status: 'refused', updatedAt: at, history: [...item.history, decision('Refused', at, reason)] }
-          : item
-      )
-    }))
-    return { ok: true, id }
-  },
-  cancelRequest: (id, rawReason) => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().requests.find(item => item.id === id)
-    if (!before || !['pending', 'approved'].includes(before.status))
-      return failure('Only pending or approved requests can be cancelled.')
-    const reason = rawReason.trim()
-    if (!reason) return failure('Add a reason for cancelling the request.')
-    const at = now()
-    // Retain consumption references for audit; only approved requests count in balances.
-    set(state => ({
-      requests: state.requests.map(item =>
-        item.id === id
-          ? {
-              ...item,
-              status: 'cancelled',
-              updatedAt: at,
-              history: [...item.history, decision('Cancelled', at, reason)]
-            }
-          : item
-      )
-    }))
-    return { ok: true, id }
-  },
-  removeRequest: id => {
-    if (!DATA_API_CONNECTED) return failure(DATA_CONNECTION_MESSAGE)
-    const before = get().requests.find(item => item.id === id)
-    if (!before) return failure('This request no longer exists.')
-    if (before.status === 'approved')
-      return failure('Cancel approved leave before deleting it, so its balance is restored.')
-    set(state => ({ requests: state.requests.filter(item => item.id !== id) }))
-    return { ok: true, id }
+// Wire format only: hourly fields are '' for day-unit types. The server validates the
+// input and recomputes unit, duration, charges and consumptions authoritatively.
+function requestPayload(input: RequestInput, unit?: LeaveUnit): RequestInput {
+  return unit === 'days' ? { ...input, startTime: '', endTime: '' } : input
+}
+
+let loadVersion = 0
+let loadController: AbortController | undefined
+
+export const useTimeOffStore = create<TimeOffStore>()((set, get) => {
+  // load() never rejects — it records the failure on `error` — so a refresh that fails
+  // cannot undo a write that succeeded, and mount effects need no catch handler.
+  async function refresh() {
+    await Promise.allSettled([get().load()])
   }
-}))
+
+  async function mutate(action: () => Promise<string>, reload = false): Promise<Result> {
+    try {
+      const id = await action()
+      // The returned record is merged by `action` first, so the refresh only adds to it.
+      if (reload) await refresh()
+      return { ok: true, id }
+    } catch (error) {
+      return { ok: false, error: message(error, ACTION_ERROR) }
+    }
+  }
+
+  function rememberType(record: TimeOffType): string {
+    set(state => ({ types: merge(state.types, latest(record, state.types.find(item => item.id === record.id))) }))
+    return record.id
+  }
+
+  function rememberAllocation(record: Allocation): string {
+    set(state => ({
+      allocations: merge(state.allocations, latest(record, state.allocations.find(item => item.id === record.id)))
+    }))
+    return record.id
+  }
+
+  function rememberRequest(record: TimeOffRequest): string {
+    set(state => ({
+      requests: merge(state.requests, latest(record, state.requests.find(item => item.id === record.id)))
+    }))
+    return record.id
+  }
+
+  return {
+    types: [],
+    allocations: [],
+    requests: [],
+    hasHydrated: false,
+    isLoading: false,
+    error: null,
+
+    async load() {
+      const version = ++loadVersion
+      loadController?.abort()
+      loadController = new AbortController()
+      const { signal } = loadController
+      set({ isLoading: true, error: null })
+      try {
+        const data = await service.loadTimeOff(signal)
+        if (version !== loadVersion) return
+        set({
+          types: reconcile(data.types, get().types),
+          allocations: reconcile(data.allocations, get().allocations),
+          requests: reconcile(data.requests, get().requests),
+          hasHydrated: true,
+          isLoading: false,
+          error: null
+        })
+      } catch (error) {
+        if (version !== loadVersion || signal.aborted) return
+        // Hydrated on failure too, so the table shows the error instead of an endless spinner.
+        set({ error: message(error, LOAD_ERROR), hasHydrated: true, isLoading: false })
+      }
+    },
+
+    saveType: (input, id) =>
+      mutate(async () => rememberType(id ? await service.updateType(id, input) : await service.createType(input))),
+
+    removeType: id =>
+      mutate(async () => {
+        await service.deleteType(id)
+        set(state => ({ types: state.types.filter(item => item.id !== id) }))
+        return id
+      }, true),
+
+    saveAllocation: (input, id) =>
+      mutate(async () =>
+        rememberAllocation(id ? await service.updateAllocation(id, input) : await service.createAllocation(input))
+      ),
+
+    approveAllocation: id => mutate(async () => rememberAllocation(await service.approveAllocation(id)), true),
+
+    refuseAllocation: (id, reason) => mutate(async () => rememberAllocation(await service.refuseAllocation(id, reason))),
+
+    removeAllocation: id =>
+      mutate(async () => {
+        await service.deleteAllocation(id)
+        set(state => ({ allocations: state.allocations.filter(item => item.id !== id) }))
+        return id
+      }, true),
+
+    saveRequest: (input, id) =>
+      mutate(async () => {
+        const payload = requestPayload(input, get().types.find(item => item.id === input.typeId)?.unit)
+        return rememberRequest(id ? await service.updateRequest(id, payload) : await service.createRequest(payload))
+      }, true),
+
+    approveRequest: id => mutate(async () => rememberRequest(await service.approveRequest(id)), true),
+
+    refuseRequest: (id, reason) => mutate(async () => rememberRequest(await service.refuseRequest(id, reason))),
+
+    cancelRequest: (id, reason) => mutate(async () => rememberRequest(await service.cancelRequest(id, reason)), true),
+
+    removeRequest: id =>
+      mutate(async () => {
+        await service.deleteRequest(id)
+        set(state => ({ requests: state.requests.filter(item => item.id !== id) }))
+        return id
+      }, true),
+
+    // Synchronous and local: this runs on every render of the request editor. The server
+    // recomputes the same rules on submit and is the authority on the stored result.
+    previewRequest: input => {
+      const preview = calculateRequest(input, get(), context())
+      if (!preview.ok) return preview
+      const plan = planConsumption(get(), input.employeeId, input.typeId, preview.charges)
+      return plan.ok ? preview : plan
+    }
+  }
+})

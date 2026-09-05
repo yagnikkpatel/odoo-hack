@@ -12,10 +12,11 @@ type Props = {
   required?: boolean
   disabled?: boolean
   placeholder?: string
+  timePlaceholder?: string
 }
 
 /** The same controls in forms, employee sidebars and calendar event editing. */
-export function DateTimePicker({ id, label, value, onChange, required, disabled, placeholder }: Props) {
+export function DateTimePicker({ id, label, value, onChange, required, disabled, placeholder, timePlaceholder }: Props) {
   const [date = '', time = ''] = value.split('T')
   return (
     <div className='flex w-full min-w-0 flex-wrap items-center gap-2'>
@@ -30,6 +31,7 @@ export function DateTimePicker({ id, label, value, onChange, required, disabled,
         onChange={next => onChange(withDate(value, next))}
       />
       <TimePicker
+        placeholder={timePlaceholder}
         label={`${label} time`}
         value={time}
         required

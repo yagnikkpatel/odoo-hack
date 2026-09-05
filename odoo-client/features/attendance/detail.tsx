@@ -6,20 +6,31 @@ import { ArrowLeftIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
 import RecordNotFound from '@/features/nexacrm/components/record/record-not-found'
-import { useAttendanceStore } from './store'
+import { useAttendanceRecord } from './use-attendance-record'
 import AttendanceContent from './record-content'
 import AttendanceActions from './record-actions'
 import AttendanceEditor from './editor'
 
 export default function AttendanceDetail({ id }: { id: string }) {
-  const record = useAttendanceStore((state) =>
-    state.records.find((record) => record.id === id),
-  )
-  const hydrated = useAttendanceStore((state) => state.hasHydrated)
+  const { record, loading, error, retry } = useAttendanceRecord(id)
   const [editing, setEditing] = useState(false)
   const router = useRouter()
+  if (error)
+    return (
+      <div className="space-y-3 py-8">
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+        <Button variant="outline" onClick={retry}>
+          Try again
+        </Button>
+        <Button variant="ghost" render={<Link href="/attendance" />}>
+          Back to attendance
+        </Button>
+      </div>
+    )
   if (!record)
-    return hydrated ? (
+    return !loading ? (
       <RecordNotFound
         label="Attendance"
         backHref="/attendance"

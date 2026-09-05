@@ -1,85 +1,136 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
-import {
-  useReactTable,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-} from '@tanstack/react-table'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import type {
   ColumnFiltersState,
   ColumnSizingState,
   PaginationState,
-  SortingState,
-  VisibilityState,
   Updater,
+  VisibilityState,
 } from '@tanstack/react-table'
 import {
   parseAsString,
   useQueryState,
 } from '@/features/nexacrm/adapters/query-state'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
 import { useContractsStore } from '../store'
-import { contractStatus } from '../types'
-import type { Contract, ContractRow } from '../types'
+import type { Contract, ContractListQuery, ContractStatus } from '../types'
 import { columns, INITIAL_COLUMN_ORDER } from './columns'
+
+const DEFAULT_PAGE_SIZE = 15
+
+function lastPage(total: number, pageSize: number) {
+  return Math.max(0, Math.ceil(total / pageSize) - 1)
+}
+
+function queriesMatch(left: ContractListQuery, right: ContractListQuery) {
+  return (
+    left.limit === right.limit &&
+    left.offset === right.offset &&
+    left.search === right.search &&
+    left.status === right.status &&
+    left.employeeId === right.employeeId
+  )
+}
 
 export function useContractsTable(onEdit: (contract: Contract) => void) {
   const contracts = useContractsStore((state) => state.contracts)
-  const employees = useEmployeesStore((state) => state.employees)
+  const serverPagination = useContractsStore((state) => state.pagination)
+  const isLoading = useContractsStore((state) => state.isLoading)
+  const error = useContractsStore((state) => state.error)
+  const loadContracts = useContractsStore((state) => state.loadContracts)
+  const loadedQuery = useContractsStore((state) => state.query)
+  const hasHydrated = useContractsStore((state) => state.hasHydrated)
+
   const [employeeId, setEmployeeId] = useQueryState(
     'employee',
     parseAsString.withOptions({ history: 'push', shallow: true }),
   )
-  const data = useMemo<ContractRow[]>(
-    () =>
-      contracts
-        .filter((contract) => !employeeId || contract.employeeId === employeeId)
-        .map((contract) => {
-          const employee = employees.find(
-            (item) => item.id === contract.employeeId,
-          )
-          return {
-            ...contract,
-            employeeName: employee
-              ? employeeName(employee)
-              : 'Employee unavailable',
-            avatar: employee?.avatar,
-            status: contractStatus(contract),
-          }
-        }),
-    [contracts, employees, employeeId],
-  )
   const [globalFilter, setGlobalFilter] = useQueryState(
     'q',
-    parseAsString
-      .withDefault('')
-      .withOptions({ history: 'replace', shallow: true, clearOnDefault: true }),
+    parseAsString.withDefault('').withOptions({
+      history: 'replace',
+      shallow: true,
+      clearOnDefault: true,
+    }),
   )
-  const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    department: false,
-    jobPosition: false,
-    salaryStructure: false,
+    employeeEmail: false,
   })
   const [columnOrder, setColumnOrder] = useState(INITIAL_COLUMN_ORDER)
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
   const [rowSelection, setRowSelection] = useState({})
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 15,
+    pageSize: DEFAULT_PAGE_SIZE,
   })
+
+  function resetPage() {
+    setPagination((current) => ({ ...current, pageIndex: 0 }))
+    setRowSelection({})
+  }
+
+  function changeGlobalFilter(updater: Updater<string>) {
+    const next =
+      typeof updater === 'function' ? updater(globalFilter) : updater
+    setGlobalFilter(next)
+    resetPage()
+  }
+
+  function changeColumnFilters(updater: Updater<ColumnFiltersState>) {
+    setColumnFilters(updater)
+    resetPage()
+  }
+
+  function changePagination(updater: Updater<PaginationState>) {
+    setPagination(updater)
+    setRowSelection({})
+  }
+
+  const status = columnFilters.find((filter) => filter.id === 'status')
+    ?.value as ContractStatus | undefined
+  const query = useMemo<ContractListQuery>(
+    () => ({
+      limit: pagination.pageSize,
+      offset: pagination.pageIndex * pagination.pageSize,
+      ...(globalFilter.trim() ? { search: globalFilter.trim() } : {}),
+      ...(status ? { status } : {}),
+      ...(employeeId ? { employeeId } : {}),
+    }),
+    [employeeId, globalFilter, pagination, status],
+  )
+
+  if (
+    hasHydrated &&
+    !isLoading &&
+    !error &&
+    queriesMatch(query, loadedQuery) &&
+    pagination.pageIndex > lastPage(serverPagination.total, pagination.pageSize)
+  ) {
+    setPagination((current) => ({
+      ...current,
+      pageIndex: lastPage(serverPagination.total, current.pageSize),
+    }))
+    setRowSelection({})
+  }
+
+  const retry = useCallback(() => {
+    void loadContracts(query).catch(() => {})
+  }, [loadContracts, query])
+
+  useEffect(() => {
+    const timer = window.setTimeout(retry, 300)
+    return () => window.clearTimeout(timer)
+  }, [retry])
+
   const meta = useMemo(() => ({ onEditRow: onEdit }), [onEdit])
   const table = useReactTable({
-    data,
+    data: contracts,
     columns,
     meta,
     state: {
       globalFilter,
-      sorting,
       columnFilters,
       columnVisibility,
       columnOrder,
@@ -87,41 +138,32 @@ export function useContractsTable(onEdit: (contract: Contract) => void) {
       rowSelection,
       pagination,
     },
+    rowCount: serverPagination.total,
     getRowId: (row) => row.id,
-    onGlobalFilterChange: (value: Updater<string>) =>
-      setGlobalFilter(
-        typeof value === 'function' ? value(globalFilter) : value,
-      ),
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: changeGlobalFilter,
+    onColumnFiltersChange: changeColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizing,
     onRowSelectionChange: setRowSelection,
-    onPaginationChange: setPagination,
+    onPaginationChange: changePagination,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualFiltering: true,
+    manualPagination: true,
+    enableSorting: false,
     enableColumnResizing: true,
     columnResizeMode: 'onChange',
-    enableSortingRemoval: false,
     autoResetPageIndex: false,
   })
-  useEffect(() => {
-    table.resetPageIndex()
-    table.resetRowSelection()
-  }, [table, globalFilter, columnFilters, employeeId])
-  const pageCount = table.getPageCount()
-  useEffect(() => {
-    if (pagination.pageIndex >= pageCount)
-      table.setPageIndex(Math.max(0, pageCount - 1))
-  }, [pageCount, pagination.pageIndex, table])
+
   return {
     table,
     employeeId,
     setEmployeeId,
-    employees,
-    isFiltered: !!globalFilter || columnFilters.length > 0,
+    isLoading: isLoading || !hasHydrated,
+    error,
+    retry,
+    visibleCount: serverPagination.total,
+    isFiltered: Boolean(globalFilter || columnFilters.length || employeeId),
   }
 }

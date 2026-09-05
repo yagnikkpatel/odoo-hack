@@ -32,6 +32,7 @@ export default function TypeEditor({
       }
   )
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const set = (patch: Partial<TimeOffTypeInput>) => {
     setDraft(previous => ({ ...previous, ...patch }))
     setError(null)
@@ -42,11 +43,14 @@ export default function TypeEditor({
       description='Define how leave is measured, approved, allocated and passed to payroll.'
       error={error}
       submitLabel={type ? 'Save changes' : 'Create type'}
+      pending={submitting}
       onClose={onClose}
-      onSubmit={event => {
+      onSubmit={async event => {
         event.preventDefault()
-        const result = useTimeOffStore.getState().saveType(draft, type?.id)
+        setSubmitting(true)
+        const result = await useTimeOffStore.getState().saveType(draft, type?.id)
         if (!result.ok) {
+          setSubmitting(false)
           setError(result.error)
           return
         }

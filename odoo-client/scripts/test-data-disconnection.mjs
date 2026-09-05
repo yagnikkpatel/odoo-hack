@@ -31,7 +31,6 @@ function load(relative) {
 const { DATA_API_CONNECTED } = load('features/hr/data-availability.ts')
 assert.equal(DATA_API_CONNECTED, false)
 const { useEmployeesStore } = load('features/employees/store.ts')
-const { useContractsStore } = load('features/contracts/store.ts')
 const { useAttendanceStore } = load('features/attendance/store.ts')
 const { useSchedulesStore } = load('features/working-schedules/store.ts')
 const { useTimeOffStore } = load('features/time-off/store.ts')
@@ -40,32 +39,27 @@ const { initializeEmptyDataStores } = load('features/hr/data-stores-initializer.
 initializeEmptyDataStores()
 const stores = [
   useEmployeesStore,
-  useContractsStore,
   useAttendanceStore,
   useSchedulesStore,
   useTimeOffStore,
   usePayrollStore
 ]
-for (const store of stores.slice(1, 5))
+for (const store of stores.slice(2, 4))
   assert.equal(store.getState().hasHydrated, true, 'empty data must resolve loading')
 const snapshots = stores.map(store => store.getState())
 initializeEmptyDataStores()
 stores.forEach((store, i) => assert.equal(store.getState(), snapshots[i], 'repeated initialization is idempotent'))
 assert.deepEqual(useEmployeesStore.getState().employees, [])
 assert.equal(useEmployeesStore.getState().hasHydrated, false, 'Employees loads from its API, not the empty-store initializer')
-assert.deepEqual(useContractsStore.getState().contracts, [])
 assert.deepEqual(useAttendanceStore.getState().records, [])
+assert.equal(useAttendanceStore.getState().hasHydrated, false, 'Attendance loads from its API')
 assert.deepEqual(useSchedulesStore.getState().schedules, [])
 assert.deepEqual(useSchedulesStore.getState().assignments, {})
 for (const key of ['types', 'allocations', 'requests']) assert.deepEqual(useTimeOffStore.getState()[key], [])
 for (const key of ['rules', 'structures', 'payruns', 'payslips']) assert.deepEqual(usePayrollStore.getState()[key], [])
 assert.deepEqual(usePayrollStore.getState().bankDetails, {})
 
-assert.throws(() => useContractsStore.getState().remove('unavailable'), /Data connection pending/)
-assert.throws(() => useAttendanceStore.getState().remove('unavailable'), /Data connection pending/)
 for (const [store, methods] of [
-  [useContractsStore, ['save']],
-  [useAttendanceStore, ['save', 'checkOut']],
   [useSchedulesStore, ['save', 'assign', 'remove']],
   [
     useTimeOffStore,

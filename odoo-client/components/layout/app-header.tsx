@@ -8,23 +8,25 @@ import {
 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
-import { getActiveNavigationDestination } from "@/config/app-navigation";
+import { getNavigationLabel } from "@/config/app-navigation";
 import { usePathname } from "next/navigation";
 
 type AppHeaderProps = {
+  role: string;
   collapsed: boolean;
   onDesktopToggle: () => void;
   onMobileOpen: () => void;
 };
 
 export function AppHeader({
+  role,
   collapsed,
   onDesktopToggle,
   onMobileOpen,
 }: AppHeaderProps) {
   const pathname = usePathname();
   const pageLabel =
-    getActiveNavigationDestination(pathname)?.label ?? "PeoplePay360";
+    getNavigationLabel(pathname, role) ?? "PeoplePay360";
   return (
     <header className="bg-muted/40 flex h-12 shrink-0 items-center border-b px-4">
       <Button

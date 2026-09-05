@@ -16,8 +16,6 @@ import { Button } from '@/features/nexacrm/components/ui/button'
 import { Badge } from '@/features/nexacrm/components/ui/badge'
 import { PAGE_BODY } from '@/features/nexacrm/lib/page-shape'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
-import { useContractsStore } from '@/features/contracts/store'
-import { contractStatus } from '@/features/contracts/types'
 import { usePayrollStore } from '../store'
 import { usePayrollPermissions } from '../permissions'
 import { COMPUTATION_METHODS, RULE_CATEGORIES } from '../types'
@@ -33,7 +31,6 @@ const calculation = (rule:SalaryRule) => rule.method === 'fixed' ? rule.amount.t
 export default function PayrollConfiguration({ kind }: { kind:'rules'|'structures' }) {
   const rules = usePayrollStore(state=>state.rules)
   const structures = usePayrollStore(state=>state.structures)
-  const contracts = useContractsStore(state=>state.contracts)
   const permissions = usePayrollPermissions()
   const [selectedId,setSelectedId] = useQueryState('record', parseAsString.withOptions({ history: 'push', shallow: true }))
   const [editor,setEditor] = useState<string|null>(null)
@@ -43,8 +40,8 @@ export default function PayrollConfiguration({ kind }: { kind:'rules'|'structure
   const singular = isRules ? 'salary rule' : 'salary structure'
   const data = useMemo<ConfigurationRow[]>(()=>{
     const base = {code:'',category:'',sequence:0,method:'',computation:'',rules:0,employees:0}
-    return isRules ? [...rules].sort((a,b)=>a.sequence-b.sequence).map(rule=>({...base,id:rule.id,name:rule.name,code:rule.code,category:RULE_CATEGORIES[rule.category],sequence:rule.sequence,method:COMPUTATION_METHODS[rule.method],computation:calculation(rule),status:rule.active?'Active':'Inactive'})) : structures.map(structure=>({...base,id:structure.id,name:structure.name,rules:structure.ruleIds.length,employees:new Set(contracts.filter(contract=>contractStatus(contract)==='active' && (contract.salaryStructure===structure.id || contract.salaryStructure.trim().toLowerCase()===structure.name.trim().toLowerCase())).map(contract=>contract.employeeId)).size,status:structure.active?'Active':'Inactive'}))
-  },[isRules,rules,structures,contracts])
+    return isRules ? [...rules].sort((a,b)=>a.sequence-b.sequence).map(rule=>({...base,id:rule.id,name:rule.name,code:rule.code,category:RULE_CATEGORIES[rule.category],sequence:rule.sequence,method:COMPUTATION_METHODS[rule.method],computation:calculation(rule),status:rule.active?'Active':'Inactive'})) : structures.map(structure=>({...base,id:structure.id,name:structure.name,rules:structure.ruleIds.length,employees:0,status:structure.active?'Active':'Inactive'}))
+  },[isRules,rules,structures])
   const columns = useMemo<ColumnDef<ConfigurationRow>[]>(()=>[
     ...columnIds.map((key):ColumnDef<ConfigurationRow>=>({accessorKey:key,size:key==='name'?220:key==='computation'?230:140,meta:{label:LABELS[key],textFilter:key==='name'||key==='code'},header:({column})=><DataTableColumnHeader column={column} title={LABELS[key]}/>,cell:({getValue})=>key==='status'?<Badge variant="outline">{String(getValue())}</Badge>:<span className={key==='code'||key==='computation'?'font-mono text-xs':undefined}>{String(getValue())}</span>})),
     {id:'actions',size:48,enableSorting:false,enableHiding:false,cell:({row})=>permissions.canConfigure?<RowActionShell label={singular+' actions'} onEdit={permissions.canConfigure?()=>setEditor(row.original.id):undefined} onDelete={permissions.canConfigure?()=>{

@@ -11,6 +11,7 @@ import RequestEditor from './editor'
 export default function RequestDetail({ requestId }: { requestId: string }) {
   const record = useTimeOffStore(state => state.requests.find(request => request.id === requestId))
   const hydrated = useTimeOffStore(state => state.hasHydrated)
+  const error = useTimeOffStore(state => state.error)
   const [editing, setEditing] = useState(false)
   const router = useRouter()
   return (
@@ -20,6 +21,7 @@ export default function RequestDetail({ requestId }: { requestId: string }) {
       backLabel='Requests'
       loading={!hydrated}
       missing={hydrated && !record}
+      error={error}
       actions={
         record && (
           <RequestActions

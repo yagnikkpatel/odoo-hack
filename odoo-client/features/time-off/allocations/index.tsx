@@ -7,7 +7,6 @@ import { Button } from '@/features/nexacrm/components/ui/button'
 import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
 import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import { parseAsString, useQueryState } from '@/features/nexacrm/adapters/query-state'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
 import { downloadCsv } from '@/features/nexacrm/utils/csv'
 import { Choice, FormField } from '@/features/hr/components/form'
@@ -19,6 +18,7 @@ import TimeOffStatusBadge from '../components/status-badge'
 import { STATUS_LABELS } from '../model'
 import type { Allocation, LeaveUnit } from '../model'
 import { allocationBalance, formatAmount } from '../logic'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import AllocationEditor from './editor'
 import AllocationActions from './actions'
@@ -40,7 +40,7 @@ export default function AllocationsView() {
   const allocations = useTimeOffStore(state => state.allocations)
   const requests = useTimeOffStore(state => state.requests)
   const employees = useEmployeesStore(state => state.employees)
-  const { can } = useCurrentUser()
+  const { canCreateAny } = useTimeOffPermissions()
   const [editor, setEditor] = useState<Allocation | 'new' | null>(null)
   const [record, setRecord] = useQueryState('record', parseAsString.withOptions({ history: 'push', shallow: true }))
   const [employeeId, setEmployeeId] = useQueryState(
@@ -180,7 +180,7 @@ export default function AllocationsView() {
         columnIds={COLUMN_IDS}
         onOpen={allocation => setRecord(allocation.id)}
         actions={
-          can('records:create') ? (
+          canCreateAny ? (
             <Button size='sm' className={ACCENT_ICON_BUTTON} onClick={() => setEditor('new')}>
               <PlusIcon />
               <span className='max-sm:hidden'>New allocation</span>

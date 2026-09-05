@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/features/nexacrm/components/ui/button'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import TimeOffDetailPage from '../components/detail-page'
 import AllocationContent from './content'
@@ -13,8 +13,9 @@ import AllocationActions from './actions'
 export default function AllocationDetail({ allocationId }: { allocationId: string }) {
   const allocation = useTimeOffStore(state => state.allocations.find(item => item.id === allocationId))
   const hydrated = useTimeOffStore(state => state.hasHydrated)
+  const error = useTimeOffStore(state => state.error)
   const [editing, setEditing] = useState(false)
-  const { can } = useCurrentUser()
+  const { canUpdate } = useTimeOffPermissions()
   const router = useRouter()
   return (
     <TimeOffDetailPage
@@ -23,10 +24,11 @@ export default function AllocationDetail({ allocationId }: { allocationId: strin
       backLabel='Allocations'
       loading={!hydrated}
       missing={hydrated && !allocation}
+      error={error}
       actions={
         allocation ? (
           <>
-            {can('records:update') && allocation.status !== 'approved' && (
+            {canUpdate && allocation.status !== 'approved' && (
               <Button variant='outline' size='sm' onClick={() => setEditing(true)}>
                 {allocation.status === 'refused' ? 'Edit & resubmit' : 'Edit allocation'}
               </Button>
