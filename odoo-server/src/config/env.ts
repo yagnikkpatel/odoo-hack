@@ -20,9 +20,6 @@ export const env = {
   databaseUrl: checkRequiredEnvVariables("DATABASE_URL"),
   jwtAccessSecret: checkRequiredEnvVariables("JWT_SECRET"),
   jwtAccessExpiresIn: checkRequiredEnvVariables("JWT_ACCESS_EXPIRES_IN"),
-  // Falls back to the access secret so existing deployments keep booting.
-  // Refresh tokens stay distinguishable via their `type` claim and the
-  // server-side session record, but a dedicated secret is preferred.
   jwtRefreshSecret:
     process.env.JWT_REFRESH_SECRET ?? checkRequiredEnvVariables("JWT_SECRET"),
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "30d",
