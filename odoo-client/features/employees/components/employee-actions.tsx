@@ -72,7 +72,7 @@ export default function EmployeeActions({
         description={
           'Remove ' +
           employeeName(employee) +
-          ' from the demo directory? This does not change the separate CRM preview.'
+          ' from the employee directory?'
         }
         confirmLabel="Delete"
         onConfirm={() => {

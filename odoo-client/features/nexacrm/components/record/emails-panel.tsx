@@ -13,9 +13,6 @@ import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import RecordPanelLoader from '@/features/nexacrm/components/record/record-panel-loader'
 import { RecordHeading } from '@/features/nexacrm/components/record/record-section'
 
-// Context Imports
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
-
 // Store Imports
 import { useEmailsStore, useEntityEmails } from '@/features/nexacrm/store/use-emails-store'
 import { usePersonAvatar } from '@/features/nexacrm/store/use-person-avatar'
@@ -76,9 +73,7 @@ const EmailsPanel = ({
 }) => {
   const emails = useEntityEmails(entityType, entityId)
   const hasHydrated = useEmailsStore(state => state.hasHydrated)
-  const { can } = useCurrentUser()
-
-  const canCompose = can('records:create')
+  const canCompose = false // Enabled only after the real email service is connected.
 
   if (!hasHydrated) return <RecordPanelLoader />
 
@@ -103,8 +98,8 @@ const EmailsPanel = ({
             <MailIcon className='size-5' />
           </span>
           <div className='space-y-1'>
-            <p className='text-sm font-medium'>No emails yet</p>
-            <p className='text-muted-foreground text-sm'>No email exchange has occurred with this record yet.</p>
+            <p className='text-sm font-medium'>Email connection pending</p>
+            <p className='text-muted-foreground text-sm'>Emails will appear after the email service is connected.</p>
           </div>
           {canCompose ? (
             <Button variant='outline' size='sm' onClick={onCompose}>

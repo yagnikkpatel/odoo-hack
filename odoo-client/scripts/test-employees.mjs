@@ -19,6 +19,7 @@ function load(relative) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText
   const localRequire = spec => {
+    if (spec === '@/features/hr/data-availability') return load('scripts/fixtures/data-connection.ts')
     if (spec.startsWith('@/')) return load(spec.slice(2) + '.ts')
     if (spec.startsWith('.')) return load(path.resolve(path.dirname(file), spec + '.ts'))
     return requirePackage(spec)
@@ -27,7 +28,7 @@ function load(relative) {
   return loaded.exports
 }
 
-const { toEmployeePreview, employeeName, EMPLOYEE_VIEW_TYPES } = load('features/employees/types.ts')
+const { employeeName, EMPLOYEE_VIEW_TYPES } = load('features/employees/types.ts')
 const crmPerson = Object.freeze({
   id: 'per_ada', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com',
   jobTitle: 'Engineer', phone: '+10000000000', city: 'London', country: 'UK',
@@ -35,7 +36,7 @@ const crmPerson = Object.freeze({
   companyId: 'cmp_1', accountOwnerId: 'usr_1', isPrimary: true,
   linkedin: 'https://example.com/social', x: 'crm-social'
 })
-const employee = toEmployeePreview(crmPerson)
+const employee = { id: 'emp_ada', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }
 assert.notEqual(employee, crmPerson)
 assert.equal(employeeName(employee), 'Ada Lovelace')
 assert.equal(employeeName({ firstName: '', lastName: '' }), 'Unnamed employee')
@@ -156,7 +157,8 @@ const columns = read('features/employees/table/columns.tsx')
 for (const title of ['Name', 'Work email', 'Department', 'Job position', 'Manager', 'Status']) {
   assert.ok(columns.includes(title), `missing ${title} column`)
 }
-assert.doesNotMatch(columns, /companyId|accountOwnerId|linkedin|isPrimary/)
+assert.doesNotMatch(columns, /accountOwnerId|linkedin|isPrimary/)
+assert.match(columns, /EmployeeCompany/, 'existing real company relationship UI is retained')
 assert.match(read('features/employees/table/use-employees-table.ts'), /phone: false/)
 assert.doesNotMatch(read('features/employees/table/employees-table.tsx'), /TableFooter|showSummary/)
 assert.ok(
@@ -164,7 +166,7 @@ assert.ok(
   'the table must retain its bottom divider above unused card space without a summary footer'
 )
 for (const file of ['employee-panel.tsx', 'employee-detail.tsx', 'components/employee-fields.tsx']) {
-  assert.doesNotMatch(read('features/employees/' + file), /companyId|accountOwnerId|linkedin|isPrimary|RelatedOpportunities|FavoriteButton|PersonTasks|PersonEmails/)
+  assert.doesNotMatch(read('features/employees/' + file), /accountOwnerId|linkedin|isPrimary|RelatedOpportunities|FavoriteButton|PersonTasks|PersonEmails/)
 }
 const dialog = read('features/employees/components/create-employee-dialog.tsx')
 assert.match(dialog, /onSubmit=\{submit\}/)
@@ -172,4 +174,4 @@ assert.match(dialog, /type="button" variant="outline" onClick=\{close\}/)
 assert.match(read('app/(app)/employees/page.tsx'), /@\/features\/employees/)
 assert.match(read('app/(app)/employees/[id]/page.tsx'), /@\/features\/employees\/employee-detail/)
 assert.equal(usePeopleStore.getState(), crmState)
-console.log('PASS: employee-only seed, isolated native CRUD/history, manager cleanup, CSV validation/export, KPI totals/source styling and reduced UI scope.')
+console.log('PASS: isolated employee reducers/history with test-only fixtures, manager cleanup, CSV validation/export, KPI totals/source styling and HR UI scope.')

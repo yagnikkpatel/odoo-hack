@@ -1,4 +1,5 @@
 'use client'
+import { DATA_API_CONNECTED, DATA_CONNECTION_MESSAGE } from '../data-availability'
 import type { Table } from '@tanstack/react-table'
 import { SearchXIcon } from 'lucide-react'
 import { Card } from '@/features/nexacrm/components/ui/card'
@@ -31,7 +32,7 @@ export default function RecordsTable<T>({
             <DataTableEmptyState
               icon={SearchXIcon}
               title={`No ${label} to show`}
-              description="Create a record or adjust your search and filters."
+              description={DATA_API_CONNECTED ? 'Adjust your search and filters.' : DATA_CONNECTION_MESSAGE}
             />
           }
         />

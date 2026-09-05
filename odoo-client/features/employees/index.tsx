@@ -1,4 +1,5 @@
 'use client'
+import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
 import { useState } from 'react'
 import { PlusIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
@@ -64,6 +65,7 @@ export default function EmployeesView({
         }
       />
       <div className={PAGE_BODY}>
+        <DataConnectionNotice />
         <EmployeesStatsCards />
         {viewType === 'grid' ? (
           <EmployeesGrid table={table} onOpenRecord={setPreviewId} />

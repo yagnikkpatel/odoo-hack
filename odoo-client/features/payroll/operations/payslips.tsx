@@ -1,0 +1,13 @@
+'use client'
+import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
+import { useState } from 'react'
+import Link from 'next/link'
+import { Button } from '@/features/nexacrm/components/ui/button'
+import { Card } from '@/features/nexacrm/components/ui/card'
+import { Input } from '@/features/nexacrm/components/ui/input'
+import { Choice } from '@/features/hr/components/form'
+import { usePayrollStore } from '../store'
+import { usePayrollPermissions } from '../permissions'
+import { PAYRUN_STATUSES } from '../types'
+import { AccessDenied, Heading, SlipTable } from './shared'
+export default function PayslipsView(){const slips=usePayrollStore(s=>s.payslips);const {canRead}=usePayrollPermissions();const [search,setSearch]=useState('');const [status,setStatus]=useState('all');const filtered=slips.filter(s=>(status==='all'||s.status===status)&&`${s.employeeName} ${s.structureName} ${s.startDate}`.toLowerCase().includes(search.toLowerCase()));if(!canRead)return <AccessDenied/>;return <div className="flex min-h-full flex-col"><Heading title="Payslips"><Button size="sm" variant="outline" render={<Link href="/payroll"/>}>Payruns</Button></Heading><div className="space-y-4 py-4"><DataConnectionNotice /><div className="flex flex-wrap items-center gap-3"><Input className="max-w-sm" value={search} aria-label="Search payslips" placeholder="Search employee, structure, or period…" onChange={e=>setSearch(e.target.value)}/><div className="w-40"><Choice id="payslip-status" value={status} onChange={setStatus} options={[{value:'all',label:'All statuses'},...Object.entries(PAYRUN_STATUSES).map(([value,label])=>({value,label}))]}/></div><span className="text-xs text-muted-foreground">{filtered.length} payslips</span></div><Card className="gap-0 overflow-hidden py-0"><SlipTable slips={filtered}/></Card></div></div>}

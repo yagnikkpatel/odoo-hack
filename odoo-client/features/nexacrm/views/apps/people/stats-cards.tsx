@@ -13,6 +13,7 @@ import { usePeopleStore } from '@/features/nexacrm/store/use-people-store'
 
 // Util Imports
 import { formatNumber } from '@/features/nexacrm/utils/format'
+import { DATA_API_CONNECTED } from '@/features/hr/data-availability'
 
 const PeopleStatsCards = () => {
   const people = usePeopleStore(state => state.people)
@@ -37,7 +38,7 @@ const PeopleStatsCards = () => {
             <div className='min-w-0 space-y-2'>
               <p className='text-muted-foreground truncate text-sm'>{label}</p>
               {hasHydrated ? (
-                <p className='truncate text-2xl font-semibold tabular-nums'>{value}</p>
+                <p className='truncate text-2xl font-semibold tabular-nums'>{DATA_API_CONNECTED ? value : '—'}</p>
               ) : (
                 <Skeleton className='h-7 w-20' />
               )}

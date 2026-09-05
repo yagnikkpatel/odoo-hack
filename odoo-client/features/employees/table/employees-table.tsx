@@ -53,7 +53,7 @@ const EmployeesTable = ({ table, isFiltered }: EmployeesTableProps) => {
     <DataTableEmptyState
       icon={UsersIcon}
       title="No employees yet"
-      description="Add an employee to start building your employee directory."
+      description="Employee records will appear after the data connection is configured."
     />
   )
 

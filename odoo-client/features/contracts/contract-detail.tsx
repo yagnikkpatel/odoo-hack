@@ -120,7 +120,7 @@ export default function ContractDetail({ contractId }: { contractId: string }) {
         <ScrollArea className="xl:min-h-0 xl:flex-1">
           <div className="space-y-5 py-4 xl:px-4">
             <p className="text-muted-foreground text-xs">
-              Demo contract · Changes reset on reload
+              Data connection pending
             </p>
             <ContractHistory contract={contract} />
           </div>

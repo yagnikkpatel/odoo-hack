@@ -1,12 +1,15 @@
-export type Role = 'admin' | 'manager' | 'sales' | 'viewer'
+import type { BackendRole } from '@/features/auth/auth-types'
 
-export const ROLE_LIST: Role[] = ['admin', 'manager', 'sales', 'viewer']
+export type Role = BackendRole
+
+export const ROLE_LIST: Role[] = ['admin', 'employee', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager']
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Admin',
-  manager: 'Manager',
-  sales: 'Sales Rep',
-  viewer: 'Viewer'
+  employee: 'Employee',
+  hr_manager: 'HR Manager',
+  hr_payroll_user: 'HR Payroll User',
+  hr_payroll_manager: 'HR Payroll Manager'
 }
 
 export type Permission =
@@ -40,7 +43,8 @@ export type RolePermissions = Record<Role, Permission[]>
 
 export const ROLE_PERMISSIONS: RolePermissions = {
   admin: [...PERMISSION_LIST],
-  manager: ['records:read', 'records:create', 'records:update', 'records:delete'],
-  sales: ['records:read', 'records:create', 'records:update'],
-  viewer: ['records:read']
+  hr_manager: ['records:read', 'records:create', 'records:update', 'records:delete'],
+  hr_payroll_user: ['records:read', 'records:create', 'records:update', 'records:delete'],
+  hr_payroll_manager: ['records:read', 'records:create', 'records:update', 'records:delete'],
+  employee: ['records:read']
 }

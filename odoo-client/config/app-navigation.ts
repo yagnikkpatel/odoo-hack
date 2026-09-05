@@ -145,7 +145,7 @@ export const appNavigation: readonly NavigationGroup[] = [
             label: "Dashboard",
             href: "/dashboards/analytics",
             aliases: ["/dashboard"],
-            status: "ready",
+            status: "planned",
           },
           {
             id: "hr-payroll-reports",

@@ -52,7 +52,7 @@ export default function AttendanceActions({
             : undefined
         }
         deleteTitle="Delete attendance?"
-        deleteDescription="This removes the entry and its correction history from the preview. Reloading restores demo records."
+        deleteDescription="This removes the entry and its correction history."
       />
     </div>
   )

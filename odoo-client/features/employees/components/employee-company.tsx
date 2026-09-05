@@ -12,8 +12,6 @@ import { buildBlankCompanyInput } from '@/features/nexacrm/types/apps/company-ty
 import { useEmployeesStore } from '../store'
 import type { Employee } from '../types'
 
-const COMPANY_LOGO = '/images/companies/odoo.png'
-
 export default function EmployeeCompany({ employee }: { employee: Employee }) {
   const companies = useCompaniesStore(state => state.companies)
   const company = companies.find(item => item.id === employee.companyId)
@@ -23,7 +21,7 @@ export default function EmployeeCompany({ employee }: { employee: Employee }) {
   const id = useId()
   const canEdit = can('records:update')
   const assign = (companyId?: string) => useEmployeesStore.getState().updateEmployee(employee.id, { companyId })
-  const display = company ? <><CompanyAvatar company={{ name: company.name, logo: COMPANY_LOGO }} /><span className="truncate">{company.name || 'Untitled'}</span></> : <><Building2Icon className="size-4 shrink-0" /><span>Add company</span></>
+  const display = company ? <><CompanyAvatar company={company} /><span className="truncate">{company.name || 'Untitled'}</span></> : <><Building2Icon className="size-4 shrink-0" /><span>Add company</span></>
 
   if (!canEdit) return <span className="flex items-center gap-2">{company ? display : 'Not set'}</span>
 
@@ -48,13 +46,9 @@ export default function EmployeeCompany({ employee }: { employee: Employee }) {
         </select>
         <label htmlFor={`${id}-name`}>Company name</label>
         <Input id={`${id}-name`} value={name} onChange={event => setName(event.target.value)} placeholder="Enter company name" />
-        <div className="flex items-center gap-2">
-          <CompanyAvatar company={{ name: 'Odoo', logo: COMPANY_LOGO }} size="default" />
-          <span className="text-muted-foreground text-xs">Company logo</span>
-        </div>
         <Button disabled={!name.trim() || (!company && !can('records:create'))} onClick={() => {
-          if (company) useCompaniesStore.getState().updateCompany(company.id, { name: name.trim(), logo: COMPANY_LOGO })
-          else assign(useCompaniesStore.getState().addCompany({ ...buildBlankCompanyInput(), name: name.trim(), logo: COMPANY_LOGO }))
+          if (company) useCompaniesStore.getState().updateCompany(company.id, { name: name.trim() })
+          else assign(useCompaniesStore.getState().addCompany({ ...buildBlankCompanyInput(), name: name.trim() }))
           setOpen(false)
         }}>{company ? 'Save company' : 'Add company'}</Button>
       </PopoverContent>

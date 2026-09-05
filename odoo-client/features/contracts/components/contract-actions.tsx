@@ -31,7 +31,7 @@ export default function ContractActions({
           : undefined
       }
       deleteTitle="Delete contract?"
-      deleteDescription="Remove this contract from the demo history? This cannot be undone in this session. Reloading restores the demo records."
+      deleteDescription="Remove this contract and its history?"
     />
   )
 }

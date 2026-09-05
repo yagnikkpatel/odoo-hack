@@ -16,8 +16,8 @@ export type UseBoundStore<S extends { getState: () => unknown }> = S & {
 }
 type Initializer<T> = (set: StoreApi<T>['setState'], get: StoreApi<T>['getState']) => T
 
-/** In-memory demo state using React's native external-store API, never persisted.
- * Server snapshots remain the immutable seed; client hydrators load the demo records.
+/** In-memory client state using React's native external-store API, never persisted.
+ * Server snapshots remain the immutable initial state; client providers initialize records.
  * This narrow adapter keeps the warehouse's actions and JSX intact without Zustand.
  */
 function buildStore<T>(initialize: Initializer<T>): UseBoundStore<StoreApi<T>> {
@@ -29,12 +29,14 @@ function buildStore<T>(initialize: Initializer<T>): UseBoundStore<StoreApi<T>> {
     setState: (update, replace = false) => {
       const next = typeof update === 'function' ? (update as (state: T) => T | Partial<T>)(state) : update
       if (Object.is(next, state)) return
-      state = replace ? next as T : Object.assign({}, state, next)
+      state = replace ? (next as T) : Object.assign({}, state, next)
       listeners.forEach(listener => listener())
     },
     subscribe: listener => {
       listeners.add(listener)
-      return () => { listeners.delete(listener) }
+      return () => {
+        listeners.delete(listener)
+      }
     }
   }
   const initialState = initialize(api.setState, api.getState)

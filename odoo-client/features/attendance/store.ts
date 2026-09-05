@@ -1,6 +1,7 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
 import { getActorId } from '@/features/nexacrm/store/use-current-actor-store'
 import { useEmployeesStore } from '@/features/employees/store'
+import { DATA_API_CONNECTED, DATA_CONNECTION_MESSAGE, requireDataConnection } from '@/features/hr/data-availability'
 import { localDateTime, validateAttendance } from './types'
 import type { Attendance, AttendanceInput, SaveResult } from './types'
 
@@ -26,6 +27,7 @@ export const useAttendanceStore = create<AttendanceStore>()((set, get) => ({
     if (!get().hasHydrated) set({ records, hasHydrated: true })
   },
   save: (raw, id, reason) => {
+    if (!DATA_API_CONNECTED) return { ok: false, error: DATA_CONNECTION_MESSAGE }
     const before = get().records.find((record) => record.id === id)
     if (id && !before)
       return { ok: false, error: 'This attendance record no longer exists.' }
@@ -69,6 +71,7 @@ export const useAttendanceStore = create<AttendanceStore>()((set, get) => ({
     return { ok: true, id: record.id }
   },
   checkOut: (id) => {
+    if (!DATA_API_CONNECTED) return { ok: false, error: DATA_CONNECTION_MESSAGE }
     const before = get().records.find((record) => record.id === id)
     if (!before || before.checkOut)
       return { ok: false, error: 'This record is no longer checked in.' }
@@ -93,8 +96,10 @@ export const useAttendanceStore = create<AttendanceStore>()((set, get) => ({
     }))
     return { ok: true, id }
   },
-  remove: (id) =>
+  remove: (id) => {
+    requireDataConnection()
     set((state) => ({
       records: state.records.filter((record) => record.id !== id),
-    })),
+    }))
+  },
 }))

@@ -9,7 +9,12 @@ import { EllipsisVerticalIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-rea
 import { Avatar, AvatarFallback } from '@/features/nexacrm/components/ui/avatar'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/features/nexacrm/components/ui/card'
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/features/nexacrm/components/ui/chart'
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent
+} from '@/features/nexacrm/components/ui/chart'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +24,7 @@ import {
 } from '@/features/nexacrm/components/ui/dropdown-menu'
 
 import { cn } from '@/features/nexacrm/lib/utils'
+import PendingAnalyticsCard from './pending-card'
 
 const listItems = ['Share', 'Update', 'Refresh']
 
@@ -49,6 +55,12 @@ const earningReportChartConfig = {
 } satisfies ChartConfig
 
 const EarningReportCard = ({ title, subTitle, statData, chartData, className }: Props) => {
+  if (!statData.length && !chartData.length) {
+    return (
+      <PendingAnalyticsCard title={title} description={subTitle} className={className} contentClassName='min-h-64' />
+    )
+  }
+
   return (
     <Card className={className}>
       <CardHeader className='flex justify-between'>

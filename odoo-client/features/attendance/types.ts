@@ -32,7 +32,7 @@ export const ATTENDANCE_STATUSES = {
 export type AttendanceStatus = keyof typeof ATTENDANCE_STATUSES
 export type SaveResult = { ok: true; id: string } | { ok: false; error: string }
 
-// Local wall-clock input for this browser-time-zone preview; API integration must use zoned instants.
+// Local wall-clock form values; the data API must convert these to zoned instants.
 export function localDateTime(date = new Date()) {
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`

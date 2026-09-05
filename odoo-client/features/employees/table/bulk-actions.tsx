@@ -43,7 +43,7 @@ export default function EmployeesBulkActions({
             open={confirmOpen}
             onOpenChange={setConfirmOpen}
             title={'Delete ' + selected.length + ' employees?'}
-            description="Remove these employees from the demo directory? Their manager links will be cleared. This does not change the separate CRM preview."
+            description="Remove these employees from the employee directory? Their manager links will be cleared."
             confirmLabel="Delete"
             onConfirm={() => {
               remove(selected.map((employee) => employee.id))

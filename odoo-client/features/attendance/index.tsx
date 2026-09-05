@@ -1,4 +1,5 @@
 'use client'
+import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
 import { useMemo, useState } from 'react'
 import { ClockIcon, PlusIcon, XIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
@@ -142,6 +143,7 @@ export default function AttendanceView() {
         }
       />
       <div className={PAGE_BODY}>
+        <DataConnectionNotice />
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid w-full gap-1.5 sm:w-52">
             <label
@@ -208,9 +210,6 @@ export default function AttendanceView() {
               Clear scope
             </Button>
           )}
-          <p className="text-muted-foreground ml-auto text-xs">
-            Demo data · Local time · Resets on reload
-          </p>
         </div>
         {from && to && from > to && (
           <p role="alert" className="text-destructive text-sm">

@@ -42,41 +42,6 @@ export const employeeName = (
   [employee.firstName, employee.lastName].filter(Boolean).join(' ') ||
   'Unnamed employee'
 
-/** Identity-only preview seed. CRM relationships and activity are deliberately excluded. */
-export function toEmployeePreview(person: Person): Employee {
-  const {
-    id,
-    companyId,
-    firstName,
-    lastName,
-    email,
-    phone,
-    jobTitle,
-    avatar,
-    city,
-    country,
-    createdAt,
-    updatedAt,
-    createdById,
-    updatedById,
-  } = person
-  return {
-    id,
-    companyId,
-    firstName,
-    lastName,
-    email,
-    phone,
-    jobTitle,
-    avatar,
-    city,
-    country,
-    createdAt,
-    updatedAt,
-    createdById,
-    updatedById,
-  }
-}
 export const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeInput, string> = {
   companyId: 'Company',
   firstName: 'First name',

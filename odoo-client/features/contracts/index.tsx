@@ -1,4 +1,5 @@
 'use client'
+import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
 import { useState } from 'react'
 import {
   DownloadIcon,
@@ -87,8 +88,8 @@ export default function ContractsView() {
         }
       />
       <div className={PAGE_BODY}>
+        <DataConnectionNotice />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>Demo contracts · Changes reset on reload</span>
           {employeeId && (
             <Button
               variant="outline"
@@ -137,7 +138,7 @@ export default function ContractsView() {
                   description={
                     isFiltered
                       ? 'Try another search or clear the filters.'
-                      : 'Create an agreement to start this employee’s contract history.'
+                      : 'Contracts will appear after the data connection is configured.'
                   }
                   action={
                     isFiltered ? (

@@ -1,5 +1,6 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
 import { getActorId } from '@/features/nexacrm/store/use-current-actor-store'
+import { requireDataConnection } from '@/features/hr/data-availability'
 import {
   EMPLOYEE_FIELD_LABELS,
   EMPLOYMENT_TYPE_LABELS,
@@ -37,7 +38,7 @@ const buildEmployee = (input: EmployeeInput): Employee => {
   }
 }
 
-// Separate native state: editing employees must not rewrite the CRM Kanban preview.
+// Employee identity remains independent of the CRM entities.
 export const useEmployeesStore = create<EmployeeStore>()((set, get) => ({
   employees: [],
   activities: [],
@@ -46,6 +47,7 @@ export const useEmployeesStore = create<EmployeeStore>()((set, get) => ({
     if (!get().hasHydrated) set({ employees, hasHydrated: true })
   },
   addEmployee: (input) => {
+    requireDataConnection()
     const employee = buildEmployee(input)
     set((state) => ({
       employees: [employee, ...state.employees],
@@ -64,9 +66,11 @@ export const useEmployeesStore = create<EmployeeStore>()((set, get) => ({
     return employee.id
   },
   addEmployees: (inputs) => {
+    requireDataConnection()
     inputs.forEach((input) => get().addEmployee(input))
   },
   updateEmployee: (id, input) => {
+    requireDataConnection()
     const before = get().employees.find((employee) => employee.id === id)
     if (!before) return
     if (input.managerId === id)
@@ -126,9 +130,10 @@ export const useEmployeesStore = create<EmployeeStore>()((set, get) => ({
     }))
   },
   deleteEmployees: (ids) => {
+    requireDataConnection()
     const removed = new Set(ids)
     // Real contract/payroll dependency checks belong at the backend boundary.
-    // In this isolated preview, clear manager references before removing records.
+    // Clear manager references before removing records.
     for (const employee of get().employees) {
       if (
         !removed.has(employee.id) &&

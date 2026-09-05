@@ -12,10 +12,8 @@ type FavoritesStore = {
 
 const keyFor = (entityType: ParentEntityType, entityId: string) => `${entityType}:${entityId}`
 
-const SEEDED_KEYS: string[] = [keyFor('company', 'cmp_2'), keyFor('person', 'per_4'), keyFor('opportunity', 'opp_2')]
-
 export const useFavoritesStore = create<FavoritesStore>((set, get) => ({
-  keys: SEEDED_KEYS,
+  keys: [],
 
   toggle: (entityType, entityId) =>
     set(state => {

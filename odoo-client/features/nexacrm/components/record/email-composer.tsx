@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react'
 
 // Third-party Imports
 import { MailPlusIcon, SendIcon, XIcon } from 'lucide-react'
-import { toast } from 'sonner'
 
 // Type Imports
 import type { EntityType } from '@/features/nexacrm/types/apps/record-ref'
@@ -13,18 +12,21 @@ import { formatPersonName } from '@/features/nexacrm/types/apps/person-types'
 
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/features/nexacrm/components/ui/command'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/features/nexacrm/components/ui/command'
 import { Input } from '@/features/nexacrm/components/ui/input'
 import { Label } from '@/features/nexacrm/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/features/nexacrm/components/ui/popover'
 import { Textarea } from '@/features/nexacrm/components/ui/textarea'
 import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 
-// Context Imports
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
-
 // Store Imports
-import { useEmailsStore } from '@/features/nexacrm/store/use-emails-store'
 import { usePeopleStore } from '@/features/nexacrm/store/use-people-store'
 
 type Recipient = { email: string; name?: string; avatar?: string }
@@ -180,8 +182,6 @@ const RecipientField = ({
 }
 
 const EmailComposer = ({
-  entityType,
-  entityId,
   defaultTo,
   onDone
 }: {
@@ -190,9 +190,7 @@ const EmailComposer = ({
   defaultTo?: string
   onDone: () => void
 }) => {
-  const addEmail = useEmailsStore(state => state.addEmail)
   const people = usePeopleStore(state => state.people)
-  const { user } = useCurrentUser()
 
   const [to, setTo] = useState<Recipient[]>(() => {
     if (!defaultTo) return []
@@ -208,36 +206,11 @@ const EmailComposer = ({
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
 
-  const canSend = to.length > 0 && subject.trim().length > 0
-
-  const send = () => {
-    if (!canSend) return
-
-    addEmail({
-      entityType,
-      entityId,
-      subject: subject.trim(),
-      fromName: user.name,
-      fromEmail: user.email,
-      toEmail: to[0].email,
-      cc: cc.length ? cc.map(recipient => recipient.email) : undefined,
-      bcc: bcc.length ? bcc.map(recipient => recipient.email) : undefined,
-      direction: 'outbound',
-      snippet: body.trim().slice(0, 140),
-      body: body.trim()
-    })
-
-    toast.success('Email logged against this record.')
-    onDone()
-  }
-
   return (
-    <div
-      className='space-y-4'
-      onKeyDown={event => {
-        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') send()
-      }}
-    >
+    <div className='space-y-4'>
+      <p className='text-muted-foreground text-sm' role='status'>
+        Email integration is not connected. Sending is unavailable; no email will be logged or sent.
+      </p>
       <RecipientField
         id='email-to'
         label='To'
@@ -290,9 +263,8 @@ const EmailComposer = ({
         <Button variant='outline' size='sm' onClick={onDone}>
           Cancel
         </Button>
-        <Button size='sm' onClick={send} disabled={!canSend}>
+        <Button size='sm' disabled title='Email integration is not connected'>
           <SendIcon /> Send
-          <kbd className='text-primary-foreground/70 ml-1 text-[10px]'>⌘↵</kbd>
         </Button>
       </div>
     </div>

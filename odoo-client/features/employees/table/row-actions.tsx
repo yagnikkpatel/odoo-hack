@@ -46,7 +46,7 @@ const EmployeeRowActions = ({
       deleteDescription={
         <>
           Remove <span className="text-foreground font-medium">{name}</span>{' '}
-          from this preview? Changes reset when the page is reloaded.
+          from the employee directory?
         </>
       }
     />

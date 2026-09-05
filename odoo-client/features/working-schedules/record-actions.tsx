@@ -35,7 +35,7 @@ export default function ScheduleActions({
           : undefined
       }
       deleteTitle="Delete working schedule?"
-      deleteDescription="Only unassigned schedules can be deleted. This removes the pattern from this preview session."
+      deleteDescription="Only unassigned schedules can be deleted."
     />
   )
 }

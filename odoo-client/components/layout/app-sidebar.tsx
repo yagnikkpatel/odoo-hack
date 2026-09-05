@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { IconSelector } from "@tabler/icons-react";
+import { IconLogout, IconSelector } from "@tabler/icons-react";
+import { toast } from "sonner";
+import { logout } from "@/features/auth/auth-service";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+} from "@/features/nexacrm/components/ui/dropdown-menu";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarNavigationItem } from "@/components/layout/sidebar-navigation-item";
@@ -23,7 +32,7 @@ function formatRole(role: string) {
   return role
     .toLowerCase()
     .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 
@@ -34,12 +43,26 @@ export function AppSidebar({
   user,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function signOut() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+      window.location.replace("/login");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to sign out. Please try again.",
+      );
+      setLoggingOut(false);
+    }
+  }
   const initial = user.email.charAt(0).toUpperCase();
   const activeBranch = appNavigation
-    .flatMap((group) => group.items)
-    .find(
-      (item) => "children" in item && isNavigationItemActive(item, pathname),
-    );
+    .flatMap(group => group.items)
+    .find(item => "children" in item && isNavigationItemActive(item, pathname));
   const [menuState, setMenuState] = useState<{
     pathname: string;
     itemId: string | null;
@@ -67,7 +90,7 @@ export function AppSidebar({
       <aside
         id="app-sidebar"
         aria-label="Workspace navigation"
-        onKeyDown={(event) => {
+        onKeyDown={event => {
           if (event.key === "Escape" && mobileOpen) onMobileClose();
         }}
         className={cn(
@@ -104,7 +127,7 @@ export function AppSidebar({
           aria-label="Main navigation"
           className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4"
         >
-          {appNavigation.map((group) => (
+          {appNavigation.map(group => (
             <div
               key={group.id}
               className={cn(
@@ -121,14 +144,14 @@ export function AppSidebar({
                 {group.label}
               </p>
               <ul className="space-y-1">
-                {group.items.map((item) => (
+                {group.items.map(item => (
                   <li key={item.id}>
                     <SidebarNavigationItem
                       item={item}
                       pathname={pathname}
                       collapsed={collapsed}
                       open={openItemId === item.id}
-                      onOpenChange={(open) =>
+                      onOpenChange={open =>
                         setMenuState({
                           pathname,
                           itemId: open ? item.id : null,
@@ -144,29 +167,48 @@ export function AppSidebar({
         </nav>
 
         <div className="shrink-0 border-t p-3">
-          <div
-            className={cn(
-              "hover:bg-sidebar-accent flex items-center gap-3 rounded-lg p-2 transition-colors",
-              collapsed && "md:justify-center",
-            )}
-          >
-            <div className="bg-primary text-primary-foreground grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold">
-              {initial}
-            </div>
-            <div className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
-              <p className="truncate text-sm font-medium">{user.email}</p>
-              <p className="text-muted-foreground truncate text-xs">
-                {formatRole(user.role)}
-              </p>
-            </div>
-            <IconSelector
-              className={cn(
-                "text-muted-foreground size-4 shrink-0",
-                collapsed && "md:hidden",
-              )}
-              stroke={1.8}
-            />
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  className={cn(
+                    "hover:bg-sidebar-accent flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors",
+                    collapsed && "md:justify-center",
+                  )}
+                />
+              }
+            >
+              <div className="bg-primary text-primary-foreground grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold">
+                {initial}
+              </div>
+              <div className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
+                <p className="truncate text-sm font-medium">{user.email}</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {formatRole(user.role)}
+                </p>
+              </div>
+              <IconSelector
+                className={cn(
+                  "text-muted-foreground size-4 shrink-0",
+                  collapsed && "md:hidden",
+                )}
+                stroke={1.8}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="w-56">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  disabled={loggingOut}
+                  onClick={() => void signOut()}
+                >
+                  <IconLogout className="size-4" />
+                  {loggingOut ? "Signing out…" : "Sign out"}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </>

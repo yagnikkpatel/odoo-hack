@@ -12,7 +12,6 @@ import {
   UsersIcon,
   ChevronDownIcon,
 } from 'lucide-react'
-import { Button } from '@/features/nexacrm/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,6 +27,7 @@ import EmployeeCompany from './employee-company'
 import EmployeeContractsLink from '@/features/contracts/components/employee-contracts-link'
 import { EmployeeAttendanceLink } from '@/features/attendance/employee-attendance'
 import EmployeeSchedule from '@/features/working-schedules/employee-schedule'
+import EmployeeTimeOffLinks from '@/features/time-off/components/employee-links'
 import { EMPLOYMENT_TYPE_LABELS, STATUS_LABELS, employeeName } from '../types'
 import type {
   Employee,
@@ -169,23 +169,7 @@ export default function EmployeeFields({ employee }: { employee: Employee }) {
         <div className="grid grid-cols-2 gap-2 py-1">
           <EmployeeContractsLink employeeId={employee.id} />
           <EmployeeAttendanceLink employeeId={employee.id} />
-          {[
-            { label: 'Time off', icon: CalendarIcon },
-            { label: 'Allocations', icon: CalendarPlusIcon },
-          ].map(({ label, icon: Icon }) => (
-            <Button
-              key={label}
-              variant="outline"
-              size="sm"
-              disabled
-              className="justify-start"
-              title={label + ' will be connected when the module is built'}
-            >
-              <Icon />
-              <span>{label}</span>
-              <span className="ml-auto text-[10px]">Soon</span>
-            </Button>
-          ))}
+          <EmployeeTimeOffLinks employeeId={employee.id} />
         </div>
       </RecordGroup>
       <Collapsible className="group/metadata">

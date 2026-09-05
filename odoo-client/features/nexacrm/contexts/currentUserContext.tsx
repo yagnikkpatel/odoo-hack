@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo } from 'react'
 import type { ReactNode } from 'react'
 
 // Type Imports
@@ -10,16 +10,12 @@ import type { Permission } from '@/features/nexacrm/types/rbac-types'
 
 // Store Imports
 import { useCurrentActorStore } from '@/features/nexacrm/store/use-current-actor-store'
-import { useRolesStore } from '@/features/nexacrm/store/use-roles-store'
-import { useUsersStore } from '@/features/nexacrm/store/use-users-store'
-
-// Utils Imports
-import { can as canForUser } from '@/features/nexacrm/lib/rbac'
+import { DATA_API_CONNECTED } from '@/features/hr/data-availability'
+import { ROLE_PERMISSIONS } from '@/features/nexacrm/types/rbac-types'
 
 type CurrentUserContextValue = {
   user: User
   can: (permission: Permission) => boolean
-  setCurrentUser: (user: User) => void
 }
 
 const CurrentUserContext = createContext<CurrentUserContextValue | null>(null)
@@ -29,14 +25,7 @@ type CurrentUserProviderProps = {
   children: ReactNode
 }
 
-export const CurrentUserProvider = ({ user: initialUser, children }: CurrentUserProviderProps) => {
-  const [seed, setSeed] = useState(initialUser)
-
-  const permissions = useRolesStore(state => state.permissions)
-
-  const stored = useUsersStore(state => state.users.find(candidate => candidate.id === seed.id))
-  const user = stored ?? seed
-
+export const CurrentUserProvider = ({ user, children }: CurrentUserProviderProps) => {
   useEffect(() => {
     useCurrentActorStore.getState().setActorId(user.id)
   }, [user.id])
@@ -44,10 +33,12 @@ export const CurrentUserProvider = ({ user: initialUser, children }: CurrentUser
   const value = useMemo<CurrentUserContextValue>(
     () => ({
       user,
-      can: permission => canForUser(permissions, user, permission),
-      setCurrentUser: setSeed
+      // A local record edit must not look like a successful backend save.
+      // Backend endpoints must enforce their own resource-specific authorization.
+      can: permission =>
+        permission === 'records:read' || (DATA_API_CONNECTED && ROLE_PERMISSIONS[user.role].includes(permission))
     }),
-    [permissions, user]
+    [user]
   )
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>

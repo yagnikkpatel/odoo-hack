@@ -1,4 +1,5 @@
 'use client'
+import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
 import { useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { CalendarIcon, ClockIcon, PlusIcon, UsersIcon } from 'lucide-react'
@@ -179,9 +180,7 @@ export default function SchedulesView() {
         }
       />
       <div className={PAGE_BODY}>
-        <p className="text-muted-foreground text-xs">
-          Demo schedules · Weekly hours exclude breaks · Changes reset on reload
-        </p>
+        <DataConnectionNotice />
         {view === 'table' ? (
           <RecordsTable
             table={table}

@@ -1,87 +1,69 @@
 # PeoplePay360 Client
 
-Next.js frontend for the PeoplePay360 HR and payroll platform.
+Next.js frontend for PeoplePay360. Authentication uses the real backend; business-data APIs are not connected yet.
 
-The interface defaults globally to NexaCRM's blue Modern Minimal preset in light mode, including native browser controls. Login uses its original blurred dashboard background and pointer-following spotlight (disabled for reduced motion).
+## Run locally
 
-## Temporary dashboard preview
+1. Install dependencies with `pnpm install`.
+2. Set `BACKEND_API_URL` in `.env.local` if the backend is not at `http://localhost:4000/api`.
+3. Start the backend using its own project instructions, then run `pnpm dev` in this directory.
+4. Open `/login` and use an existing backend account. A successful login opens `/employees`.
 
-Preview mode is enabled in `features/auth/auth-config.ts`. Clicking **Sign in** opens `/dashboards/analytics` without credentials or a backend request. Opening or refreshing the dashboard directly also works using the preview identity and mock data.
+`BACKEND_API_URL` is server-only. Do not prefix it with `NEXT_PUBLIC_`, copy backend secrets into this client, or put access tokens in local/session storage.
 
-Set `authConfig.previewEnabled` to `false` when backend authentication is ready. This restores native form validation, the login API request, and server-side session verification. Disable preview mode before connecting protected data or releasing authenticated functionality.
+## Authentication
 
-## Local development
+The browser talks only to same-origin Next.js auth routes. Those routes call the configured backend under `/api/auth`.
 
-1. Copy `.env.example` to `.env.local` and adjust the API URL if needed.
-2. Install dependencies with `pnpm install`.
-3. Start the client with `pnpm dev`.
-4. Open [http://localhost:3000/login](http://localhost:3000/login).
-
-The default backend API URL is `http://localhost:4000/api`. The browser submits credentials to the same-origin `POST /api/auth/login` route. That server-side route calls the backend, stores the returned token in an HTTP-only cookie, and continues successful authentication to `/dashboards/analytics`.
-
-## Structure
-
-- `app/` contains routes and route-level metadata.
-- `components/layout/` contains the collapsible authenticated application shell.
-- `components/ui/` contains reusable design-system primitives extracted from the component warehouse.
-- `config/` contains typed navigation and application configuration.
-- `features/auth/` owns authentication UI, API calls, and session handling.
-- `features/nexacrm/views/dashboards/analytics/` contains the original NexaCRM analytics components and demo data, copied without UI changes. The route renders this view directly; entrance motion lives in its route CSS module. Shared template primitives stay under `features/nexacrm/components/ui/`.
-- `features/employees/` owns `/employees` and `/employees/[id]`: an HR-specific adaptation of the NexaCRM directory, grid, preview panel and full profile. It reuses the template primitives and styles, with separate employee types, native state, CSV mapping and change history.
-- `features/contracts/` owns `/contracts` and `/contracts/[id]`, reusing the Employees/NexaCRM table, preview sheet, details rail, forms and menu primitives. Its native state is separate from employee and CRM data.
-- `features/nexacrm/views/apps/people/` preserves the original CRM People implementation for reuse and source verification; the Employees routes no longer render its CRM fields or tabs.
-- `features/nexacrm/views/apps/opportunities/` supplies the separate `/kanban` page. It opens in the source Kanban view, with draggable cards/columns, stage editing, record panels and the original table/calendar switcher. `/opportunities` links redirect here to preserve template cross-links.
-- `features/nexacrm/adapters/` uses React's native `useSyncExternalStore` and browser History APIs instead of Zustand/nuqs. Import validation is plain TypeScript, not Zod. Demo records remain in memory and reset on reload; the demo role is not backend authorization.
-- `features/nexacrm/providers/demo-records-provider.tsx` seeds the CRM and employee stores in the app layout. Employee edits survive route navigation but are isolated from CRM People and Kanban; a full reload resets the preview data.
-- `lib/` contains shared configuration and infrastructure utilities.
-
-`/dashboard` remains as a compatibility route and redirects to the original NexaCRM analytics dashboard.
-
-## Sidebar scope
-
-The sidebar follows the PeoplePay360 problem statement with six primary modules:
-
-| Main module | Contents |
+| Frontend endpoint | Purpose |
 | --- | --- |
-| Employees | Employee directory and record hub; related-record actions belong on the employee form |
-| Contracts | Employment terms, active contracts and contract history |
-| Attendance | Attendance records and working schedules |
-| Time off | Requests, allocations/balances and time off types |
-| Payroll | Payruns, payslips, salary structures and salary rules |
-| Reports | Existing dashboard preview and future HR/payroll reports |
+| `POST /api/auth/login` | Validates credentials with the backend, verifies the returned identity, and sets an HTTP-only session cookie |
+| `GET /api/auth/session` | Verifies the session with backend `GET /api/auth/me` and returns the current public user profile |
+| `POST /api/auth/logout` | Clears the session and password-recovery cookies |
+| `POST /api/auth/forgot-password` | Requests a recovery code using the existing backend flow |
+| `POST /api/auth/verify-otp` | Verifies the code and retains the short-lived reset token in an HTTP-only cookie |
+| `POST /api/auth/reset-password` | Sends the new password and cookie-held reset token to the backend |
 
-Settings (users/roles and system settings) and the existing CRM Kanban preview are secondary items at the bottom. Kanban is retained as a reusable preview, not presented as the final employee Kanban. Departments and employee types remain record fields/report filters instead of separate top-level navigation. Wizard steps, approvals, payroll processing, PDFs and email remain actions within their modules, not extra menu entries.
+The auth-only backend addition, `GET /api/auth/me`, uses the existing JWT middleware and reads the current account from the database. Deleted/inactive accounts cannot establish a frontend session. Sidebar identity comes from this verified account; no demo admin or role switcher remains.
 
-Only one submenu opens at a time; icon-only mode exposes the same children through a keyboard-accessible popup. Every role sees all modules for now. Unbuilt destinations are labelled **Soon** and are not links; activate their `status` in `config/app-navigation.ts` when their pages exist. The sidebar does not implement backend permissions or add HR/payroll business screens. Header titles and active-route matching share the navigation configuration.
+Protected layouts verify sessions server-side. The routing proxy checks cookie presence before preserving the existing module-availability redirects; cookie presence alone is not authentication. The native client session guard also checks on focus and periodically, so expiry or a changed account in another tab does not leave a stale authenticated layout. Backend outages show a retry state instead of silently using a fake identity or treating every failure as a logout.
 
-Run `node scripts/test-navigation.mjs` to verify required menu coverage, working destinations and nested/alias route matching.
+Login and logout use full-document navigation to discard the previous account's in-memory records. Auth POST routes require the application's origin. Cookies are HTTP-only, SameSite=Lax, and Secure in production; responses are not cached. Neither access tokens nor password-reset tokens are exposed in browser JSON.
 
-## Source verification
+“Remember me” persists the cookie only until the access token expires. The backend currently has no refresh-token endpoint, so this option does not promise a 30-day login. Password recovery uses the backend's configured development OTP, stored in Redis and written to backend logs. **No recovery email is sent.** Obtain the code from the backend administrator; never expose backend configuration or OTPs through a frontend endpoint. Random per-request codes and a real delivery provider are required before production use.
 
-Run `node scripts/verify-analytics-source.mjs`, `node scripts/verify-people-source.mjs`, and `node scripts/verify-kanban-source.mjs` to compare the preserved template UI against the local warehouse. Pass a template directory as the first argument if its location changes. The checks allow documented import/routing/type adaptations, not redesigned markup or styles. The People check covers the preserved CRM source, not the intentionally cleaned HR adaptation. `node scripts/test-native-adapters.mjs` tests the native state/CSV adapters; `node scripts/test-employees.mjs` covers employee seed isolation, CRUD/history, manager references, CSV validation and the reduced UI scope.
+## No generated business data
 
-## Employees preview
+Production fake databases, HR/demo hydrators, synthetic attendance and leave generators, sample contracts, seeded salary rules/structures, generated dashboard figures and fake email-send success have been removed. Explicit regression fixtures live under `scripts/fixtures/` only and are never imported by application code.
 
-The default table contains Name, Work email, Department, Job position, Manager and Status; Phone is an optional column. Table/grid views, search, filtering, sorting, column controls, pagination, row selection and CSV import/export remain. The original NexaCRM four-card KPI layout is restored above both views, showing Total employees, Departments, With manager and Without manager from the employee store (directory-wide, independent of table filters). Unset departments are excluded; missing managers count as Without manager. The calendar view, fill-percentage footer, company/account-owner/social fields, favorites and CRM communication/task tabs are removed from Employees. Profiles contain employee details and an employee-only timeline, with quiet audit metadata in a collapsible section. Creating an employee requires submitting the form; cancelling never creates a blank record. Deletion requires confirmation.
+`features/nexacrm/providers/app-records-provider.tsx` supplies the verified current account and empty CRM stores. `features/hr/data-stores-initializer.tsx` resolves Employees, Contracts, Attendance, Working Schedules and Time Off loading states with empty collections. Payroll also starts empty. KPI cards show unavailable values where the data API is disconnected, not fabricated metrics.
 
-Identity/contact data still comes from the template preview. Department, manager, status and employment type are deliberately unset until edited; CRM company and account owner are not treated as HR fields. Contracts and Attendance show actual in-memory counts and open employee-filtered lists. Working schedules are editable from the employee details, and employee panels/full profiles include Attendance tabs with table and calendar views. Time off and Allocations remain marked **Soon**. Backend persistence, contract/payroll dependency checks and role-based access are not implemented by this UI cleanup.
+`features/hr/data-availability.ts` keeps business writes unavailable. Shared permission checks hide unconnected create/edit/import/approval actions, and HR/payroll store boundaries reject disconnected writes. Do not simply turn this flag on: replace local mutations with authenticated real API calls, loading/error handling, server-enforced permissions and request reconciliation first.
 
-## Contracts preview
+Only auth is connected in this phase. No employee, contract, attendance, leave or payroll API has been connected; no database seeds or migrations were run. Existing sidebar visibility/module redirects remain unchanged.
 
-Based on A2 and B2 of the source PDF, Contracts provides a clean list with dates, wages and status, search/filter/sort/column controls, pagination, CSV export, a slide-out Details/History panel and a full details page. New/Edit uses a single validated form for atomic employment-term changes. The employee link opens their profile; contract history lists all their agreements. No KPI cards or CRM-only fields were added.
+## UI structure
 
-Seven explicitly labelled illustrative contracts show active, expired, scheduled and draft cases, including a prior agreement for the same employee. Demo wages default to INR/month; the form also supports other listed currencies and wage periods. These are sample terms, not employee salary facts or inferred CRM data. State survives route navigation and resets on full reload. Employee master fields are not overwritten by contract edits.
+- `features/auth/`: login/recovery UI, browser auth service, server session verification, validated auth bridge and session guard.
+- `components/layout/`: authenticated shell, collapsible sidebar, verified identity and working sign-out menu.
+- `features/employees/`, `features/contracts/`: directory, employment agreements, tables, panels and details ready for real records.
+- `features/attendance/`, `features/working-schedules/`: retained table/calendar/schedule UI and validation logic.
+- `features/time-off/`: connected leave type/allocation/request domain logic and shared list/detail UI; no seeded balances or requests.
+- `features/payroll/`: retained configuration, payrun, payslip and reporting UI/logic without default salary data.
+- `features/nexacrm/`: reusable extracted template components and native React state/query adapters; non-auth service adapters return typed empty collections until their APIs are implemented.
 
-Dates are inclusive. Active-state contracts cannot overlap for the same employee, including open-ended and scheduled agreements. Display status is derived from the record's state and dates; expired agreements remain available for historical periods. `contractForPeriod` selects by the requested dates, ignores drafts/cancelled records, and reports periods spanning multiple agreements rather than choosing one arbitrarily. This is a tested integration helper, not a connected payroll engine or proration implementation.
+The existing light Modern Minimal blue theme, login backdrop/hover treatment, colorful navigation icons, searchable selectors and themed date/time inputs are preserved. No Zod, React Hook Form, Zustand or nuqs dependency was added to the frontend.
 
-Salary structure and working schedule are name-only preview fields until their setup modules can supply real IDs. New records are only created on submit; Cancel makes no changes. Deletion requires confirmation and currently affects only this in-memory preview. Real persistence, employee referential integrity, payroll-dependent edit/delete restrictions, server-side overlap constraints and role enforcement must be added at the backend boundary. All roles still share the preview sidebar, as requested for the UI phase.
+## Verification
 
-Run `node scripts/test-contracts.mjs` for date and overlap boundaries, historical lookup, CRUD isolation, CSV safety and UI integration checks.
+- `pnpm test:auth:live`: checks every auth route on the already-running local frontend, without credentials, mocks, account changes or starting a server. It catches missing routes/HTML 404s that handler-level tests cannot. This is a routing smoke test, not proof of a completed password reset.
+- `node scripts/test-auth.mjs`: auth payloads, origin checks, cookie lifetimes, malformed upstream responses, session errors, logout and recovery.
+- `node scripts/test-auth-integration.mjs`: protected-layout wiring, real identity, logout/session guard and absence of runtime demo entry points.
+- `node scripts/test-no-template-demo.mjs`: empty CRM services, removed fake databases, empty dashboard data and disabled fake email sending.
+- Domain regression scripts under `scripts/` exercise pure logic against test-only fixtures and separately check disconnected runtime writes.
+- `pnpm exec tsc --noEmit`, targeted ESLint and `pnpm build` check integration.
+- Backend `node scripts/test-auth-me.cjs` verifies current-account lookup and authentication middleware without changing a real account.
 
-## Attendance and working schedules
+Historical `verify-*-source.mjs` template snapshots intentionally detect differences where this request removed fake content. Their allowlists were not loosened to hide those changes.
 
-`/attendance` and `/attendance/schedules` are active sidebar destinations. Attendance includes table/calendar views, employee/date filters, manual entries, check-out, correction history and employee-scoped panels. Working schedules include weekly patterns, net-hour calculations and employee assignments. These features use native React preview state; edits survive navigation but reset on reload. Contract-specific schedule history, payroll integration and backend permissions remain separate work.
-
-The feature files alone are not sufficient: `config/app-navigation.ts` must keep both destinations `ready`; `DemoRecordsProvider` must mount `AttendanceHydrator` after the employee initializer to seed attendance, schedules and assignments; employee detail/panel components must render `EmployeeAttendance`, and employee fields must render `EmployeeSchedule` and `EmployeeAttendanceLink`. Run `node scripts/test-navigation.mjs` and `node scripts/test-attendance.mjs` to guard these connections as well as the existing validation and state behavior.
-
-The separate Kanban remains a CRM template preview: linked Companies and Sales routes have not been added, and template-only payment/email actions are not connected to services.
+If a newly added auth route returns HTML 404 even though its file exists and the build includes it, restart the existing Next development server to refresh route registration, then run `pnpm test:auth:live`. Do not treat a successful backend-only OTP request or a mocked handler test as a successful browser recovery flow.

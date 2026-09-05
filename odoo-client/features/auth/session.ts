@@ -1,49 +1,21 @@
-import "server-only";
+import 'server-only'
+import { cache } from 'react'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { SESSION_COOKIE_NAME } from './auth-constants'
+import { readVerifiedUser } from './auth-server'
+import type { SessionUser } from './auth-types'
 
-import { cache } from "react";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+export type { SessionUser } from './auth-types'
+export { AuthServiceUnavailableError } from './auth-server'
 
-import { SESSION_COOKIE_NAME } from "@/features/auth/auth-constants";
-import { getBackendApiEndpoint } from "@/lib/backend-api";
-
-type SessionUser = {
-  userId: string;
-  email: string;
-  role: string;
-};
-
-type CurrentUserResponse = {
-  success: true;
-  data: {
-    user: SessionUser;
-  };
-};
+export const getSession = cache(async (): Promise<SessionUser | null> => {
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value
+  return token ? readVerifiedUser(token) : null
+})
 
 export const verifySession = cache(async (): Promise<SessionUser> => {
-  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) {
-    redirect("/login");
-  }
-
-  const response = await fetch(getBackendApiEndpoint("/auth/me"), {
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    redirect("/login");
-  }
-
-  const payload = (await response.json()) as CurrentUserResponse;
-
-  if (!payload.data?.user) {
-    redirect("/login");
-  }
-
-  return payload.data.user;
-});
+  const user = await getSession()
+  if (!user) redirect('/login')
+  return user
+})

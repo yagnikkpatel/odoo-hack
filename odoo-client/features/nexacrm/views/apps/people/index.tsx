@@ -9,6 +9,7 @@ import { buildBlankPersonInput } from '@/features/nexacrm/types/apps/person-type
 
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
+import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
 import { useRecordViewType } from '@/features/nexacrm/components/data-table/record-view-bar'
 import type { RecordViewType } from '@/features/nexacrm/components/data-table/record-view-bar'
 
@@ -79,6 +80,7 @@ const PeopleView = ({ defaultView }: { defaultView: RecordViewType }) => {
       />
 
       <div className={PAGE_BODY}>
+        <DataConnectionNotice />
         <PeopleStatsCards />
 
         {renderBody()}

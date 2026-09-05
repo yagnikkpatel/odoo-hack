@@ -17,7 +17,7 @@ function load(relative) {
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText
-  const localRequire = spec => spec.startsWith('@/') ? load(spec.slice(2) + '.ts')
+  const localRequire = spec => spec === '@/features/hr/data-availability' ? load('scripts/fixtures/data-connection.ts') : spec.startsWith('@/') ? load(spec.slice(2) + '.ts')
     : spec.startsWith('.') ? load(path.resolve(path.dirname(file), spec + '.ts')) : requirePackage(spec)
   new Function('require', 'module', 'exports', source)(localRequire, loaded, loaded.exports)
   return loaded.exports
@@ -124,9 +124,8 @@ for (const file of ['features/employees/employee-panel.tsx', 'features/employees
 }
 assert.match(read('features/employees/components/employee-fields.tsx'), /<EmployeeSchedule employeeId=\{employee.id\}/)
 assert.match(read('features/employees/components/employee-fields.tsx'), /<EmployeeAttendanceLink employeeId=\{employee.id\}/)
-const provider = read('features/nexacrm/providers/demo-records-provider.tsx')
-assert.match(provider, /import AttendanceHydrator from '@\/features\/attendance\/hydrator'/)
-assert.match(provider, /<AttendanceHydrator employeeIds=\{people.map\(\(person\) => person.id\)\}/, 'the app must initialize attendance and schedules')
-assert.ok(provider.indexOf('<AttendanceHydrator') > provider.indexOf('<EmployeesHydrator'), 'employees must initialize before their attendance and assignments')
+const initializer = read('features/hr/data-stores-initializer.tsx')
+assert.match(initializer, /useAttendanceStore.getState\(\).initialize\(\[\]\)/)
+assert.match(initializer, /useSchedulesStore.getState\(\).initialize\(\[\], \{\}\)/)
 assert.match(read('features/hr/components/records-table.tsx'), /table-container/)
 console.log('PASS: attendance dates/hours/overlaps, correction snapshots, checkout, schedule totals/overlaps, assignments/deletion guards and integrated views.')

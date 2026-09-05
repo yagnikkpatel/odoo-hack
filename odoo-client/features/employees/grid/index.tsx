@@ -30,8 +30,8 @@ const EmployeesGrid = ({
     return (
       <DataTableEmptyState
         icon={UsersIcon}
-        title="No employees match"
-        description="Clear the search or filters to see everyone again."
+        title="No employees to show"
+        description="Employee records will appear after the data connection is configured."
       />
     )
   }

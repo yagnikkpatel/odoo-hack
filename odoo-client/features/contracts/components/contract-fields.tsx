@@ -19,6 +19,8 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@/features/nexacrm/components/ui/collapsible'
+import { usePayrollStore } from '@/features/payroll/store'
+import { useSchedulesStore } from '@/features/working-schedules/store'
 import { useEmployee } from '@/features/employees/store'
 import { employeeName } from '@/features/employees/types'
 import { contractStatus, formatContractDate, formatWage } from '../types'
@@ -26,6 +28,8 @@ import type { Contract } from '../types'
 import ContractStatusBadge from './status-badge'
 
 export default function ContractFields({ contract }: { contract: Contract }) {
+  const structure = usePayrollStore(state => state.structures.find(item => item.id === contract.salaryStructure || item.name.toLowerCase() === contract.salaryStructure.toLowerCase()))
+  const schedule = useSchedulesStore(state => state.schedules.find(item => item.id === contract.workingSchedule || item.name === contract.workingSchedule))
   const employee = useEmployee(contract.employeeId)
   return (
     <div className="space-y-4">
@@ -82,17 +86,16 @@ export default function ContractFields({ contract }: { contract: Contract }) {
         </RecordField>
         <RecordField type="static" label="Structure" icon={FileTextIcon}>
           <span className="text-sm break-words">
-            {contract.salaryStructure}
+            {structure ? <Link className="hover:text-primary" href={'/payroll/structures?record=' + encodeURIComponent(structure.id)}>{structure.name}</Link> : contract.salaryStructure}
           </span>
         </RecordField>
         <RecordField type="static" label="Schedule" icon={ClockIcon}>
           <span className="text-sm break-words">
-            {contract.workingSchedule || 'Not assigned'}
+            {schedule ? <Link className="hover:text-primary" href={'/attendance/schedules/' + schedule.id}>{schedule.name}</Link> : contract.workingSchedule || 'Use employee schedule'}
           </span>
         </RecordField>
         <p className="text-muted-foreground pt-2 text-xs leading-relaxed">
-          Salary structures and working schedules are name-only preview fields.
-          Their setup modules are not connected yet.
+          Payroll uses the contract that applies to the selected pay period.
         </p>
       </RecordGroup>
       <Collapsible className="group/metadata">

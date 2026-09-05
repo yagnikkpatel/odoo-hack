@@ -10,8 +10,8 @@ type StatisticsCardProps = {
   icon: ReactElement
   title: string
   time: string
-  value: string
-  changePercentage: number
+  value: string | null
+  changePercentage: number | null
   className?: string
   iconClassName?: string
 }
@@ -40,17 +40,21 @@ const StatisticsCard = ({
         <p className='flex flex-col gap-1'>
           <span className='text-base font-semibold'>{title}</span>
           <span className='text-muted-foreground text-sm'>{time}</span>
-          <span className='text-base font-medium'>{value}</span>
+          <span className='text-base font-medium'>{value ?? '—'}</span>
         </p>
-        <Badge
-          className={cn('rounded-sm', {
-            'bg-green-600/10 text-green-600 dark:bg-green-400/10 dark:text-green-400': changePercentage > 0,
-            'bg-destructive/10 text-destructive': changePercentage < 0
-          })}
-        >
-          {changePercentage > 0 ? '+' : ''}
-          {changePercentage}%
-        </Badge>
+        {changePercentage === null ? (
+          <span className='text-muted-foreground text-sm'>Data connection pending</span>
+        ) : (
+          <Badge
+            className={cn('rounded-sm', {
+              'bg-green-600/10 text-green-600 dark:bg-green-400/10 dark:text-green-400': changePercentage > 0,
+              'bg-destructive/10 text-destructive': changePercentage < 0
+            })}
+          >
+            {changePercentage > 0 ? '+' : ''}
+            {changePercentage}%
+          </Badge>
+        )}
       </CardContent>
     </Card>
   )

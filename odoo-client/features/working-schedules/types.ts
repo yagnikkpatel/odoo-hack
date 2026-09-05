@@ -49,7 +49,7 @@ export function validateSchedule(input: ScheduleInput): string | null {
       !Number.isFinite(timeMinutes(slot.end)) ||
       timeMinutes(slot.end) <= timeMinutes(slot.start)
     )
-      return 'End time must be after start time on the same day. Overnight schedule periods are not supported in this preview.'
+      return 'End time must be after start time on the same day. Overnight schedule periods are not supported.'
     if (
       !Number.isInteger(slot.breakMinutes) ||
       slot.breakMinutes < 0 ||

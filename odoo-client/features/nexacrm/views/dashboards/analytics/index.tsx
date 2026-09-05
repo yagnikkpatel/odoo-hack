@@ -23,6 +23,9 @@ import UpgradeYourPlanCard from './cards/card-upgrade-plan'
 const AnalyticsDashboardView = () => (
   <div className='flex min-h-full flex-col'>
     <div className={PAGE_BODY}>
+      <p className='text-muted-foreground text-sm' role='status'>
+        Analytics data connection pending. Metrics will appear once the business-data APIs are connected.
+      </p>
       <div className='grid grid-cols-6 gap-6'>
         <StatisticsTotalProfitCard className='max-xl:col-span-2 max-md:col-span-3' />
         <StatisticsOrderCard className='max-xl:col-span-2 max-md:col-span-3' />

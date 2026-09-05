@@ -30,8 +30,6 @@ import {
   EllipsisVerticalIcon
 } from 'lucide-react'
 
-import Link from 'next/link'
-
 import { Avatar, AvatarFallback, AvatarImage } from '@/features/nexacrm/components/ui/avatar'
 import { Badge } from '@/features/nexacrm/components/ui/badge'
 import { Button } from '@/features/nexacrm/components/ui/button'
@@ -45,8 +43,20 @@ import {
 } from '@/features/nexacrm/components/ui/dropdown-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/features/nexacrm/components/ui/input-group'
 import { Label } from '@/features/nexacrm/components/ui/label'
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from '@/features/nexacrm/components/ui/pagination'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/features/nexacrm/components/ui/select'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem
+} from '@/features/nexacrm/components/ui/pagination'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/features/nexacrm/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/features/nexacrm/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/features/nexacrm/components/ui/tooltip'
 
@@ -309,7 +319,9 @@ const DealsDatatable = ({ data }: { data: Item[] }) => {
                 </SelectContent>
               </Select>
             </div>
-            <Button render={<Link href='/opportunities' />}>New deal</Button>
+            <Button disabled title='Data connection pending'>
+              New deal
+            </Button>
           </div>
           <div className='flex flex-1 flex-wrap items-center gap-4 lg:justify-end'>
             <Filter column={table.getColumn('contact')!} />
@@ -371,7 +383,7 @@ const DealsDatatable = ({ data }: { data: Item[] }) => {
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className='h-24 text-center'>
-                  No results.
+                  {data.length ? 'No results.' : 'Data connection pending'}
                 </TableCell>
               </TableRow>
             )}
@@ -383,7 +395,8 @@ const DealsDatatable = ({ data }: { data: Item[] }) => {
         <p className='text-muted-foreground text-sm whitespace-nowrap' aria-live='polite'>
           Showing{' '}
           <span>
-            {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
+            {table.getRowCount() ? table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1 : 0}{' '}
+            to{' '}
             {Math.min(
               Math.max(
                 table.getState().pagination.pageIndex * table.getState().pagination.pageSize +

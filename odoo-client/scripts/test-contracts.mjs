@@ -17,7 +17,7 @@ function load(relative) {
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText
-  const localRequire = spec => spec.startsWith('@/') ? load(spec.slice(2) + '.ts')
+  const localRequire = spec => spec === '@/features/hr/data-availability' ? load('scripts/fixtures/data-connection.ts') : spec.startsWith('@/') ? load(spec.slice(2) + '.ts')
     : spec.startsWith('.') ? load(path.resolve(path.dirname(file), spec + '.ts')) : requirePackage(spec)
   new Function('require', 'module', 'exports', source)(localRequire, loaded, loaded.exports)
   return loaded.exports
@@ -89,10 +89,6 @@ assert.equal(state().save(base, existing.id).ok, true)
 assert.equal(state().contracts[0].createdById, undefined, 'editing must preserve the original unknown creator')
 assert.equal(useEmployeesStore.getState(), employeeState, 'contract terms must not silently overwrite employee master data')
 
-const { demoContracts } = load('features/contracts/demo-data.ts')
-const seed = demoContracts(employees, 2026)
-for (const record of seed) assert.equal(validateContract(record, seed, ids, record.id), null)
-assert.equal(seed.filter(item => item.employeeId === 'emp_1').length, 2)
 const { contractCsvRows } = load('features/contracts/csv.ts')
 const exported = contractCsvRows([{ ...existing, employeeName: '=formula', name: ' +formula', status: 'active' }])[0]
 assert.equal(exported.Employee, "'=formula")

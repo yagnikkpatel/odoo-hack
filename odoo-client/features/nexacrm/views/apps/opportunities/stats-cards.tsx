@@ -5,7 +5,11 @@ import { CalendarClockIcon, CircleCheckIcon, TargetIcon, TrendingUpIcon } from '
 import type { LucideIcon } from 'lucide-react'
 
 // Type Imports
-import { isOpenOpportunity, isOverdueOpportunity, isWonOpportunity } from '@/features/nexacrm/types/apps/opportunity-types'
+import {
+  isOpenOpportunity,
+  isOverdueOpportunity,
+  isWonOpportunity
+} from '@/features/nexacrm/types/apps/opportunity-types'
 
 // Component Imports
 import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
@@ -16,6 +20,7 @@ import { useOpportunitiesStore } from '@/features/nexacrm/store/use-opportunitie
 
 // Util Imports
 import { formatCompactCurrency, formatNumber } from '@/features/nexacrm/utils/format'
+import { DATA_API_CONNECTED } from '@/features/hr/data-availability'
 
 const OpportunitiesStatsCards = () => {
   const opportunities = useOpportunitiesStore(state => state.opportunities)
@@ -44,7 +49,7 @@ const OpportunitiesStatsCards = () => {
             <div className='min-w-0 space-y-2'>
               <p className='text-muted-foreground truncate text-sm'>{label}</p>
               {hasHydrated ? (
-                <p className='truncate text-2xl font-semibold tabular-nums'>{value}</p>
+                <p className='truncate text-2xl font-semibold tabular-nums'>{DATA_API_CONNECTED ? value : '—'}</p>
               ) : (
                 <Skeleton className='h-7 w-20' />
               )}

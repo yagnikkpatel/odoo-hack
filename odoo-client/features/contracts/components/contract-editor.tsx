@@ -15,6 +15,8 @@ import {
 import { Choice } from '@/features/hr/components/form'
 import { useEmployeesStore } from '@/features/employees/store'
 import { employeeName } from '@/features/employees/types'
+import { usePayrollStore } from '@/features/payroll/store'
+import { useSchedulesStore } from '@/features/working-schedules/store'
 import { useContractsStore } from '../store'
 import { CONTRACT_STATES, CURRENCIES, WAGE_PERIODS, today } from '../types'
 import type { Contract, ContractInput } from '../types'
@@ -47,6 +49,8 @@ export default function ContractEditor({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
+  const structures = usePayrollStore(state => state.structures)
+  const schedules = useSchedulesStore(state => state.schedules)
   const employees = useEmployeesStore((state) => state.employees)
   const initialEmployee = employees.find(
     (employee) => employee.id === employeeId,
@@ -220,33 +224,35 @@ export default function ContractEditor({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Salary structure" id="contract-structure">
-                  <Input
+                  <Choice
                     id="contract-structure"
-                    required
                     value={draft.salaryStructure}
-                    onChange={(event) =>
-                      set({ salaryStructure: event.target.value })
-                    }
-                    placeholder="Regular salary"
+                    options={[
+                      { value: '', label: 'Choose salary structure' },
+                      ...structures.filter(item => item.active || item.id === draft.salaryStructure).map(item => ({ value: item.id, label: item.name })),
+                      ...(draft.salaryStructure && !structures.some(item => item.id === draft.salaryStructure) ? [{ value: draft.salaryStructure, label: draft.salaryStructure }] : []),
+                    ]}
+                    onChange={salaryStructure => set({ salaryStructure })}
                   />
                 </Field>
                 <Field
                   label="Working schedule (optional)"
                   id="contract-schedule"
                 >
-                  <Input
+                  <Choice
                     id="contract-schedule"
                     value={draft.workingSchedule || ''}
-                    onChange={(event) =>
-                      set({ workingSchedule: event.target.value })
-                    }
-                    placeholder="Standard working week"
+                    options={[
+                      { value: '', label: 'Use employee schedule' },
+                      ...schedules.map(item => ({ value: item.id, label: item.name })),
+                      ...(draft.workingSchedule && !schedules.some(item => item.id === draft.workingSchedule) ? [{ value: draft.workingSchedule, label: draft.workingSchedule }] : []),
+                    ]}
+                    onChange={workingSchedule => set({ workingSchedule })}
                   />
                 </Field>
               </div>
               <p className="text-muted-foreground text-xs">
-                Structure and schedule names are preview fields until their
-                setup modules are connected.
+                Payroll uses the structure and working schedule assigned to the contract for the selected period.
               </p>
               <Field label="Status" id="contract-status">
                 <Choice

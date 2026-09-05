@@ -1,5 +1,6 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
 import { useEmployeesStore } from '@/features/employees/store'
+import { DATA_API_CONNECTED, DATA_CONNECTION_MESSAGE } from '@/features/hr/data-availability'
 import { validateSchedule } from './types'
 import type { WorkingSchedule, ScheduleInput } from './types'
 import type { SaveResult } from '@/features/attendance/types'
@@ -24,6 +25,7 @@ export const useSchedulesStore = create<SchedulesStore>()((set, get) => ({
     if (!get().hasHydrated) set({ schedules, assignments, hasHydrated: true })
   },
   save: (raw, id) => {
+    if (!DATA_API_CONNECTED) return { ok: false, error: DATA_CONNECTION_MESSAGE }
     if (id && !get().schedules.some((schedule) => schedule.id === id))
       return { ok: false, error: 'This schedule no longer exists.' }
     const input: ScheduleInput = {
@@ -51,6 +53,7 @@ export const useSchedulesStore = create<SchedulesStore>()((set, get) => ({
     return { ok: true, id: schedule.id }
   },
   assign: (employeeId, scheduleId) => {
+    if (!DATA_API_CONNECTED) return { ok: false, error: DATA_CONNECTION_MESSAGE }
     if (
       !useEmployeesStore
         .getState()
@@ -69,6 +72,7 @@ export const useSchedulesStore = create<SchedulesStore>()((set, get) => ({
     return { ok: true, id: employeeId }
   },
   remove: (id) => {
+    if (!DATA_API_CONNECTED) return { ok: false, error: DATA_CONNECTION_MESSAGE }
     const employeeIds = new Set(
       useEmployeesStore.getState().employees.map((employee) => employee.id),
     )

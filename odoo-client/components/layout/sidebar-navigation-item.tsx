@@ -150,6 +150,25 @@ export function SidebarNavigationItem({
     );
   }
 
+  if (item.children.every((child) => child.status === "planned")) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={`${item.label} — temporarily unavailable`}
+        title={`${item.label} — temporarily unavailable`}
+        className={cn(
+          className,
+          "text-sidebar-foreground cursor-default hover:bg-transparent hover:text-sidebar-foreground",
+        )}
+      >
+        {icon}
+        <span className={cn("truncate", collapsed && "md:hidden")}>
+          {item.label}
+        </span>
+      </span>
+    );
+  }
+
   return (
     <>
       {/* The expanded sidebar and mobile drawer use the template disclosure. */}

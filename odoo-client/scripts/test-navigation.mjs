@@ -23,6 +23,9 @@ assert.ok(navigationDestinations.some(item => item.id === 'working-schedules'))
 for (const id of ['attendance-records', 'working-schedules']) {
   assert.equal(navigationDestinations.find(item => item.id === id)?.status, 'ready', `${id} must stay linked in the sidebar`)
 }
+for (const id of ['time-off-requests', 'time-off-allocations', 'time-off-types', 'payruns', 'payslips', 'salary-structures', 'salary-rules', 'dashboard', 'hr-payroll-reports']) {
+  assert.equal(navigationDestinations.find(item => item.id === id)?.status, 'planned', `${id} must stay disabled in the sidebar`)
+}
 assert.ok(navigationDestinations.some(item => item.id === 'users-roles'))
 assert.equal(new Set(navigationDestinations.map(item => item.id)).size, navigationDestinations.length)
 assert.equal(new Set(navigationDestinations.map(item => item.href)).size, navigationDestinations.length)
@@ -36,6 +39,9 @@ for (const [pathname, expected] of [
   ['/dashboards/analytics', 'dashboard'], ['/dashboard', 'dashboard'],
   ['/kanban/opp_4', 'kanban'], ['/opportunities/opp_4', 'kanban'],
   ['/attendance/schedules/weekly', 'working-schedules'],
+  ['/time-off/requests/leave_demo_pending_0', 'time-off-requests'],
+  ['/time-off/allocations/leave_grant_pending', 'time-off-allocations'],
+  ['/time-off/types/leave_annual', 'time-off-types'],
   ['/payroll/rules', 'salary-rules'], ['/payroll/run_1', 'payruns'],
   ['/settings/users', 'users-roles'], ['/settings', 'system-settings'],
   ['/employees-archive', undefined], ['/not-a-page', undefined],

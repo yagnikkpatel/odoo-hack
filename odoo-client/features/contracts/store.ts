@@ -1,6 +1,7 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
 import { getActorId } from '@/features/nexacrm/store/use-current-actor-store'
 import { useEmployeesStore } from '@/features/employees/store'
+import { DATA_API_CONNECTED, DATA_CONNECTION_MESSAGE, requireDataConnection } from '@/features/hr/data-availability'
 import { validateContract } from './types'
 import type { Contract, ContractInput } from './types'
 
@@ -19,6 +20,7 @@ export const useContractsStore = create<ContractsStore>()((set, get) => ({
     if (!get().hasHydrated) set({ contracts, hasHydrated: true })
   },
   save: (raw, id) => {
+    if (!DATA_API_CONNECTED) return { ok: false, error: DATA_CONNECTION_MESSAGE }
     const input: ContractInput = {
       name: raw.name.trim(),
       employeeId: raw.employeeId,
@@ -66,11 +68,13 @@ export const useContractsStore = create<ContractsStore>()((set, get) => ({
     }))
     return { ok: true, id: contract.id }
   },
-  // In-memory demo only. Backend payroll dependencies must be checked before enabling real deletion.
-  remove: (id) =>
+  // Backend payroll dependencies must be checked before enabling real deletion.
+  remove: (id) => {
+    requireDataConnection()
     set((state) => ({
       contracts: state.contracts.filter((contract) => contract.id !== id),
-    })),
+    }))
+  },
 }))
 export const useContract = (id?: string) =>
   useContractsStore((state) =>

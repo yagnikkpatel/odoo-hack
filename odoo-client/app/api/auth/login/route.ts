@@ -1,101 +1,49 @@
-import { NextResponse } from "next/server";
-
-import { SESSION_COOKIE_NAME } from "@/features/auth/auth-constants";
-import { getBackendApiEndpoint } from "@/lib/backend-api";
-
-type BackendLoginResponse = {
-  success?: boolean;
-  message?: string;
-  data?: {
-    accessToken?: string;
-  };
-};
-
-type LoginRequest = {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-};
-
-function parseLoginRequest(value: unknown): LoginRequest | null {
-  if (!value || typeof value !== "object") return null;
-
-  const input = value as Record<string, unknown>;
-  const email = typeof input.email === "string" ? input.email.trim() : "";
-  const password = typeof input.password === "string" ? input.password : "";
-  const rememberMe = input.rememberMe;
-
-  if (
-    !email ||
-    !email.includes("@") ||
-    !password ||
-    typeof rememberMe !== "boolean"
-  ) {
-    return null;
-  }
-
-  return { email, password, rememberMe };
-}
+import { SESSION_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME } from '@/features/auth/auth-constants'
+import {
+  authError,
+  authJson,
+  backendFailure,
+  checkSameOrigin,
+  cookieOptions,
+  readAuthBody,
+  readVerifiedUser,
+  requestAuthBackend,
+  serviceUnavailable,
+  tokenLifetime
+} from '@/features/auth/auth-server'
+import { isRecord, parseLoginInput, parseSessionUser } from '@/features/auth/auth-validation'
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  const input = parseLoginRequest(body);
-
-  if (!input) {
-    return NextResponse.json(
-      { success: false, message: "Enter a valid email and password." },
-      { status: 400 },
-    );
-  }
-
+  const rejected = checkSameOrigin(request)
+  if (rejected) return rejected
+  const input = parseLoginInput(await readAuthBody(request))
+  if (!input) return authError('Enter a valid email and password.', 400)
   try {
-    const backendResponse = await fetch(getBackendApiEndpoint("/auth/login"), {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: input.email,
-        password: input.password,
-      }),
-      cache: "no-store",
-    });
-
-    const payload = (await backendResponse.json().catch(() => null)) as
-      | BackendLoginResponse
-      | null;
-
-    if (!backendResponse.ok || !payload?.data?.accessToken) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: payload?.message ?? "Unable to sign in with those credentials.",
-        },
-        { status: backendResponse.status || 502 },
-      );
-    }
-
-    const response = NextResponse.json({ success: true });
-
-    response.cookies.set({
-      name: SESSION_COOKIE_NAME,
-      value: payload.data.accessToken,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      ...(input.rememberMe ? { maxAge: 60 * 60 * 24 * 30 } : {}),
-    });
-
-    return response;
+    const { response: upstream, payload } = await requestAuthBackend('login', {
+      email: input.email,
+      password: input.password
+    })
+    if (!upstream.ok) return backendFailure(upstream.status, 'login')
+    if (
+      !isRecord(payload) ||
+      payload.success !== true ||
+      !isRecord(payload.data) ||
+      typeof payload.data.accessToken !== 'string'
+    )
+      return backendFailure(502, 'login')
+    const reportedUser = parseSessionUser(payload.data.user)
+    const token = payload.data.accessToken
+    if (!reportedUser || !tokenLifetime(token)) return backendFailure(502, 'login')
+    const user = await readVerifiedUser(token)
+    if (!user) return authError('The session could not be verified. Please sign in again.', 401)
+    if (user.id !== reportedUser.id) return backendFailure(502, 'login')
+    const maxAge = tokenLifetime(token)
+    if (!maxAge) return authError('The session expired. Please sign in again.', 401)
+    const response = authJson({ success: true })
+    response.cookies.set(SESSION_COOKIE_NAME, token, { ...cookieOptions, ...(input.rememberMe ? { maxAge } : {}) })
+    response.cookies.set(PASSWORD_RESET_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
+    return response
   } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "The authentication service is currently unavailable.",
-      },
-      { status: 503 },
-    );
+    return serviceUnavailable()
   }
 }
