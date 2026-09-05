@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { logger } from "../lib/logger";
 import { AppError } from "../errors/AppError";
+import { translatePgError } from "../lib/pgError";
 
 export function errorHandler(
   err: Error,
@@ -8,10 +9,14 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): void {
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
+  const appError = err instanceof AppError ? err : translatePgError(err);
+
+  if (appError) {
+    res.status(appError.statusCode).json({
       success: false,
-      message: err.message,
+      message: appError.message,
+      code: appError.code,
+      ...(appError.details ? { details: appError.details } : {}),
     });
 
     return;
@@ -22,5 +27,6 @@ export function errorHandler(
   res.status(500).json({
     success: false,
     message: "Internal server error",
+    code: "internal_error",
   });
 }

@@ -4,6 +4,8 @@ import type { PoolClient } from "pg";
 import { pool } from "../lib/db";
 import { logger } from "../lib/logger";
 
+const SALT_ROUNDS = 12;
+
 const adminSeedSchema = z.object({
   email: z.email().toLowerCase(),
   password: z.string().min(8),
@@ -12,16 +14,16 @@ const adminSeedSchema = z.object({
 
 type AdminSeed = z.infer<typeof adminSeedSchema>;
 
-type RoleRow = {
-  id: string;
-};
-
-type UserRow = {
-  id: string;
-  email: string;
-};
-
-const SALT_ROUNDS = 12;
+/**
+ * Demo accounts, one per role, so the permission matrix can be exercised by hand.
+ * Only created when SEED_DEMO_USERS=true — never in production.
+ */
+const DEMO_ROLES = [
+  "employee",
+  "hr_manager",
+  "hr_payroll_user",
+  "hr_payroll_manager",
+] as const;
 
 function loadAdminSeed(): AdminSeed {
   const parsed = adminSeedSchema.safeParse({
@@ -39,11 +41,8 @@ function loadAdminSeed(): AdminSeed {
   return parsed.data;
 }
 
-async function resolveRoleId(
-  client: PoolClient,
-  roleName: string,
-): Promise<string> {
-  const result = await client.query<RoleRow>(
+async function resolveRoleId(client: PoolClient, roleName: string): Promise<string> {
+  const result = await client.query<{ id: string }>(
     "SELECT id FROM roles WHERE name = $1",
     [roleName],
   );
@@ -51,30 +50,33 @@ async function resolveRoleId(
   const role = result.rows[0];
 
   if (!role) {
-    throw new Error(`role not found: ${roleName}`);
+    throw new Error(`role not found: ${roleName} — run "npm run migrate" first`);
   }
 
   return role.id;
 }
 
-async function upsertAdmin(
+async function upsertUser(
   client: PoolClient,
-  adminSeed: AdminSeed,
+  email: string,
+  password: string,
   roleId: string,
-): Promise<UserRow> {
-  const passwordHash = await bcrypt.hash(adminSeed.password, SALT_ROUNDS);
+): Promise<string> {
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const result = await client.query<UserRow>(
+  const result = await client.query<{ email: string }>(
     `INSERT INTO users (email, password_hash, role_id)
      VALUES ($1, $2, $3)
      ON CONFLICT (email) DO UPDATE
        SET password_hash = EXCLUDED.password_hash,
-           role_id = EXCLUDED.role_id
-     RETURNING id, email`,
-    [adminSeed.email, passwordHash, roleId],
+           role_id       = EXCLUDED.role_id,
+           is_active     = TRUE,
+           updated_at    = NOW()
+     RETURNING email`,
+    [email, passwordHash, roleId],
   );
 
-  return result.rows[0];
+  return result.rows[0].email;
 }
 
 async function seed(): Promise<void> {
@@ -84,12 +86,33 @@ async function seed(): Promise<void> {
   try {
     await client.query("BEGIN");
 
-    const roleId = await resolveRoleId(client, adminSeed.roleName);
-    const admin = await upsertAdmin(client, adminSeed, roleId);
+    const adminRoleId = await resolveRoleId(client, adminSeed.roleName);
+    const admin = await upsertUser(
+      client,
+      adminSeed.email,
+      adminSeed.password,
+      adminRoleId,
+    );
+
+    logger.info(`admin seeded: ${admin}`);
+
+    if (process.env.SEED_DEMO_USERS === "true") {
+      const password = process.env.SEED_DEMO_PASSWORD ?? adminSeed.password;
+
+      for (const roleName of DEMO_ROLES) {
+        const roleId = await resolveRoleId(client, roleName);
+        const email = await upsertUser(
+          client,
+          `${roleName.replace(/_/g, "-")}@peoplepay360.test`,
+          password,
+          roleId,
+        );
+
+        logger.info(`demo user seeded: ${email} (${roleName})`);
+      }
+    }
 
     await client.query("COMMIT");
-
-    logger.info(`admin seeded: ${admin.email}`);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
