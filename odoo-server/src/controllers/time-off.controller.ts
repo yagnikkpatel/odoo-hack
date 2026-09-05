@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { parseOrThrow } from "../lib/validate";
+import { TokenPayload } from "../types/user";
 import {
   createAllocationSchema,
   createRequestSchema,
@@ -38,11 +39,15 @@ import {
 } from "../services/time-off.service";
 
 function requireUserId(req: Request): string {
+  return requireActor(req).userId;
+}
+
+function requireActor(req: Request): TokenPayload {
   if (!req.user) {
     throw new AppError(401, "Authentication required");
   }
 
-  return req.user.userId;
+  return req.user;
 }
 
 export async function getTimeOffSnapshotHandler(
@@ -255,7 +260,7 @@ export async function createRequestHandler(
   res: Response,
 ): Promise<void> {
   const input = parseOrThrow(createRequestSchema, req.body);
-  const request = await createRequest(input, requireUserId(req));
+  const request = await createRequest(input, requireActor(req));
 
   res.status(201).json({
     success: true,

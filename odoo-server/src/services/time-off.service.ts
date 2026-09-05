@@ -6,6 +6,7 @@ import {
   invalidateCache,
   setCached,
 } from "../lib/cache";
+import { getRolePermissions } from "./permission.service";
 import {
   countTypeReferences,
   deleteAllocationById,
@@ -49,6 +50,7 @@ import {
   TimeOffSnapshot,
   TimeOffTypeRecord,
 } from "../types/time-off";
+import { TokenPayload } from "../types/user";
 
 const TIME_OFF_NAMESPACE = "time-off-list";
 
@@ -1081,10 +1083,42 @@ function normaliseTimes(
     : { startTime, endTime };
 }
 
+/**
+ * The route accepts both `create:own` and `create:any` so an employee can file
+ * for themselves. Only `create:any` may name someone else -- otherwise a
+ * `create:own` holder could impersonate any employeeId in the body.
+ */
+async function assertCanFileRequest(
+  employeeId: string,
+  actor: TokenPayload,
+): Promise<void> {
+  const permissions = await getRolePermissions(actor.role);
+
+  if (employeeId !== actor.userId) {
+    if (!permissions.has("time_off:create:any")) {
+      throw new AppError(
+        403,
+        "Missing required permission: time_off:create:any to file for another employee",
+      );
+    }
+
+    return;
+  }
+
+  if (
+    !permissions.has("time_off:create:own") &&
+    !permissions.has("time_off:create:any")
+  ) {
+    throw new AppError(403, "Missing required permission: time_off:create:own");
+  }
+}
+
 export async function createRequest(
   input: CreateRequestInput,
-  actorId: string,
+  actor: TokenPayload,
 ): Promise<TimeOffRequestRecord> {
+  await assertCanFileRequest(input.employeeId, actor);
+
   const type = await requireActiveType(input.typeId);
   const times = normaliseTimes(type.unit, input.startTime, input.endTime);
   const computed = computeRequest({ ...input, ...times }, type);
@@ -1111,8 +1145,10 @@ export async function createRequest(
       consumptions: automatic ? consumptions : [],
       status: automatic ? "approved" : "pending",
       history: [
-        decision("Submitted", at, actorId),
-        ...(automatic ? [decision("Automatically approved", at, actorId)] : []),
+        decision("Submitted", at, actor.userId),
+        ...(automatic
+          ? [decision("Automatically approved", at, actor.userId)]
+          : []),
       ],
     });
 

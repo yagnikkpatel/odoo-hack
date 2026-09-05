@@ -1,11 +1,13 @@
--- Time off: leave types, per-employee allocations, and the requests drawing on them.
+-- Time off: leave types and per-employee allocations drawn on by requests
+-- (see 014_replace_time_off_requests_table.sql for the requests table itself
+-- -- it has to live in its own migration because it replaces the table
+-- 010_create_time_off_requests_table.sql already created).
 --
--- charges, consumptions and history are JSONB rather than child tables because
--- they are derived/append-only arrays: the service always recomputes or appends
--- the whole array and writes it back in one statement, and nothing filters,
--- joins or aggregates them in SQL. Balances are derived by reading the rows
--- whole. Promote them to tables the day something needs to query them
--- field-wise -- this is a deliberate choice, not an oversight.
+-- history is JSONB rather than a child table because it is a derived/
+-- append-only array: the service always appends to it and writes the whole
+-- array back in one statement, and nothing filters, joins or aggregates it in
+-- SQL. Promote it to a table the day something needs to query it field-wise
+-- -- this is a deliberate choice, not an oversight.
 
 CREATE TABLE IF NOT EXISTS time_off_types (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -64,40 +66,3 @@ CREATE INDEX IF NOT EXISTS time_off_allocations_employee_type_idx
 
 CREATE INDEX IF NOT EXISTS time_off_allocations_status_idx
   ON time_off_allocations (status);
-
-CREATE TABLE IF NOT EXISTS time_off_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type_id UUID NOT NULL REFERENCES time_off_types(id) ON DELETE RESTRICT,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  -- '' for the days unit, 'HH:MM' for the hours unit.
-  start_time TEXT NOT NULL DEFAULT '',
-  end_time TEXT NOT NULL DEFAULT '',
-  reason TEXT NOT NULL DEFAULT '',
-  unit TEXT NOT NULL,
-  duration NUMERIC(10, 2) NOT NULL,
-  charges JSONB NOT NULL DEFAULT '[]'::jsonb,
-  consumptions JSONB NOT NULL DEFAULT '[]'::jsonb,
-  history JSONB NOT NULL DEFAULT '[]'::jsonb,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT time_off_requests_status_check
-    CHECK (status IN ('pending', 'approved', 'refused', 'cancelled')),
-  CONSTRAINT time_off_requests_unit_check
-    CHECK (unit IN ('days', 'hours')),
-  CONSTRAINT time_off_requests_range_check
-    CHECK (end_date >= start_date),
-  CONSTRAINT time_off_requests_duration_check
-    CHECK (duration > 0)
-);
-
-CREATE INDEX IF NOT EXISTS time_off_requests_employee_start_idx
-  ON time_off_requests (employee_id, start_date DESC);
-
-CREATE INDEX IF NOT EXISTS time_off_requests_status_idx
-  ON time_off_requests (status);
-
-CREATE INDEX IF NOT EXISTS time_off_requests_type_idx
-  ON time_off_requests (type_id);

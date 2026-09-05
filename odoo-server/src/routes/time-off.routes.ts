@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
-import { requirePermission } from "../middlewares/permission.middleware";
+import {
+  requireAnyPermission,
+  requirePermission,
+} from "../middlewares/permission.middleware";
 import {
   approveAllocationHandler,
   approveRequestHandler,
@@ -131,9 +134,11 @@ timeOffRouter.get(
   listRequestsHandler,
 );
 
+// Open to both scopes: the service narrows employeeId to the caller's own
+// record unless they hold create:any.
 timeOffRouter.post(
   "/requests",
-  requirePermission("time_off:create:any"),
+  requireAnyPermission("time_off:create:own", "time_off:create:any"),
   createRequestHandler,
 );
 
