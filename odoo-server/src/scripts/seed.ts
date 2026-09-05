@@ -5,6 +5,7 @@ import { pool } from "../lib/db";
 import { logger } from "../lib/logger";
 
 const adminSeedSchema = z.object({
+  name: z.string().trim().min(1),
   email: z.email().toLowerCase(),
   password: z.string().min(8),
   roleName: z.string().min(1),
@@ -25,6 +26,7 @@ const SALT_ROUNDS = 12;
 
 function loadAdminSeed(): AdminSeed {
   const parsed = adminSeedSchema.safeParse({
+    name: process.env.SEED_ADMIN_NAME,
     email: process.env.SEED_ADMIN_EMAIL,
     password: process.env.SEED_ADMIN_PASSWORD,
     roleName: process.env.SEED_ADMIN_ROLE,
@@ -65,13 +67,15 @@ async function upsertAdmin(
   const passwordHash = await bcrypt.hash(adminSeed.password, SALT_ROUNDS);
 
   const result = await client.query<UserRow>(
-    `INSERT INTO users (email, password_hash, role_id)
-     VALUES ($1, $2, $3)
+    `INSERT INTO users (name, email, password_hash, role_id)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (email) DO UPDATE
-       SET password_hash = EXCLUDED.password_hash,
-           role_id = EXCLUDED.role_id
+       SET name = EXCLUDED.name,
+           password_hash = EXCLUDED.password_hash,
+           role_id = EXCLUDED.role_id,
+           updated_at = NOW()
      RETURNING id, email`,
-    [adminSeed.email, passwordHash, roleId],
+    [adminSeed.name, adminSeed.email, passwordHash, roleId],
   );
 
   return result.rows[0];
