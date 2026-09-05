@@ -105,7 +105,10 @@ export default function SearchableSelect({
         aria-label={label ? label + ' options' : 'Choose an option'}
         className='w-(--anchor-width) max-w-[calc(100vw-2rem)] min-w-52 overflow-hidden p-0'
       >
-        <Command shouldFilter={false} className='max-h-[min(22rem,var(--available-height))]'>
+        <Command
+          shouldFilter={false}
+          className='max-h-[min(22rem,var(--available-height))] [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=command-input-wrapper]]:pb-1'
+        >
           <CommandInput
             ref={inputRef}
             value={query}
@@ -115,7 +118,7 @@ export default function SearchableSelect({
           />
           <CommandList className='max-h-64 min-h-0 overscroll-contain'>
             <CommandEmpty>No options match your search.</CommandEmpty>
-            <CommandGroup>
+            <CommandGroup className='p-0'>
               {visible.map(option => (
                 <CommandItem
                   key={option.value}

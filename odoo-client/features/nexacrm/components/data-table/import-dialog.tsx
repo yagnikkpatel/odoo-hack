@@ -20,7 +20,7 @@ import {
   DialogTitle
 } from '@/features/nexacrm/components/ui/dialog'
 import { Label } from '@/features/nexacrm/components/ui/label'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/features/nexacrm/components/ui/select'
+import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/features/nexacrm/components/ui/table'
 
 // Util Imports
@@ -28,7 +28,6 @@ import { parseCsv } from '@/features/nexacrm/utils/csv'
 import { cn } from '@/features/nexacrm/lib/utils'
 
 export type ImportField = {
-
   /** Key on the module's input type - also the key in the record handed to `parseRow`. */
   key: string
   label: string
@@ -253,13 +252,14 @@ const ImportDialog = <TInput,>({
                       {field.label}
                       {field.required ? <span className='text-destructive ml-0.5'>*</span> : null}
                     </Label>
-                    <Select
-                      items={[
+                    <SearchableSelect
+                      label={`${field.label} column`}
+                      options={[
                         { label: 'Do not import', value: UNMAPPED },
                         ...headers.map((header, index) => ({ label: header, value: String(index) }))
                       ]}
                       value={mapping[field.key] === undefined ? UNMAPPED : String(mapping[field.key])}
-                      onValueChange={value =>
+                      onChange={value =>
                         setMapping(current => {
                           const next = { ...current }
 
@@ -269,21 +269,7 @@ const ImportDialog = <TInput,>({
                           return next
                         })
                       }
-                    >
-                      <SelectTrigger className='w-full'>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false}>
-                        <SelectGroup>
-                          <SelectItem value={UNMAPPED}>Do not import</SelectItem>
-                          {headers.map((header, index) => (
-                            <SelectItem key={`${header}-${index}`} value={String(index)}>
-                              {header}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                 ))}
               </div>

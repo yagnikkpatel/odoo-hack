@@ -44,6 +44,7 @@ import {
 } from '@/features/nexacrm/components/ui/dropdown-menu'
 
 import CalendarChip from '@/features/nexacrm/components/calendar/calendar-chip'
+import SearchableMenuSection from '@/features/nexacrm/components/ui/searchable-menu-section'
 
 // Hook Imports
 import { useMediaQuery } from '@/features/nexacrm/hooks/use-media-query'
@@ -401,15 +402,23 @@ const RecordCalendar = <TData,>({
           </DropdownMenuTrigger>
           <DropdownMenuContent align='start' className='max-h-80 w-48 overflow-y-auto'>
             <DropdownMenuGroup>
-              {monthOptions.map(option => (
-                <DropdownMenuItem
-                  key={format(option, MONTH_PARAM_FORMAT)}
-                  onClick={() => goToMonth(option)}
-                  className={isSameMonth(option, month) ? 'bg-muted' : ''}
-                >
-                  {format(option, 'MMMM yyyy')}
-                </DropdownMenuItem>
-              ))}
+              <SearchableMenuSection
+                items={monthOptions}
+                getLabel={option => format(option, 'MMMM yyyy')}
+                label='months'
+              >
+                {options =>
+                  options.map(option => (
+                    <DropdownMenuItem
+                      key={format(option, MONTH_PARAM_FORMAT)}
+                      onClick={() => goToMonth(option)}
+                      className={isSameMonth(option, month) ? 'bg-muted' : ''}
+                    >
+                      {format(option, 'MMMM yyyy')}
+                    </DropdownMenuItem>
+                  ))
+                }
+              </SearchableMenuSection>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>

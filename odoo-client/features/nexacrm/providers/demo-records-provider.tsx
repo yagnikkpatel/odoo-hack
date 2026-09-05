@@ -3,6 +3,7 @@ import EmployeesHydrator from '@/features/employees/hydrator'
 import { toEmployeePreview } from '@/features/employees/types'
 import ContractsHydrator from '@/features/contracts/hydrator'
 import { demoContracts } from '@/features/contracts/demo-data'
+import AttendanceHydrator from '@/features/attendance/hydrator'
 
 import { CurrentUserProvider } from '@/features/nexacrm/contexts/currentUserContext'
 import {
@@ -71,6 +72,7 @@ export default async function DemoRecordsProvider({
       <PeopleStoreHydrator data={people} />
       <EmployeesHydrator data={people.map(toEmployeePreview)} />
       <ContractsHydrator data={demoContracts(people.map(toEmployeePreview))} />
+      <AttendanceHydrator employeeIds={people.map((person) => person.id)} />
       <OpportunitiesStoreHydrator data={opportunities} />
       <TasksStoreHydrator data={tasks} />
       <NotesStoreHydrator data={notes} />

@@ -12,14 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/features/nexacrm/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/features/nexacrm/components/ui/select'
+import { Choice } from '@/features/hr/components/form'
 import { useEmployeesStore } from '@/features/employees/store'
 import { employeeName } from '@/features/employees/types'
 import { useContractsStore } from '../store'
@@ -42,41 +35,6 @@ function Field({
     </div>
   )
 }
-function Choice({
-  id,
-  value,
-  options,
-  onChange,
-}: {
-  id: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <Select
-      value={value}
-      items={options}
-      onValueChange={(next) => {
-        if (next !== null) onChange(String(next))
-      }}
-    >
-      <SelectTrigger id={id} className="w-full">
-        <SelectValue placeholder="Choose…" />
-      </SelectTrigger>
-      <SelectContent alignItemWithTrigger={false}>
-        <SelectGroup>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  )
-}
-
 // Mount only while open: every opening starts a fresh draft, and Cancel never writes a record.
 export default function ContractEditor({
   contract,

@@ -19,6 +19,7 @@ export type Employee = Pick<
   | 'createdById'
   | 'updatedById'
 > & {
+  companyId?: string
   department?: string
   managerId?: string
   status?: EmployeeStatus
@@ -45,6 +46,7 @@ export const employeeName = (
 export function toEmployeePreview(person: Person): Employee {
   const {
     id,
+    companyId,
     firstName,
     lastName,
     email,
@@ -60,6 +62,7 @@ export function toEmployeePreview(person: Person): Employee {
   } = person
   return {
     id,
+    companyId,
     firstName,
     lastName,
     email,
@@ -75,6 +78,7 @@ export function toEmployeePreview(person: Person): Employee {
   }
 }
 export const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeInput, string> = {
+  companyId: 'Company',
   firstName: 'First name',
   lastName: 'Last name',
   email: 'Work email',

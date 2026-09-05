@@ -24,8 +24,8 @@ export default function SearchableMenuSection<T>({
   const visible = filterOptions(items, query, getLabel)
   return (
     <div className='flex min-h-0 flex-col'>
-      <div className='bg-popover relative shrink-0 border-b p-1.5'>
-        <SearchIcon className='text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-3.5 -translate-y-1/2' />
+      <div className='bg-popover relative shrink-0 pb-1'>
+        <SearchIcon className='text-muted-foreground pointer-events-none absolute top-4 left-2 size-3.5 -translate-y-1/2' />
         <Input
           autoFocus
           value={query}

@@ -10,7 +10,7 @@ import type { LucideIcon } from 'lucide-react'
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Input } from '@/features/nexacrm/components/ui/input'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/features/nexacrm/components/ui/select'
+import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select'
 
 // Util Imports
 import { cn } from '@/features/nexacrm/lib/utils'
@@ -164,20 +164,15 @@ const TextField = ({
 
 const SelectField = ({ label, icon, canEdit = true, value, options, onChange, children }: SelectProps) => (
   <Row label={label} icon={icon}>
-    <Select items={options} value={value} disabled={!canEdit} onValueChange={next => onChange(String(next))}>
-      <SelectTrigger className={cn('w-full', children && 'border-0 p-0')} aria-label={label}>
-        <SelectValue>{children}</SelectValue>
-      </SelectTrigger>
-      <SelectContent alignItemWithTrigger={false}>
-        <SelectGroup>
-          {options.map(option => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      label={label}
+      value={value}
+      options={options}
+      disabled={!canEdit}
+      onChange={onChange}
+      selectedContent={children}
+      className={cn('w-full', children && 'border-0 p-0')}
+    />
   </Row>
 )
 
