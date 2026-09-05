@@ -11,11 +11,11 @@ export const createEmployeeProfileSchema = z.object({
   jobPosition: z.string().trim().min(1).max(120),
   department: z.string().trim().min(1).max(120),
   contact: contactSchema,
-  managerId: z.uuid().nullable().optional(),
+  managerId: z.uuid(),
   workingSchedule: z.string().trim().min(1).max(60),
   companyName: z.string().trim().min(1).max(160),
   workLocation: z.string().trim().min(1).max(160),
-  location: z.string().trim().min(1).max(160).nullable().optional(),
+  location: z.string().trim().min(1).max(160),
 });
 
 export const updateEmployeeProfileSchema = createEmployeeProfileSchema
