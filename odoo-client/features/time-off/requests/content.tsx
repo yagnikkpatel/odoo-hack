@@ -6,8 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/features/nexacrm/com
 import RecordField from '@/features/nexacrm/components/record/record-field'
 import { RecordGroup } from '@/features/nexacrm/components/record/record-section'
 import UserChip from '@/features/nexacrm/components/record/user-chip'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import { useEmployeeOptions } from '@/features/hr/employee-options'
 import { useTimeOffStore } from '../store'
 import { APPROVAL_LABELS, PAYROLL_LABELS } from '../model'
 import type { TimeOffRequest } from '../model'
@@ -17,7 +16,8 @@ import RequestBalance from './balance-summary'
 import { decisionDateLabel, leaveDateLabel, requestPeriod } from './presentation'
 
 export default function RequestContent({ record }: { record: TimeOffRequest }) {
-  const employee = useEmployeesStore(state => state.employees.find(employee => employee.id === record.employeeId))
+  const { employees } = useEmployeeOptions()
+  const employee = employees.find(employee => employee.id === record.employeeId)
   const type = useTimeOffStore(state => state.types.find(type => type.id === record.typeId))
   const allocations = useTimeOffStore(state => state.allocations)
   return (
@@ -31,7 +31,7 @@ export default function RequestContent({ record }: { record: TimeOffRequest }) {
           <RecordField type='static' label='Employee' icon={UsersIcon}>
             {employee ? (
               <Link href={`/employees/${employee.id}`} className='text-sm hover:underline'>
-                {employeeName(employee)}
+                {employee.name}
               </Link>
             ) : (
               <span className='text-muted-foreground text-sm'>Employee unavailable</span>

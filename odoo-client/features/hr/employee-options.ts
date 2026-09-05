@@ -5,6 +5,15 @@ import { listEmployeeOptions, listEmployees } from '@/features/employees/service
 
 export type EmployeeOption = { id: string; name: string; email: string }
 
+// Kept in sync by listEmployeeDirectory() so render-time code that cannot await
+// (e.g. a Zustand store's synchronous preview selector) can still read the
+// latest known ids. Empty until the first directory load resolves.
+let cachedDirectory: EmployeeOption[] = []
+
+export function getCachedEmployeeIds(): string[] {
+  return cachedDirectory.map(employee => employee.id)
+}
+
 /**
  * Every employee that can own an HR record, for a picker.
  *
@@ -29,7 +38,9 @@ export async function listEmployeeDirectory(): Promise<EmployeeOption[]> {
     if (!result.pagination.hasMore || !result.employees.length) break
     offset += result.employees.length
   }
-  return [...employees.values()].sort((first, second) => first.name.localeCompare(second.name))
+  const directory = [...employees.values()].sort((first, second) => first.name.localeCompare(second.name))
+  cachedDirectory = directory
+  return directory
 }
 
 /** Loads the directory once per mount, with a retry for the caller to surface. */

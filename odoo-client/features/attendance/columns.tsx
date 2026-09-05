@@ -8,7 +8,6 @@ import {
   CircleCheckIcon,
 } from "lucide-react";
 import AttendanceEmployeeAvatar from "./employee-avatar";
-import { Badge } from "@/features/nexacrm/components/ui/badge";
 import { ATTENDANCE_STATUSES, dateTimeLabel, hoursLabel } from "./types";
 import type { Attendance } from "./types";
 import AttendanceStatusBadge from "./status-badge";
@@ -84,12 +83,7 @@ export function attendanceColumns(): ColumnDef<Attendance>[] {
         ),
       },
       header: "Status",
-      cell: ({ row }) => (
-        <span className="flex items-center gap-1">
-          <AttendanceStatusBadge status={row.original.status} />
-          {row.original.editedAt && <Badge variant="outline">Edited</Badge>}
-        </span>
-      ),
+      cell: ({ row }) => <AttendanceStatusBadge status={row.original.status} />,
     },
   ];
 }

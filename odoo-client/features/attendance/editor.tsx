@@ -337,11 +337,21 @@ export default function AttendanceEditor({
                       const status = value as Draft['status']
                       // Marking present manually should also record the
                       // check-out that makes it true, so the table doesn't
-                      // show "Present" alongside a blank check-out.
-                      const checkOut =
-                        status === 'present' && draft.checkIn && !draft.checkOut
-                          ? localDateTime()
-                          : draft.checkOut
+                      // show "Present" alongside a blank check-out. Anchor
+                      // the default 8-hour shift to the check-in itself
+                      // (clamped to now) instead of the real current time —
+                      // using "now" unconditionally could put the gap over
+                      // 24h for an old check-in and trip the duration guard
+                      // in formAction below, silently blocking the save.
+                      let checkOut = draft.checkOut
+                      if (status === 'present' && draft.checkIn && !draft.checkOut) {
+                        const checkInMs = new Date(`${draft.checkIn}:00+05:30`).getTime()
+                        const defaultCheckOutMs = Math.min(
+                          checkInMs + 8 * 60 * 60 * 1000,
+                          Date.now(),
+                        )
+                        checkOut = localDateTime(new Date(defaultCheckOutMs))
+                      }
                       set({ status, checkOut })
                     }}
                   />

@@ -146,12 +146,18 @@ const DayCell = <TData,>({
     id: dayKey(day),
     disabled: !isDropTarget,
   })
-  const [expanded, setExpanded] = useState(false)
+  const [page, setPage] = useState(0)
 
   const isToday = isSameDay(day, companyToday())
 
-  const shown = expanded ? records : records.slice(0, VISIBLE_RECORDS_PER_DAY)
-  const hidden = records.length - shown.length
+  const pageCount = Math.max(1, Math.ceil(records.length / VISIBLE_RECORDS_PER_DAY))
+  // Records can shrink (a filter, a drag-and-drop move) without this cell
+  // remounting, so the stored page can point past the new last page.
+  const currentPage = Math.min(page, pageCount - 1)
+  const shown = records.slice(
+    currentPage * VISIBLE_RECORDS_PER_DAY,
+    (currentPage + 1) * VISIBLE_RECORDS_PER_DAY,
+  )
 
   return (
     <div
@@ -184,16 +190,33 @@ const DayCell = <TData,>({
         </CalendarCard>
       ))}
 
-      {hidden > 0 || expanded ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setExpanded(!expanded)}
-          className="text-muted-foreground h-6 justify-start px-1 text-xs font-normal"
-        >
-          {expanded ? 'Show less' : `+${hidden} more`}
-        </Button>
-      ) : null}
+      {pageCount > 1 && (
+        <div className="mt-auto flex items-center justify-between gap-1 pt-0.5">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="size-5"
+            disabled={currentPage === 0}
+            onClick={() => setPage(currentPage - 1)}
+            aria-label={`Previous entries for ${format(day, 'd MMMM')}`}
+          >
+            <ChevronLeftIcon className="size-3" />
+          </Button>
+          <span className="text-muted-foreground text-[10px] tabular-nums">
+            {currentPage + 1}/{pageCount}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="size-5"
+            disabled={currentPage === pageCount - 1}
+            onClick={() => setPage(currentPage + 1)}
+            aria-label={`Next entries for ${format(day, 'd MMMM')}`}
+          >
+            <ChevronRightIcon className="size-3" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -467,68 +490,72 @@ const RecordCalendar = <TData,>({
     </div>
   )
 
+  const monthNav = (
+    <div className="flex items-center justify-between gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 font-medium"
+            />
+          }
+        >
+          {format(month, 'MMMM yyyy')}
+          <ChevronDownIcon className="text-muted-foreground size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="max-h-80 w-48 overflow-y-auto"
+        >
+          <DropdownMenuGroup>
+            <SearchableMenuSection items={monthOptions} getLabel={option => format(option, 'MMMM yyyy')} label='months'>
+            {options => options.map((option) => (
+              <DropdownMenuItem
+                key={format(option, MONTH_PARAM_FORMAT)}
+                onClick={() => goToMonth(option)}
+                className={isSameMonth(option, month) ? 'bg-muted' : ''}
+              >
+                {format(option, 'MMMM yyyy')}
+              </DropdownMenuItem>
+            ))}
+            </SearchableMenuSection>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Previous month"
+          onClick={() => goToMonth(addMonths(month, -1))}
+        >
+          <ChevronLeftIcon />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => goToMonth(companyToday())}
+        >
+          Today
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Next month"
+          onClick={() => goToMonth(addMonths(month, 1))}
+        >
+          <ChevronRightIcon />
+        </Button>
+      </div>
+    </div>
+  )
+
   const body = (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 font-medium"
-              />
-            }
-          >
-            {format(month, 'MMMM yyyy')}
-            <ChevronDownIcon className="text-muted-foreground size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="max-h-80 w-48 overflow-y-auto"
-          >
-            <DropdownMenuGroup>
-              <SearchableMenuSection items={monthOptions} getLabel={option => format(option, 'MMMM yyyy')} label='months'>
-              {options => options.map((option) => (
-                <DropdownMenuItem
-                  key={format(option, MONTH_PARAM_FORMAT)}
-                  onClick={() => goToMonth(option)}
-                  className={isSameMonth(option, month) ? 'bg-muted' : ''}
-                >
-                  {format(option, 'MMMM yyyy')}
-                </DropdownMenuItem>
-              ))}
-              </SearchableMenuSection>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Previous month"
-            onClick={() => goToMonth(addMonths(month, -1))}
-          >
-            <ChevronLeftIcon />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => goToMonth(companyToday())}
-          >
-            Today
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Next month"
-            onClick={() => goToMonth(addMonths(month, 1))}
-          >
-            <ChevronRightIcon />
-          </Button>
-        </div>
-      </div>
+      {monthNav}
 
       {loading ? <p role="status" className="text-muted-foreground rounded-lg border px-4 py-10 text-center text-sm">Loading attendance for this month…</p> : isGrid ? (
         monthGrid
@@ -540,6 +567,9 @@ const RecordCalendar = <TData,>({
           testId={testId}
         />
       )}
+
+      {/* Repeats the month controls below the grid so switching months never requires scrolling back up. */}
+      <div className="border-t pt-3">{monthNav}</div>
     </div>
   )
 

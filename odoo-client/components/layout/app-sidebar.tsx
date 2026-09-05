@@ -97,30 +97,23 @@ export function AppSidebar({
         className={cn(
           "bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r transition-[transform,width] duration-200 motion-reduce:transition-none md:visible md:relative md:z-auto md:translate-x-0 md:border-r-0",
           mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full",
-          collapsed && "md:w-[4.5rem]",
+          collapsed && "md:w-16",
         )}
       >
-        <div className="flex h-16 shrink-0 items-center px-3">
+        <div className={cn("flex h-16 shrink-0 items-center px-3", collapsed && "md:px-2")}>
           <div
             className={cn(
               "hover:bg-sidebar-accent flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 transition-colors",
               collapsed && "md:justify-center",
             )}
           >
-            <BrandMark className="size-8 shrink-0" />
+            <BrandMark className={cn("size-8 shrink-0", collapsed && "md:size-7")} />
             <div className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
               <p className="truncate text-sm font-semibold">PeoplePay360</p>
               <p className="text-muted-foreground truncate text-xs">
                 {user.role === "employee" ? "Employee workspace" : "HR workspace"}
               </p>
             </div>
-            <IconSelector
-              className={cn(
-                "text-muted-foreground size-4 shrink-0",
-                collapsed && "md:hidden",
-              )}
-              stroke={1.8}
-            />
           </div>
         </div>
 
@@ -129,16 +122,10 @@ export function AppSidebar({
           className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4"
         >
           {navigation.map(group => (
-            <div
-              key={group.id}
-              className={cn(
-                group.id === "secondary" && "mt-auto border-t pt-3",
-              )}
-            >
+            <div key={group.id}>
               <p
                 className={cn(
                   "text-muted-foreground/70 mb-1 flex h-7 items-center px-2 text-[0.6875rem] font-medium tracking-wide uppercase",
-                  group.id === "secondary" && "sr-only",
                   collapsed && "md:sr-only",
                 )}
               >
@@ -167,7 +154,7 @@ export function AppSidebar({
           ))}
         </nav>
 
-        <div className="shrink-0 border-t p-3">
+        <div className={cn("shrink-0 border-t p-3", collapsed && "md:p-2")}>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -181,7 +168,12 @@ export function AppSidebar({
                 />
               }
             >
-              <div className="bg-primary text-primary-foreground grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold">
+              <div
+                className={cn(
+                  "bg-primary text-primary-foreground grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold",
+                  collapsed && "md:size-7",
+                )}
+              >
                 {initial}
               </div>
               <div className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>

@@ -9,8 +9,7 @@ import RecordField from '@/features/nexacrm/components/record/record-field'
 import { RecordGroup } from '@/features/nexacrm/components/record/record-section'
 import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import UserChip from '@/features/nexacrm/components/record/user-chip'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import { useEmployeeOptions } from '@/features/hr/employee-options'
 import type { Allocation } from '../model'
 import { useTimeOffStore } from '../store'
 import { allocationBalance, formatAmount } from '../logic'
@@ -23,7 +22,8 @@ export default function AllocationContent({ allocation }: { allocation: Allocati
   const types = useTimeOffStore(state => state.types)
   const allocations = useTimeOffStore(state => state.allocations)
   const requests = useTimeOffStore(state => state.requests)
-  const employee = useEmployeesStore(state => state.employees.find(item => item.id === allocation.employeeId))
+  const { employees } = useEmployeeOptions()
+  const employee = employees.find(item => item.id === allocation.employeeId)
   const type = types.find(item => item.id === allocation.typeId)
   const balance = allocationBalance({ types, allocations, requests }, allocation.id)
   const unit = type?.unit ?? 'days'
@@ -34,10 +34,10 @@ export default function AllocationContent({ allocation }: { allocation: Allocati
   return (
     <div className='space-y-4'>
       <div className='flex items-center gap-3'>
-        <PersonAvatar name={employee ? employeeName(employee) : 'Employee'} src={employee?.avatar} className='size-9' />
+        <PersonAvatar name={employee ? employee.name : 'Employee'} className='size-9' />
         <div className='min-w-0 flex-1'>
           <h2 className='truncate text-base font-semibold'>
-            {employee ? employeeName(employee) : 'Employee unavailable'}
+            {employee ? employee.name : 'Employee unavailable'}
           </h2>
           <p className='text-muted-foreground truncate text-sm'>
             {type?.name ?? 'Time off type unavailable'} · {formatAmount(allocation.amount, unit)}
@@ -81,7 +81,7 @@ export default function AllocationContent({ allocation }: { allocation: Allocati
             </RecordField>
             <RecordField type='static' label='Employee' icon={UserIcon}>
               <Link className='truncate text-sm hover:underline' href={'/employees/' + allocation.employeeId}>
-                {employee ? employeeName(employee) : 'View employee'}
+                {employee ? employee.name : 'View employee'}
               </Link>
             </RecordField>
             <RecordField type='static' label='Leave policy' icon={CalendarDaysIcon}>

@@ -11,8 +11,7 @@ import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
 import { downloadCsv } from '@/features/nexacrm/utils/csv'
 import { Choice, FormField } from '@/features/hr/components/form'
 import RecordPanel from '@/features/hr/components/record-panel'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import { useEmployeeOptions } from '@/features/hr/employee-options'
 import TimeOffListPage from '../components/list-page'
 import TimeOffStatusBadge from '../components/status-badge'
 import { STATUS_LABELS } from '../model'
@@ -39,7 +38,7 @@ export default function AllocationsView() {
   const types = useTimeOffStore(state => state.types)
   const allocations = useTimeOffStore(state => state.allocations)
   const requests = useTimeOffStore(state => state.requests)
-  const employees = useEmployeesStore(state => state.employees)
+  const { employees } = useEmployeeOptions()
   const { canCreateAny } = useTimeOffPermissions()
   const [editor, setEditor] = useState<Allocation | 'new' | null>(null)
   const [record, setRecord] = useQueryState('record', parseAsString.withOptions({ history: 'push', shallow: true }))
@@ -65,8 +64,7 @@ export default function AllocationsView() {
           const balance = allocationBalance({ types, allocations, requests }, allocation.id)
           return {
             ...allocation,
-            employeeName: employee ? employeeName(employee) : 'Employee unavailable',
-            avatar: employee?.avatar,
+            employeeName: employee ? employee.name : 'Employee unavailable',
             typeName: type?.name ?? 'Type unavailable',
             unit: type?.unit ?? 'days',
             taken: balance.taken,
@@ -197,7 +195,7 @@ export default function AllocationsView() {
                   value={employeeId || 'all'}
                   options={[
                     { value: 'all', label: 'All employees' },
-                    ...employees.map(employee => ({ value: employee.id, label: employeeName(employee) }))
+                    ...employees.map(employee => ({ value: employee.id, label: employee.name }))
                   ]}
                   onChange={value => setEmployeeId(value === 'all' ? '' : value)}
                 />

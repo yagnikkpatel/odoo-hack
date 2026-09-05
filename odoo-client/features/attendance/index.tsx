@@ -155,6 +155,9 @@ function AttendanceDirectory() {
             table={table}
             reorderableColumnIds={ATTENDANCE_COLUMNS}
             showCopyLink={false}
+            onExport={() =>
+              downloadAttendanceCsv(table.getPrePaginationRowModel().rows.map((row) => row.original))
+            }
           />
         }
         actions={
@@ -312,7 +315,6 @@ function AttendanceDirectory() {
             table={table}
             loading={loading}
             calendar={view === 'calendar'}
-            total={total}
             onOpen={setRecordId}
           />
         )}

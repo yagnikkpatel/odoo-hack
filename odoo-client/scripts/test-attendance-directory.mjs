@@ -67,7 +67,7 @@ const records = Array.from({ length: 231 }, (_, index) => ({
 }));
 list = async ({ offset, limit }) => ({
   attendances: records.slice(offset, offset + limit),
-  pagination: { hasMore: offset + limit < records.length },
+  pagination: { total: records.length, hasMore: offset + limit < records.length },
 });
 const query = {
   scope: "all",
@@ -80,6 +80,8 @@ const query = {
   to: "2026-10-04",
 };
 assert.deepEqual(await loadAllAttendanceRecords(query), records);
+// Page 0 is fetched alone (its total tells us how many pages remain), then
+// every remaining page is requested together instead of one after another.
 assert.deepEqual(
   calls.map((call) => call.offset),
   [0, 100, 200],
@@ -114,7 +116,12 @@ assert.deepEqual(
   [],
 );
 assert.equal(calls.length, 0);
-list = async () => ({ attendances: [], pagination: { hasMore: true } });
+// A declared total larger than what the pages actually deliver (e.g. a row
+// deleted mid-fetch) must surface as an error, not a silently short list.
+list = async ({ offset }) => ({
+  attendances: offset === 0 ? [{ id: "first" }] : [],
+  pagination: { total: 150 },
+});
 await assert.rejects(
   loadAllAttendanceRecords(query),
   /Not all attendance records/,
@@ -122,7 +129,7 @@ await assert.rejects(
 
 list = async ({ offset }) => {
   if (offset) throw new Error("Second page unavailable");
-  return { attendances: [{ id: "first" }], pagination: { hasMore: true } };
+  return { attendances: [{ id: "first" }], pagination: { total: 101 } };
 };
 await assert.rejects(
   loadAllAttendanceRecords(query),

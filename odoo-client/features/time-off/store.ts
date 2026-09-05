@@ -1,5 +1,5 @@
 import { create } from '@/features/nexacrm/adapters/native-store'
-import { useEmployeesStore } from '@/features/employees/store'
+import { getCachedEmployeeIds } from '@/features/hr/employee-options'
 import { useSchedulesStore } from '@/features/working-schedules/store'
 import { calculateRequest, planConsumption } from './logic'
 import * as service from './service'
@@ -63,7 +63,7 @@ function merge<T extends Stored>(list: T[], record: T): T[] {
 }
 
 const context = () => ({
-  employeeIds: useEmployeesStore.getState().employees.map(employee => employee.id),
+  employeeIds: getCachedEmployeeIds(),
   schedules: useSchedulesStore.getState().schedules,
   assignments: useSchedulesStore.getState().assignments
 })

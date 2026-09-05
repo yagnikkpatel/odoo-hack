@@ -21,7 +21,8 @@ export default function TimeOffListPage<TData extends { id: string }>({
   actions,
   filters,
   onOpen,
-  onExport
+  onExport,
+  showFilterFieldLabels
 }: {
   title: string
   icon: LucideIcon
@@ -32,6 +33,7 @@ export default function TimeOffListPage<TData extends { id: string }>({
   filters?: ReactNode
   onOpen: (row: TData) => void
   onExport?: (rows: TData[]) => void
+  showFilterFieldLabels?: boolean
 }) {
   useTimeOffData()
   const hydrated = useTimeOffStore(state => state.hasHydrated)
@@ -44,12 +46,15 @@ export default function TimeOffListPage<TData extends { id: string }>({
         viewName={title}
         count={table.getFilteredRowModel().rows.length}
         icon={icon}
-        searchPlaceholder={`Search ${title.toLowerCase()}…`}
+        showSort={false}
+        showSearch={false}
+        showFilterFieldLabels={showFilterFieldLabels}
         actions={actions}
         options={
           <DataTableViewOptions
             table={table}
             reorderableColumnIds={columnIds}
+            showCopyLink={false}
             onExport={
               onExport ? () => onExport(table.getPrePaginationRowModel().rows.map(row => row.original)) : undefined
             }

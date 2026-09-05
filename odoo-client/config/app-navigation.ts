@@ -3,9 +3,7 @@ import {
   IconCalendarTime,
   IconClockHour4,
   IconFileText,
-  IconLayoutKanban,
   IconReportAnalytics,
-  IconSettings,
   IconUsersGroup,
   IconWallet,
 } from "@tabler/icons-react";
@@ -29,7 +27,7 @@ export type NavigationItem = {
 );
 
 export type NavigationGroup = {
-  id: "main" | "secondary";
+  id: "main";
   label: string;
   items: readonly NavigationItem[];
 };
@@ -140,41 +138,6 @@ export const appNavigation: readonly NavigationGroup[] = [
             label: "HR & payroll reports",
             href: "/reports",
             status: "ready",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "secondary",
-    label: "Tools & administration",
-    items: [
-      {
-        id: "kanban",
-        label: "Kanban",
-        href: "/kanban",
-        aliases: ["/opportunities"],
-        icon: IconLayoutKanban,
-        iconClassName: "text-indigo-600",
-        status: "ready",
-      },
-      {
-        id: "settings",
-        label: "Settings",
-        icon: IconSettings,
-        iconClassName: "text-sky-600",
-        children: [
-          {
-            id: "users-roles",
-            label: "Users & roles",
-            href: "/settings/users",
-            status: "planned",
-          },
-          {
-            id: "system-settings",
-            label: "System settings",
-            href: "/settings",
-            status: "planned",
           },
         ],
       },

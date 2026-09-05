@@ -101,7 +101,11 @@ export function SidebarNavigationItem({
   const activeId = getActiveNavigationDestination(pathname)?.id;
   const icon = (
     <Icon
-      className={cn("size-[1.125rem] shrink-0", item.iconClassName)}
+      className={cn(
+        "size-[1.125rem] shrink-0",
+        collapsed && "md:size-4",
+        item.iconClassName,
+      )}
       stroke={1.8}
     />
   );

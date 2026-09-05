@@ -17,10 +17,10 @@ import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
 import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
 import { parseAsString, useQueryState } from '@/features/nexacrm/adapters/query-state'
 import { ACCENT_ICON_BUTTON } from '@/features/nexacrm/lib/accent'
+import { downloadCsv } from '@/features/nexacrm/utils/csv'
 import { Choice } from '@/features/hr/components/form'
 import RecordPanel from '@/features/hr/components/record-panel'
-import { useEmployeesStore } from '@/features/employees/store'
-import { employeeName } from '@/features/employees/types'
+import { useEmployeeOptions } from '@/features/hr/employee-options'
 import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { STATUS_LABELS } from '../model'
@@ -35,9 +35,10 @@ import { requestPeriod } from './presentation'
 
 type RequestRow = TimeOffRequest & { employeeName: string; avatar?: string; typeName: string; period: string }
 const COLUMN_IDS = ['employeeName', 'typeName', 'period', 'duration', 'status']
+const csvSafe = (value: string) => (/^\s*[=+\-@]/.test(value) ? "'" + value : value)
 
 export default function RequestsView() {
-  const employees = useEmployeesStore(state => state.employees)
+  const { employees } = useEmployeeOptions()
   const requests = useTimeOffStore(state => state.requests)
   const types = useTimeOffStore(state => state.types)
   const { canCreateAny } = useTimeOffPermissions()
@@ -57,8 +58,7 @@ export default function RequestsView() {
           const employee = employees.find(employee => employee.id === request.employeeId)
           return {
             ...request,
-            employeeName: employee ? employeeName(employee) : 'Employee unavailable',
-            avatar: employee?.avatar,
+            employeeName: employee ? employee.name : 'Employee unavailable',
             typeName: types.find(type => type.id === request.typeId)?.name || 'Type unavailable',
             period: requestPeriod(request)
           }
@@ -70,7 +70,7 @@ export default function RequestsView() {
       {
         accessorKey: 'employeeName',
         size: 205,
-        meta: { label: 'Employee', icon: UsersIcon, textFilter: true },
+        meta: { label: 'Employee', icon: UsersIcon },
         header: ({ column }) => <DataTableColumnHeader column={column} title='Employee' />,
         cell: ({ row }) => (
           <span className='flex min-w-0 items-center gap-2'>
@@ -82,13 +82,13 @@ export default function RequestsView() {
       {
         accessorKey: 'typeName',
         size: 165,
-        meta: { label: 'Time off type', icon: FileTextIcon, textFilter: true },
+        meta: { label: 'Time off type', icon: FileTextIcon },
         header: ({ column }) => <DataTableColumnHeader column={column} title='Time off type' />
       },
       {
         accessorKey: 'period',
         size: 265,
-        meta: { label: 'Dates', icon: CalendarIcon, textFilter: true },
+        meta: { label: 'Dates', icon: CalendarIcon },
         header: ({ column }) => <DataTableColumnHeader column={column} title='Dates' />,
         sortingFn: (a, b) =>
           a.original.startDate.localeCompare(b.original.startDate) ||
@@ -115,15 +115,6 @@ export default function RequestsView() {
         header: ({ column }) => <DataTableColumnHeader column={column} title='Status' />,
         filterFn: (row, id, value) => row.getValue(id) === value,
         cell: ({ row }) => <TimeOffStatusBadge status={row.original.status} />
-      },
-      {
-        id: 'actions',
-        size: 48,
-        enableSorting: false,
-        enableHiding: false,
-        enableResizing: false,
-        header: () => <span className='sr-only'>Actions</span>,
-        cell: ({ row }) => <RequestActions record={row.original} onEdit={() => setEditor(row.original)} />
       }
     ],
     []
@@ -136,6 +127,7 @@ export default function RequestsView() {
         data={data}
         columns={columns}
         columnIds={COLUMN_IDS}
+        showFilterFieldLabels={false}
         onOpen={record => setRecordId(record.id)}
         actions={
           canCreateAny ? (
@@ -157,7 +149,7 @@ export default function RequestsView() {
                 value={employeeId || 'all'}
                 options={[
                   { value: 'all', label: 'All employees' },
-                  ...employees.map(employee => ({ value: employee.id, label: employeeName(employee) }))
+                  ...employees.map(employee => ({ value: employee.id, label: employee.name }))
                 ]}
                 onChange={value => setEmployeeId(value === 'all' ? null : value)}
               />
@@ -190,6 +182,22 @@ export default function RequestsView() {
               </Button>
             )}
           </>
+        }
+        onExport={rows =>
+          downloadCsv(
+            'time-off-requests.csv',
+            rows.map(request => ({
+              Employee: csvSafe(request.employeeName),
+              Type: csvSafe(request.typeName),
+              Dates: csvSafe(request.period),
+              'Start date': request.startDate,
+              'End date': request.endDate,
+              Duration: request.duration,
+              Unit: request.unit,
+              Status: STATUS_LABELS[request.status],
+              Reason: csvSafe(request.reason)
+            }))
+          )
         }
       />
       <RecordPanel

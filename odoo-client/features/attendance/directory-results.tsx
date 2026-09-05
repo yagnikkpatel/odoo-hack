@@ -2,9 +2,7 @@
 
 import type { Table } from "@tanstack/react-table";
 import { ClockIcon } from "lucide-react";
-import { Button } from "@/features/nexacrm/components/ui/button";
 import { Card } from "@/features/nexacrm/components/ui/card";
-import SearchableSelect from "@/features/nexacrm/components/ui/searchable-select";
 import DataTable from "@/features/nexacrm/components/data-table/data-table";
 import DataTableEmptyState from "@/features/nexacrm/components/data-table/data-table-empty-state";
 import PersonAvatar from "@/features/nexacrm/components/record/person-avatar";
@@ -13,18 +11,17 @@ import { dateTimeLabel, hoursLabel } from "./types";
 import type { Attendance } from "./types";
 import AttendanceStatusBadge from "./status-badge";
 import RecordCalendar from "./record-calendar";
+import AttendancePagination from "./attendance-pagination";
 
 export default function AttendanceResults({
   table,
   loading,
   calendar,
-  total,
   onOpen,
 }: {
   table: Table<Attendance>;
   loading: boolean;
   calendar: boolean;
-  total: number;
   onOpen: (id: string) => void;
 }) {
   if (calendar)
@@ -63,8 +60,6 @@ export default function AttendanceResults({
       </div>
     );
 
-  const { pageIndex, pageSize } = table.getState().pagination;
-  const offset = pageIndex * pageSize;
   return (
     <Card className="gap-0 overflow-hidden py-0">
       <DataTable
@@ -80,39 +75,8 @@ export default function AttendanceResults({
           />
         }
       />
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t p-3 text-sm">
-        <span className="text-muted-foreground">
-          {total ? offset + 1 : 0}–
-          {Math.min(offset + table.getRowModel().rows.length, total)} of {total}
-        </span>
-        <div className="flex items-center gap-2">
-          <SearchableSelect
-            label="Rows per page"
-            className="w-20"
-            value={String(pageSize)}
-            options={[15, 25, 50, 100].map((size) => ({
-              value: String(size),
-              label: String(size),
-            }))}
-            onChange={(value) => table.setPageSize(Number(value))}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={loading || !table.getCanPreviousPage()}
-            onClick={() => table.previousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={loading || !table.getCanNextPage()}
-            onClick={() => table.nextPage()}
-          >
-            Next
-          </Button>
-        </div>
+      <div className="border-t">
+        <AttendancePagination table={table} isLoading={loading} />
       </div>
     </Card>
   );
