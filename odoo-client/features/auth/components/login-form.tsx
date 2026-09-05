@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api-client";
 import { siteConfig } from "@/lib/site-config";
 
 import { login } from "../auth-service";
+import { authConfig } from "../auth-config";
 
 type LoginFormState = {
   email: string;
@@ -37,6 +38,11 @@ export function LoginForm() {
     setRecoveryMessage(null);
     setSubmitError(null);
 
+    if (authConfig.previewEnabled) {
+      router.replace(siteConfig.authenticatedHome);
+      return;
+    }
+
     try {
       await login(formState);
 
@@ -55,7 +61,11 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form
+      onSubmit={onSubmit}
+      noValidate={authConfig.previewEnabled}
+      className="flex flex-col gap-4"
+    >
       <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -64,7 +74,7 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           placeholder="you@company.com"
-          required
+          required={!authConfig.previewEnabled}
           value={formState.email}
           onChange={(event) =>
             setFormState((current) => ({
@@ -95,7 +105,7 @@ export function LoginForm() {
           name="password"
           type="password"
           autoComplete="current-password"
-          required
+          required={!authConfig.previewEnabled}
           value={formState.password}
           onChange={(event) =>
             setFormState((current) => ({

@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { BrandMark } from "@/components/brand/brand-mark";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { siteConfig } from "@/lib/site-config";
 
 export function AuthTopBar() {
@@ -17,8 +16,6 @@ export function AuthTopBar() {
           {siteConfig.name}
         </span>
       </Link>
-
-      <ThemeToggle />
     </header>
   );
 }

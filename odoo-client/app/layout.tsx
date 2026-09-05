@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Manrope } from "next/font/google";
-
-import { AppProviders } from "@/components/providers/app-providers";
+import type { CSSProperties } from "react";
+import { themePresets } from "@/features/nexacrm/utils/theme-presets";
 
 import "./globals.css";
 
@@ -24,15 +24,20 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const themeStyle = Object.fromEntries(
+    Object.entries(themePresets["modern-minimal"].styles.light).map(
+      ([key, value]) => [`--${key}`, value],
+    ),
+  ) as CSSProperties;
+
   return (
     <html
       lang="en"
-      suppressHydrationWarning
+      data-theme-preset="modern-minimal"
+      style={themeStyle}
       className={`${manrope.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans">
-        <AppProviders>{children}</AppProviders>
-      </body>
+      <body className="min-h-full font-sans">{children}</body>
     </html>
   );
 }

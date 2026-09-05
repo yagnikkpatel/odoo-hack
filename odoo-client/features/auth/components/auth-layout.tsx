@@ -15,7 +15,7 @@ type AuthLayoutProps = {
 };
 
 const cardSurface =
-  "bg-card/95 supports-[backdrop-filter]:bg-card/85 dark:bg-popover/95 dark:supports-[backdrop-filter]:bg-popover/85";
+  "bg-card/95 supports-[backdrop-filter]:bg-card/85";
 
 export function AuthLayout({
   title,
@@ -38,7 +38,7 @@ export function AuthLayout({
               : "max-w-md",
           )}
         >
-          <div className="[&_input]:bg-background/80 dark:[&_input]:bg-input/60 flex flex-col gap-6 p-6 sm:p-8">
+          <div className="[&_input]:bg-background/80 flex flex-col gap-6 p-6 sm:p-8">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
               <p className="text-muted-foreground text-sm text-pretty">

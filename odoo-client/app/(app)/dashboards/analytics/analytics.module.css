@@ -1,0 +1,11 @@
+/* Keep motion outside the verbatim template components. */
+@media (prefers-reduced-motion: no-preference) {
+  .entrance {
+    animation: analytics-enter 450ms ease-out both;
+  }
+}
+
+@keyframes analytics-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
