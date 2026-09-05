@@ -5,7 +5,7 @@ import { signAccessToken } from "../lib/jwt";
 import { parseOrThrow } from "../lib/validate";
 import { resolveCallerPermissions } from "../middlewares/permission.middleware";
 import * as userRepository from "../repositories/user.repository";
-import { RoleName, TokenPayload } from "../types/user";
+import { EmployeeRef, RoleName, TokenPayload, toEmployeeRef } from "../types/user";
 import { env } from "../config/env";
 
 export const SALT_ROUNDS = 12;
@@ -27,7 +27,7 @@ export type SessionUser = {
   role: RoleName;
   role_label: string;
   permissions: string[];
-  employee: null;
+  employee: EmployeeRef | null;
 };
 
 export async function login(input: unknown): Promise<{
@@ -55,17 +55,21 @@ export async function login(input: unknown): Promise<{
 
   await userRepository.touchLastLogin(user.id);
 
+  const session = await buildSessionUser(user.id);
+
+  // employeeId rides in the token so `_self` scoping needs no extra lookup per request
+  // (BR-RBAC-2). It is null for accounts with no employee record.
   const payload: TokenPayload = {
     userId: user.id,
     email: user.email,
     role: user.role_name as RoleName,
-    employeeId: null,
+    employeeId: session.employee?.id ?? null,
   };
 
   return {
     accessToken: signAccessToken(payload),
     expiresIn: expiresInSeconds(),
-    user: await buildSessionUser(user.id),
+    user: session,
   };
 }
 
@@ -105,8 +109,7 @@ async function buildSessionUser(userId: string): Promise<SessionUser> {
     role: user.role_name,
     role_label: user.role_label,
     permissions: [...permissions].sort(),
-    // Populated in Phase 1, once employees exist and can be linked to an account.
-    employee: null,
+    employee: toEmployeeRef(user),
   };
 }
 

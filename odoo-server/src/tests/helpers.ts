@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { createApp } from "../app";
 import { pool } from "../lib/db";
 import { redis } from "../lib/redis";
+import { closeQueues } from "../queues/deleteCloudinaryImage.queue";
 import { RoleName } from "../types/user";
 
 export const app = createApp();
@@ -60,12 +61,56 @@ export async function roleId(name: RoleName): Promise<string> {
   return result.rows[0].id;
 }
 
+/** Fixtures are tagged with the pid-scoped prefix so parallel test files never collide. */
+export async function createTestEmployee(
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; employee_number: string }> {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const columns = ["employee_number", "first_name", "last_name"];
+  const values: unknown[] = [
+    `${TEST_PREFIX}${suffix}`,
+    String(overrides.first_name ?? "Test"),
+    String(overrides.last_name ?? "Employee"),
+  ];
+
+  for (const [key, value] of Object.entries(overrides)) {
+    if (key !== "first_name" && key !== "last_name") {
+      columns.push(key);
+      values.push(value);
+    }
+  }
+
+  const result = await pool.query<{ id: string; employee_number: string }>(
+    `INSERT INTO employees (${columns.join(", ")})
+     VALUES (${columns.map((_, i) => `$${i + 1}`).join(", ")})
+     RETURNING id, employee_number`,
+    values,
+  );
+
+  return result.rows[0];
+}
+
+export async function createTestDepartment(name?: string): Promise<{ id: string; name: string }> {
+  const result = await pool.query<{ id: string; name: string }>(
+    "INSERT INTO departments (name) VALUES ($1) RETURNING id, name",
+    [name ?? `${TEST_PREFIX}dept-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`],
+  );
+
+  return result.rows[0];
+}
+
 export async function cleanup(): Promise<void> {
+  // Employees first: users.id is referenced by employees.user_id.
+  await pool.query("DELETE FROM employees WHERE employee_number LIKE $1", [`${TEST_PREFIX}%`]);
+  await pool.query("DELETE FROM job_positions WHERE name LIKE $1", [`${TEST_PREFIX}%`]);
+  await pool.query("DELETE FROM departments WHERE name LIKE $1", [`${TEST_PREFIX}%`]);
+  await pool.query("DELETE FROM employment_types WHERE code LIKE $1", [`${TEST_PREFIX.toUpperCase().replace(/-/g, "_")}%`]);
   await pool.query("DELETE FROM users WHERE email LIKE $1", [`${TEST_PREFIX}%`]);
 }
 
 export async function shutdown(): Promise<void> {
   await cleanup();
+  await closeQueues();
   await pool.end();
   redis.disconnect();
 }

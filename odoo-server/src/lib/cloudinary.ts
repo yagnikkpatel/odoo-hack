@@ -1,72 +1,57 @@
 import { v2 as cloudinary } from "cloudinary";
 import { AppError } from "../errors/AppError";
 
-type UploadResult = {
+export type UploadResult = {
   secureUrl: string;
   publicId: string;
 };
 
-export async function uploadBannerImageToCloudinary(
-  buffer: Buffer,
-  options?: { folder?: string },
-): Promise<UploadResult> {
+function configure(): void {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
   if (!cloudName || !apiKey || !apiSecret) {
-    throw new AppError(500, "cloudinary is not confgured properly");
+    throw new AppError(
+      500,
+      "Image uploads are not configured on this server.",
+      "cloudinary_unconfigured",
+    );
   }
 
-  // configure
   cloudinary.config({
     cloud_name: cloudName,
     api_key: apiKey,
     api_secret: apiSecret,
-  });
-
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: "image",
-        folder: options?.folder,
-      },
-
-      (error, result) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve({
-          secureUrl: result?.secure_url ?? "",
-          publicId: result?.public_id ?? "",
-        });
-      },
-    );
-
-    // sending raw image bytes to cloudinary
-    uploadStream.end(buffer);
   });
 }
 
-export async function deleteBannerImageFromCloudinary(
-  publicId: string,
-): Promise<void> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+export async function uploadImageToCloudinary(
+  buffer: Buffer,
+  options?: { folder?: string },
+): Promise<UploadResult> {
+  configure();
 
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new AppError(500, "cloudinary is not confgured properly");
-  }
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: "image", folder: options?.folder },
+      (error, result) => {
+        if (error || !result) {
+          reject(error ?? new Error("cloudinary returned no result"));
 
-  // configure
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
+          return;
+        }
+
+        resolve({ secureUrl: result.secure_url, publicId: result.public_id });
+      },
+    );
+
+    stream.end(buffer);
   });
+}
 
-  return cloudinary.uploader.destroy(publicId);
+export async function deleteImageFromCloudinary(publicId: string): Promise<void> {
+  configure();
+
+  await cloudinary.uploader.destroy(publicId);
 }

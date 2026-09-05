@@ -7,9 +7,14 @@ const USER_WITH_ROLE_SELECT = `
          u.created_at, u.updated_at,
          r.name  AS role_name,
          r.label AS role_label,
-         NULL::uuid AS employee_id
+         e.id    AS employee_id,
+         e.employee_number,
+         CASE WHEN e.id IS NULL THEN NULL
+              ELSE e.first_name || ' ' || e.last_name END AS employee_full_name,
+         e.photo_url AS employee_photo_url
     FROM users u
     JOIN roles r ON r.id = u.role_id
+    LEFT JOIN employees e ON e.user_id = u.id
 `;
 
 export async function findByEmail(

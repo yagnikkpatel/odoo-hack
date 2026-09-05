@@ -5,8 +5,9 @@ import { parsePageParams, buildPageMeta } from "../lib/pagination";
 import { parseOrThrow } from "../lib/validate";
 import * as roleRepository from "../repositories/role.repository";
 import * as userRepository from "../repositories/user.repository";
+import * as employeeRepository from "../repositories/employee.repository";
 import { PageMeta } from "../types/common";
-import { UserWithRoleRow } from "../types/user";
+import { UserWithRoleRow, toEmployeeRef } from "../types/user";
 import { MIN_PASSWORD_LENGTH, SALT_ROUNDS } from "./auth.service";
 
 const SORTABLE = ["email", "created_at", "updated_at", "last_login_at"];
@@ -63,13 +64,21 @@ export async function create(input: unknown) {
     throw new AppError(409, "That email address is already registered.", "duplicate_email");
   }
 
+  if (data.employee_id) {
+    await assertEmployeeLinkable(data.employee_id, null);
+  }
+
   const user = await userRepository.insert({
     email: data.email,
     passwordHash: await bcrypt.hash(data.password, SALT_ROUNDS),
     roleId: data.role_id,
   });
 
-  return present(user);
+  if (data.employee_id) {
+    await employeeRepository.linkUser(data.employee_id, user.id);
+  }
+
+  return present((await userRepository.findById(user.id)) as UserWithRoleRow);
 }
 
 export async function update(id: string, input: unknown) {
@@ -100,7 +109,16 @@ export async function update(id: string, input: unknown) {
     ]);
   }
 
-  const updated = await userRepository.update(id, {
+  if (data.employee_id !== undefined) {
+    if (data.employee_id) {
+      await assertEmployeeLinkable(data.employee_id, id);
+      await employeeRepository.linkUser(data.employee_id, id);
+    } else if (existing.employee_id) {
+      await employeeRepository.linkUser(existing.employee_id, null);
+    }
+  }
+
+  await userRepository.update(id, {
     roleId: data.role_id,
     isActive: data.is_active,
     passwordHash: data.password
@@ -108,7 +126,7 @@ export async function update(id: string, input: unknown) {
       : undefined,
   });
 
-  return present(updated as UserWithRoleRow);
+  return present((await userRepository.findById(id)) as UserWithRoleRow);
 }
 
 export async function deactivate(id: string): Promise<void> {
@@ -129,6 +147,28 @@ export async function deactivate(id: string): Promise<void> {
   await userRepository.update(id, { isActive: false });
 }
 
+/** BR-EMP-6: one login per employee, at most. */
+async function assertEmployeeLinkable(
+  employeeId: string,
+  linkingToUserId: string | null,
+): Promise<void> {
+  const employee = await employeeRepository.findById(employeeId);
+
+  if (!employee) {
+    throw new AppError(400, "Unknown employee.", "validation_error", [
+      { field: "employee_id", message: "no such employee" },
+    ]);
+  }
+
+  if (employee.user_id && employee.user_id !== linkingToUserId) {
+    throw new AppError(
+      409,
+      "That employee already has a user account.",
+      "employee_already_linked",
+    );
+  }
+}
+
 function present(user: UserWithRoleRow) {
   return {
     id: user.id,
@@ -137,7 +177,7 @@ function present(user: UserWithRoleRow) {
     role_name: user.role_name,
     is_active: user.is_active,
     last_login_at: user.last_login_at,
-    employee: null,
+    employee: toEmployeeRef(user),
     created_at: user.created_at,
     updated_at: user.updated_at,
   };
