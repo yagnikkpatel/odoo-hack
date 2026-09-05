@@ -1,9 +1,11 @@
 import { ApiError } from '@/lib/api-client'
 import type {
   Contract,
+  ContractEmploymentType,
   ContractPagination,
   ContractStatus,
 } from './types'
+import { CONTRACT_EMPLOYMENT_TYPES } from './types'
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -86,6 +88,38 @@ export function mapContract(value: unknown): Contract {
   }
   const avatar = employeeAvatar(record.employeeAvatar)
   if (avatar) contract.employeeAvatar = avatar
+  // Payroll fields stay optional so older records still map one to one.
+  if (record.salaryStructureId !== undefined) {
+    if (
+      record.salaryStructureId !== null &&
+      (typeof record.salaryStructureId !== 'string' ||
+        !UUID_PATTERN.test(record.salaryStructureId))
+    ) {
+      throw new ApiError(
+        'The contract service returned an invalid salary structure.',
+        502,
+      )
+    }
+    contract.salaryStructureId = record.salaryStructureId as string | null
+  }
+  if (record.salaryStructureName !== undefined) {
+    contract.salaryStructureName =
+      typeof record.salaryStructureName === 'string'
+        ? record.salaryStructureName
+        : null
+  }
+  if (record.employmentType !== undefined) {
+    if (
+      typeof record.employmentType !== 'string' ||
+      !Object.hasOwn(CONTRACT_EMPLOYMENT_TYPES, record.employmentType)
+    ) {
+      throw new ApiError(
+        'The contract service returned an invalid employment type.',
+        502,
+      )
+    }
+    contract.employmentType = record.employmentType as ContractEmploymentType
+  }
   return contract
 }
 

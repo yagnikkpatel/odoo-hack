@@ -11,6 +11,9 @@ const CONTRACT_COLUMNS = `
     to_char(c.end_date, 'YYYY-MM-DD') AS "endDate",
     c.wage::float8 AS "wage",
     c.status AS "status",
+    c.salary_structure_id AS "salaryStructureId",
+    ss.name AS "salaryStructureName",
+    c.employment_type AS "employmentType",
     c.created_at AS "createdAt",
     c.updated_at AS "updatedAt"
 `;
@@ -19,6 +22,7 @@ const CONTRACT_FROM = `
   FROM contracts c
   JOIN users u ON u.id = c.employee_id
   LEFT JOIN employee_profiles p ON p.user_id = c.employee_id
+  LEFT JOIN salary_structures ss ON ss.id = c.salary_structure_id
 `;
 
 const UPDATABLE_COLUMNS: Record<string, string> = {
@@ -26,6 +30,8 @@ const UPDATABLE_COLUMNS: Record<string, string> = {
   endDate: "end_date",
   wage: "wage",
   status: "status",
+  salaryStructureId: "salary_structure_id",
+  employmentType: "employment_type",
 };
 
 export type ContractFields = {
@@ -33,6 +39,8 @@ export type ContractFields = {
   endDate?: string;
   wage?: number;
   status?: string;
+  salaryStructureId?: string | null;
+  employmentType?: string;
 };
 
 export async function insertContract(input: {
@@ -41,23 +49,29 @@ export async function insertContract(input: {
   endDate: string;
   wage: number;
   status: string;
+  salaryStructureId: string | null;
+  employmentType: string;
 }): Promise<ContractRecord> {
   const result = await pool.query<ContractRecord>(
     `WITH inserted AS (
-       INSERT INTO contracts (employee_id, start_date, end_date, wage, status)
-       VALUES ($1, $2, $3, $4, $5)
+       INSERT INTO contracts
+         (employee_id, start_date, end_date, wage, status, salary_structure_id, employment_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *
      )
      SELECT ${CONTRACT_COLUMNS}
      FROM inserted c
      JOIN users u ON u.id = c.employee_id
-     LEFT JOIN employee_profiles p ON p.user_id = c.employee_id`,
+     LEFT JOIN employee_profiles p ON p.user_id = c.employee_id
+     LEFT JOIN salary_structures ss ON ss.id = c.salary_structure_id`,
     [
       input.employeeId,
       input.startDate,
       input.endDate,
       input.wage,
       input.status,
+      input.salaryStructureId,
+      input.employmentType,
     ],
   );
 
@@ -153,7 +167,8 @@ export async function updateContractById(
      SELECT ${CONTRACT_COLUMNS}
      FROM updated c
      JOIN users u ON u.id = c.employee_id
-     LEFT JOIN employee_profiles p ON p.user_id = c.employee_id`,
+     LEFT JOIN employee_profiles p ON p.user_id = c.employee_id
+     LEFT JOIN salary_structures ss ON ss.id = c.salary_structure_id`,
     values,
   );
 

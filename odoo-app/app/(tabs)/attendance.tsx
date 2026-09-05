@@ -9,7 +9,7 @@ import {
   Title,
   TopBar,
 } from "@/components/workforce";
-import { palette as p } from "@/constants/theme";
+import { font, palette as p, rule } from "@/constants/theme";
 import {
   sampleDays,
   timeLabel,
@@ -32,20 +32,25 @@ export default function Attendance() {
         subtitle="Your working days, all in one place."
       />
       <View style={[s.card, styles.today]}>
-        <View style={[s.section, { marginBottom: 4 }]}>
+        <View style={[s.section, styles.todayHeading]}>
           <Text style={s.sectionTitle}>Today</Text>
         </View>
         {entries.length ? (
           entries.map((entry, i) => (
             <View
               key={`${entry.at.getTime()}-${i}`}
-              style={styles.sessionRow}
+              style={[styles.sessionRow, i > 0 && s.rowDivider]}
             >
-              <View style={styles.eventIcon}>
+              <View
+                style={[
+                  styles.eventIcon,
+                  entry.kind === "Check-in" && styles.eventIconActive,
+                ]}
+              >
                 <Feather
                   name={entry.kind === "Check-in" ? "log-in" : "log-out"}
-                  size={17}
-                  color={entry.kind === "Check-in" ? p.success : p.muted}
+                  size={16}
+                  color={entry.kind === "Check-in" ? p.white : p.ink}
                 />
               </View>
               <Text style={styles.eventTitle}>{entry.kind}</Text>
@@ -55,7 +60,7 @@ export default function Attendance() {
         ) : (
           <View style={styles.emptySession}>
             <View style={styles.eventIcon}>
-              <Feather name="clock" size={18} color={p.muted} />
+              <Feather name="clock" size={17} color={p.ink} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.eventTitle}>Your day starts here</Text>
@@ -71,10 +76,10 @@ export default function Attendance() {
       </View>
       <SegmentControl options={filters} value={filter} onChange={setFilter} />
       <View style={[s.card, styles.recordGroup]}>
-        {days.map((day) => (
+        {days.map((day, index) => (
           <View
             key={day.day}
-            style={styles.record}
+            style={[styles.record, index > 0 && s.rowDivider]}
           >
             <View style={styles.recordHeading}>
               <Text style={styles.day}>{day.day}</Text>
@@ -111,7 +116,8 @@ export default function Attendance() {
 }
 
 const styles = StyleSheet.create({
-  today: { marginTop: 2 },
+  today: { marginTop: 2, paddingVertical: 16 },
+  todayHeading: { marginBottom: 4 },
   sessionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -123,32 +129,43 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    backgroundColor: p.white,
   },
-  eventTitle: { fontSize: 14, fontWeight: "600", color: p.ink, flexShrink: 1 },
+  eventIconActive: { backgroundColor: p.ink },
+  eventTitle: {
+    ...font.bold,
+    fontSize: 14,
+    lineHeight: 20,
+    color: p.ink,
+    flexShrink: 1,
+  },
   time: {
+    ...font.medium,
     marginLeft: "auto",
     fontSize: 13,
-    color: p.muted,
+    color: p.ink,
     fontVariant: ["tabular-nums"],
   },
   emptySession: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingTop: 18,
+    paddingTop: 16,
     paddingBottom: 3,
   },
-  secondary: { fontSize: 12, lineHeight: 19, color: p.muted },
+  secondary: { ...font.regular, fontSize: 12, lineHeight: 19, color: p.muted },
   historyHeading: { marginTop: 30, marginBottom: 16 },
   recordGroup: { marginTop: 16, paddingVertical: 0 },
-  record: { paddingVertical: 19, gap: 12 },
+  record: { paddingVertical: 18, gap: 12 },
   recordHeading: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
   },
-  day: { fontSize: 15, fontWeight: "600", color: p.ink },
+  day: { ...font.bold, fontSize: 15, lineHeight: 20, color: p.ink },
   recordDetails: {
     flexDirection: "row",
     alignItems: "center",
@@ -157,8 +174,8 @@ const styles = StyleSheet.create({
   },
   timeRange: { flexDirection: "row", alignItems: "center", gap: 6 },
   duration: {
+    ...font.semibold,
     fontSize: 13,
-    fontWeight: "500",
     color: p.ink,
     fontVariant: ["tabular-nums"],
   },

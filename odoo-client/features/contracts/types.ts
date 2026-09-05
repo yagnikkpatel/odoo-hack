@@ -5,12 +5,24 @@ export const CONTRACT_STATUSES = {
 
 export type ContractStatus = keyof typeof CONTRACT_STATUSES
 
+export const CONTRACT_EMPLOYMENT_TYPES = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  contract: 'Contract',
+  intern: 'Intern',
+} as const
+
+export type ContractEmploymentType = keyof typeof CONTRACT_EMPLOYMENT_TYPES
+
 export type ContractInput = {
   employeeId: string
   startDate: string
   endDate: string
   wage: number
   status: ContractStatus
+  // Payroll context; records from before payroll may omit both.
+  salaryStructureId?: string | null
+  employmentType?: ContractEmploymentType
 }
 
 export type ContractUpdateInput = Omit<ContractInput, 'employeeId'>
@@ -20,6 +32,7 @@ export type Contract = ContractInput & {
   employeeName: string
   employeeEmail: string
   employeeAvatar?: string
+  salaryStructureName?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -95,5 +108,10 @@ export function validateContract(input: ContractInput): string | null {
     return 'Wage must be greater than 0 and no more than 9,999,999,999.99.'
   if (!Object.hasOwn(CONTRACT_STATUSES, input.status))
     return 'Choose a valid contract status.'
+  if (
+    input.employmentType !== undefined &&
+    !Object.hasOwn(CONTRACT_EMPLOYMENT_TYPES, input.employmentType)
+  )
+    return 'Choose a valid employment type.'
   return null
 }

@@ -1,5 +1,5 @@
 import { downloadCsv } from '@/features/nexacrm/utils/csv'
-import { CONTRACT_STATUSES } from './types'
+import { CONTRACT_EMPLOYMENT_TYPES, CONTRACT_STATUSES } from './types'
 import type { Contract } from './types'
 
 function safe(value: string) {
@@ -16,6 +16,10 @@ export function contractCsvRows(contracts: Contract[]) {
     'End date': contract.endDate,
     Wage: contract.wage,
     Status: CONTRACT_STATUSES[contract.status],
+    'Salary structure': contract.salaryStructureName ?? '',
+    'Employment type': contract.employmentType
+      ? CONTRACT_EMPLOYMENT_TYPES[contract.employmentType]
+      : '',
     Created: contract.createdAt,
     Updated: contract.updatedAt,
   }))

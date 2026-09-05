@@ -3,8 +3,14 @@ import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { Page, PressFeedback, s, Title, TopBar } from "@/components/workforce";
 import { HoursChart } from "@/components/hours-chart";
-import { corners, palette as p } from "@/constants/theme";
+import { font, palette as p, rule } from "@/constants/theme";
 import { timeLabel, useAttendance } from "@/features/attendance/demo-state";
+
+const summary = [
+  { value: "18", label: "On time", marker: "filled" },
+  { value: "2", label: "Late arrivals", marker: "hollow" },
+  { value: "1", label: "Absent", marker: "faint" },
+] as const;
 
 export default function Dashboard() {
   const { checkedIn, entries } = useAttendance();
@@ -20,11 +26,11 @@ export default function Dashboard() {
         })}
       />
       <View style={[s.card, styles.today]} accessibilityLiveRegion="polite">
-        <View style={styles.todayIcon}>
+        <View style={[styles.todayIcon, checkedIn && styles.todayIconActive]}>
           <Feather
             name={checkedIn ? "check" : lastEntry ? "moon" : "sun"}
-            size={21}
-            color={checkedIn ? p.success : p.accent}
+            size={20}
+            color={checkedIn ? p.white : p.ink}
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -50,7 +56,7 @@ export default function Dashboard() {
         <View style={[s.card, styles.stat]}>
           <View style={styles.statTop}>
             <Text style={styles.statLabel}>Days present</Text>
-            <Feather name="calendar" color={p.muted} size={15} />
+            <Feather name="calendar" color={p.ink} size={15} />
           </View>
           <Text style={styles.statValue}>
             20<Text style={styles.statUnit}> / 21</Text>
@@ -63,18 +69,13 @@ export default function Dashboard() {
         <View style={[s.card, styles.stat]}>
           <View style={styles.statTop}>
             <Text style={styles.statLabel}>Daily average</Text>
-            <Feather name="clock" color={p.muted} size={15} />
+            <Feather name="clock" color={p.ink} size={15} />
           </View>
           <Text style={styles.statValue}>
             7.9<Text style={styles.statUnit}> hrs</Text>
           </Text>
           <View style={styles.track}>
-            <View
-              style={[
-                styles.fill,
-                { width: "98.75%", backgroundColor: p.accentStrong },
-              ]}
-            />
+            <View style={[styles.fill, { width: "98.75%" }]} />
           </View>
           <Text style={styles.statNote}>of an 8h daily target</Text>
         </View>
@@ -82,15 +83,14 @@ export default function Dashboard() {
 
       <HoursChart />
       <View style={[s.card, styles.summary]}>
-        {[
-          ["18", "On time", p.success],
-          ["2", "Late arrivals", p.warning],
-          ["1", "Absent", p.muted],
-        ].map(([value, label, color]) => (
-          <View key={label} style={styles.summaryCell}>
+        {summary.map(({ value, label, marker }, index) => (
+          <View
+            key={label}
+            style={[styles.summaryCell, index > 0 && styles.summaryDivider]}
+          >
             <Text style={styles.summaryValue}>{value}</Text>
             <View style={styles.summaryLabelRow}>
-              <View style={[styles.dot, { backgroundColor: color }]} />
+              <View style={[styles.marker, markers[marker]]} />
               <Text style={styles.summaryLabel}>{label}</Text>
             </View>
           </View>
@@ -106,15 +106,15 @@ export default function Dashboard() {
           style={styles.link}
         >
           <Text style={styles.linkText}>View all</Text>
-          <Feather name="arrow-right" size={14} color={p.accentStrong} />
+          <Feather name="arrow-right" size={14} color={p.ink} />
         </PressFeedback>
       </View>
       <View style={[s.card, styles.activity]}>
         <View style={styles.activityIcon}>
           <Feather
             name={checkedIn ? "log-in" : "log-out"}
-            size={17}
-            color={p.muted}
+            size={16}
+            color={p.ink}
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -136,20 +136,24 @@ export default function Dashboard() {
     </Page>
   );
 }
+const markers = StyleSheet.create({
+  filled: { backgroundColor: p.ink },
+  hollow: { backgroundColor: p.white },
+  faint: { backgroundColor: p.faint, borderColor: p.faint },
+});
 const styles = StyleSheet.create({
-  today: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
+  today: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16 },
   todayIcon: {
     height: 42,
     width: 42,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    backgroundColor: p.white,
   },
-  todayTitle: {
-    fontSize: 14,
-    color: p.ink,
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
+  todayIconActive: { backgroundColor: p.ink },
+  todayTitle: { ...font.bold, fontSize: 15, lineHeight: 20, color: p.ink },
   stat: { flex: 1, minWidth: 0, padding: 16 },
   statTop: {
     flexDirection: "row",
@@ -158,45 +162,60 @@ const styles = StyleSheet.create({
     gap: 5,
     marginBottom: 16,
   },
-  statLabel: { fontSize: 12, fontWeight: "500", color: p.muted, flexShrink: 1 },
+  statLabel: {
+    ...font.bold,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: p.muted,
+    flexShrink: 1,
+  },
   statValue: {
+    ...font.bold,
     fontSize: 38,
-    fontWeight: "600",
-    letterSpacing: -1.8,
+    lineHeight: 42,
+    letterSpacing: -1.4,
     color: p.ink,
     fontVariant: ["tabular-nums"],
   },
-  statUnit: {
-    fontSize: 15,
-    fontWeight: "400",
-    letterSpacing: -0.3,
-    color: p.muted,
-  },
+  statUnit: { ...font.regular, fontSize: 15, letterSpacing: 0, color: p.muted },
+  // A boxed track with a solid black fill instead of a tinted bar.
   track: {
-    height: 4,
-    backgroundColor: p.soft,
-    ...corners(2),
+    height: 10,
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    backgroundColor: p.white,
     marginTop: 16,
     overflow: "hidden",
   },
-  fill: { height: "100%", backgroundColor: p.accent, ...corners(2) },
-  statNote: { fontSize: 11, lineHeight: 16, color: p.muted, marginTop: 10 },
-  summary: {
-    flexDirection: "row",
-    paddingHorizontal: 8,
-    paddingVertical: 20,
-    marginTop: 16,
+  fill: { height: "100%", backgroundColor: p.ink },
+  statNote: {
+    ...font.regular,
+    fontSize: 11,
+    lineHeight: 16,
+    color: p.muted,
+    marginTop: 10,
   },
-  summaryCell: { flex: 1, alignItems: "center", gap: 9 },
+  summary: { flexDirection: "row", padding: 0, marginTop: 16 },
+  summaryCell: { flex: 1, alignItems: "center", gap: 8, paddingVertical: 18 },
+  summaryDivider: { borderLeftWidth: rule.thick, borderLeftColor: p.ink },
   summaryValue: {
-    fontSize: 25,
-    fontWeight: "600",
-    letterSpacing: -0.7,
+    ...font.bold,
+    fontSize: 26,
+    lineHeight: 30,
+    letterSpacing: -0.6,
     color: p.ink,
+    fontVariant: ["tabular-nums"],
   },
-  summaryLabelRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  dot: { width: 5, height: 5, borderRadius: 3 },
-  summaryLabel: { fontSize: 11, color: p.muted },
+  summaryLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  marker: {
+    width: 8,
+    height: 8,
+    borderWidth: rule.thin,
+    borderColor: p.ink,
+  },
+  summaryLabel: { ...font.medium, fontSize: 11, color: p.muted },
   link: {
     minHeight: 44,
     flexDirection: "row",
@@ -204,11 +223,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingLeft: 12,
   },
-  linkText: { fontSize: 12, color: p.accentStrong, fontWeight: "500" },
+  linkText: {
+    ...font.bold,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: p.ink,
+  },
   activity: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     padding: 16,
   },
   activityIcon: {
@@ -216,10 +241,18 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: rule.thick,
+    borderColor: p.ink,
   },
-  activityTitle: { fontSize: 14, fontWeight: "500", color: p.ink },
-  activityTime: { fontSize: 12, color: p.ink, fontVariant: ["tabular-nums"] },
+  activityTitle: { ...font.semibold, fontSize: 14, lineHeight: 20, color: p.ink },
+  activityTime: {
+    ...font.medium,
+    fontSize: 12,
+    color: p.ink,
+    fontVariant: ["tabular-nums"],
+  },
   note: {
+    ...font.regular,
     fontSize: 12,
     lineHeight: 19,
     color: p.muted,

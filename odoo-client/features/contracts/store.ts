@@ -147,6 +147,8 @@ export const useContractsStore = create<ContractsStore>()((set, get) => {
             endDate: input.endDate,
             wage: input.wage,
             status: input.status,
+            salaryStructureId: input.salaryStructureId ?? null,
+            employmentType: input.employmentType ?? 'full_time',
           })
         : await contractService.createContract(input)
       rememberSaved(saved)

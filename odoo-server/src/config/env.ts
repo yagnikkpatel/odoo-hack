@@ -35,4 +35,10 @@ export const env = {
   passwordResetTokenTtlSeconds: Number(
     process.env.PASSWORD_RESET_TOKEN_TTL_SECONDS ?? 600,
   ),
+  // Payslip email delivery. Leave SMTP_HOST unset to log emails instead.
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: Number(process.env.SMTP_PORT ?? 587),
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPassword: process.env.SMTP_PASSWORD ?? "",
+  smtpFrom: process.env.SMTP_FROM ?? "PeoplePay360 Payroll <payroll@peoplepay360.local>",
 } as const;

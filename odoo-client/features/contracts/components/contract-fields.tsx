@@ -5,7 +5,9 @@ import {
   CalendarIcon,
   ChevronDownIcon,
   CircleCheckIcon,
+  BriefcaseIcon,
   CoinsIcon,
+  LayersIcon,
   MailIcon,
   UserIcon,
 } from 'lucide-react'
@@ -18,6 +20,7 @@ import {
   CollapsibleTrigger,
 } from '@/features/nexacrm/components/ui/collapsible'
 import {
+  CONTRACT_EMPLOYMENT_TYPES,
   formatContractDate,
   formatContractTimestamp,
   formatWage,
@@ -68,7 +71,29 @@ export default function ContractFields({ contract }: { contract: Contract }) {
         <RecordField type="static" label="Wage" icon={CoinsIcon}>
           <span className="text-sm font-medium tabular-nums">
             {formatWage(contract.wage)}
+            <span className="text-muted-foreground font-normal"> / month</span>
           </span>
+        </RecordField>
+        <RecordField type="static" label="Employment type" icon={BriefcaseIcon}>
+          <span className="text-sm">
+            {contract.employmentType
+              ? CONTRACT_EMPLOYMENT_TYPES[contract.employmentType]
+              : 'Not set'}
+          </span>
+        </RecordField>
+        <RecordField type="static" label="Salary structure" icon={LayersIcon}>
+          {contract.salaryStructureName ? (
+            <Link
+              href="/payroll/structures"
+              className="hover:text-primary text-sm"
+            >
+              {contract.salaryStructureName}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground text-sm">
+              Not assigned; payroll will flag it
+            </span>
+          )}
         </RecordField>
       </RecordGroup>
       <Collapsible className="group/metadata">

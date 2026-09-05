@@ -102,10 +102,7 @@ export function AppSidebar({
       >
         <div className="flex h-16 shrink-0 items-center border-b px-3">
           <div
-            className={cn(
-              "hover:bg-sidebar-accent flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 transition-colors",
-              collapsed && "md:justify-center",
-            )}
+            className="hover:bg-sidebar-accent flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 transition-colors"
           >
             <BrandMark className="size-8 shrink-0" />
             <div className={cn("min-w-0 flex-1", collapsed && "md:hidden")}>
@@ -137,9 +134,9 @@ export function AppSidebar({
             >
               <p
                 className={cn(
-                  "text-muted-foreground/70 mb-1 flex h-7 items-center px-2 text-[0.6875rem] font-medium tracking-wide uppercase",
+                  "text-muted-foreground/70 mb-1 flex h-7 items-center overflow-hidden px-2 text-[0.6875rem] font-medium tracking-wide whitespace-nowrap uppercase transition-opacity duration-200 motion-reduce:transition-none",
                   group.id === "secondary" && "sr-only",
-                  collapsed && "md:sr-only",
+                  collapsed && "md:opacity-0",
                 )}
               >
                 {group.label}
@@ -174,10 +171,7 @@ export function AppSidebar({
                 <button
                   type="button"
                   aria-label="Account menu"
-                  className={cn(
-                    "hover:bg-sidebar-accent flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors",
-                    collapsed && "md:justify-center",
-                  )}
+                  className="hover:bg-sidebar-accent flex h-13 w-full items-center gap-3 rounded-lg p-2 text-left transition-colors"
                 />
               }
             >

@@ -5,6 +5,7 @@ import {
   CalendarIcon,
   CircleCheckIcon,
   CoinsIcon,
+  LayersIcon,
   MailIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ export const REORDERABLE_COLUMN_IDS = [
   'startDate',
   'endDate',
   'wage',
+  'salaryStructureName',
   'status',
 ]
 
@@ -129,6 +131,22 @@ export const columns: ColumnDef<Contract>[] = [
     cell: ({ row }) => (
       <span className="tabular-nums">{formatWage(row.original.wage)}</span>
     ),
+  },
+  {
+    accessorKey: 'salaryStructureName',
+    size: 190,
+    meta: { label: 'Salary structure', icon: LayersIcon },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Salary structure" />
+    ),
+    cell: ({ row }) =>
+      row.original.salaryStructureName ? (
+        <span className="block truncate">
+          {row.original.salaryStructureName}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">Not assigned</span>
+      ),
   },
   {
     accessorKey: 'status',

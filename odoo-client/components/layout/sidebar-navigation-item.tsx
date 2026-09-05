@@ -37,6 +37,9 @@ const rowClassName =
   "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-ring flex h-9 w-full items-center gap-3 rounded-md px-2 text-sm outline-none transition-colors focus-visible:ring-2 motion-reduce:transition-none";
 const activeClassName =
   "bg-sidebar-accent text-sidebar-accent-foreground font-medium";
+// Clip instead of truncate: labels wipe in with the width transition
+// rather than flashing an ellipsis.
+const labelClassName = "overflow-hidden whitespace-nowrap";
 
 function SoonLabel() {
   return (
@@ -100,22 +103,20 @@ export function SidebarNavigationItem({
   const active = isNavigationItemActive(item, pathname);
   const activeId = getActiveNavigationDestination(pathname)?.id;
   const icon = (
-    <Icon
-      className={cn("size-[1.125rem] shrink-0", item.iconClassName)}
-      stroke={1.8}
-    />
+    <span className="grid size-8 shrink-0 place-items-center">
+      <Icon
+        className={cn("size-[1.125rem]", item.iconClassName)}
+        stroke={1.8}
+      />
+    </span>
   );
-  const className = cn(
-    rowClassName,
-    active && activeClassName,
-    collapsed && "md:justify-center",
-  );
+  const className = cn(rowClassName, active && activeClassName);
 
   if (!("children" in item)) {
     const content = (
       <>
         {icon}
-        <span className={cn("truncate", collapsed && "md:hidden")}>
+        <span className={cn(labelClassName, collapsed && "md:hidden")}>
           {item.label}
         </span>
       </>
@@ -162,7 +163,7 @@ export function SidebarNavigationItem({
         )}
       >
         {icon}
-        <span className={cn("truncate", collapsed && "md:hidden")}>
+        <span className={cn(labelClassName, collapsed && "md:hidden")}>
           {item.label}
         </span>
       </span>
@@ -181,7 +182,7 @@ export function SidebarNavigationItem({
           className={cn(rowClassName, active && activeClassName)}
         >
           {icon}
-          <span className="truncate">{item.label}</span>
+          <span className={labelClassName}>{item.label}</span>
           <IconChevronRight
             className={cn(
               "ml-auto size-3.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
@@ -191,7 +192,7 @@ export function SidebarNavigationItem({
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-200 data-ending-style:h-0 data-starting-style:h-0 motion-reduce:transition-none">
-          <ul className="border-sidebar-border my-1 ml-4 space-y-0.5 border-l pl-3">
+          <ul className="border-sidebar-border my-1 ml-6 space-y-0.5 border-l pl-[19px]">
             {item.children.map((child) => (
               <li key={child.id}>
                 <SubmenuLink
@@ -210,7 +211,9 @@ export function SidebarNavigationItem({
         <div className="hidden md:block">
           <DropdownMenu>
             <DropdownMenuTrigger
-              className={className}
+              // globals.css forces px-3 on h-9 dropdown triggers; the row
+              // geometry must match the links so the icon never shifts.
+              className={cn(className, "px-2!")}
               aria-label={item.label}
               title={item.label}
             >

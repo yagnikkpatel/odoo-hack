@@ -12,7 +12,7 @@ import Animated, {
   SlideInDown,
   useReducedMotion,
 } from "react-native-reanimated";
-import { corners, palette } from "@/constants/theme";
+import { palette, rule } from "@/constants/theme";
 
 export function CheckInSheet({
   children,
@@ -59,23 +59,21 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: "rgba(17, 24, 39, 0.38)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   sheet: {
     width: "100%",
     maxWidth: 560,
     backgroundColor: palette.white,
-    ...corners(32),
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    borderWidth: rule.thick,
+    borderBottomWidth: 0,
+    borderColor: palette.ink,
     overflow: "hidden",
-    boxShadow: "0 -8px 48px rgba(17, 24, 39, 0.12)",
   },
   handle: {
-    width: 36,
+    width: 40,
     height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.line,
+    backgroundColor: palette.ink,
     alignSelf: "center",
     marginTop: 10,
     marginBottom: 2,

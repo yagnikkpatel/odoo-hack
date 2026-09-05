@@ -16,6 +16,7 @@ const UUID_PATTERN =
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const MAX_JSON_BYTES = 16_384
 const CONTRACT_STATUSES = new Set(['running', 'expired'])
+const EMPLOYMENT_TYPES = new Set(['full_time', 'part_time', 'contract', 'intern'])
 
 class ContractRequestError extends Error {
   constructor(
@@ -120,15 +121,23 @@ async function readContractInput(
     throw new ContractRequestError(400, 'Provide the contract details.')
   }
 
+  const payrollFields = ['salaryStructureId', 'employmentType']
   const allowed =
     kind === 'create'
-      ? new Set(['employeeId', 'startDate', 'endDate', 'wage', 'status'])
-      : new Set(['startDate', 'endDate', 'wage', 'status'])
+      ? new Set([
+          'employeeId',
+          'startDate',
+          'endDate',
+          'wage',
+          'status',
+          ...payrollFields,
+        ])
+      : new Set(['startDate', 'endDate', 'wage', 'status', ...payrollFields])
   const required =
     kind === 'create'
       ? ['employeeId', 'startDate', 'endDate', 'wage']
       : []
-  const fields: Record<string, string | number> = {}
+  const fields: Record<string, string | number | null> = {}
 
   for (const [key, value] of Object.entries(input)) {
     if (!allowed.has(key)) {
@@ -154,10 +163,21 @@ async function readContractInput(
       ) {
         throw new ContractRequestError(400, 'Enter a valid positive wage.')
       }
+    } else if (key === 'salaryStructureId') {
+      if (
+        value !== null &&
+        (typeof value !== 'string' || !UUID_PATTERN.test(value))
+      ) {
+        throw new ContractRequestError(400, 'Choose a valid salary structure.')
+      }
+    } else if (key === 'employmentType') {
+      if (typeof value !== 'string' || !EMPLOYMENT_TYPES.has(value)) {
+        throw new ContractRequestError(400, 'Choose a valid employment type.')
+      }
     } else if (typeof value !== 'string' || !CONTRACT_STATUSES.has(value)) {
       throw new ContractRequestError(400, 'Choose a valid contract status.')
     }
-    fields[key] = value as string | number
+    fields[key] = value as string | number | null
   }
 
   for (const key of required) {

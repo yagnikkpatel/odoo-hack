@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { StyleSheet, View } from "react-native";
-import { corners, palette } from "@/constants/theme";
+import { palette, rule } from "@/constants/theme";
 
 // Native navigation owns the animation, drag gestures and backdrop.
 export function CheckInSheet({
@@ -13,7 +13,8 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
     backgroundColor: palette.white,
-    ...corners(32),
+    borderTopWidth: rule.thick,
+    borderTopColor: palette.ink,
     overflow: "hidden",
   },
 });

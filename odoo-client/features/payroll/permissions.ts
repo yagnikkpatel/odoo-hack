@@ -1,22 +1,25 @@
-import { useCurrentActorStore } from '@/features/nexacrm/store/use-current-actor-store'
-import { useUsersStore } from '@/features/nexacrm/store/use-users-store'
-import { DATA_API_CONNECTED } from '@/features/hr/data-availability'
-export function payrollPermissions(role?: string) {
-  const resolved = role || 'employee'
-  const canRead = ['admin', 'hr_payroll_manager', 'hr_payroll_user'].includes(resolved)
-  const canConfigure = ['admin', 'hr_payroll_manager'].includes(resolved)
-  return { role: resolved, canRead, canProcess: canRead, canConfigure, canDelete: canConfigure, canReport: canRead || resolved === 'hr_manager' }
-}
-function availablePermissions(role?: string) {
-  const permissions = payrollPermissions(role)
-  return { ...permissions, canProcess: DATA_API_CONNECTED && permissions.canProcess, canConfigure: DATA_API_CONNECTED && permissions.canConfigure, canDelete: DATA_API_CONNECTED && permissions.canDelete }
-}
-export function getPayrollPermissions() {
-  const actor = useCurrentActorStore.getState().actorId
-  return availablePermissions(useUsersStore.getState().users.find(user => user.id === actor)?.role)
+'use client'
+
+import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import type { BackendRole } from '@/features/auth/auth-types'
+
+/**
+ * Mirrors the API permission grants: payroll users process payruns and read
+ * configuration, payroll managers and admins also configure and delete, HR
+ * managers only see the dashboard.
+ */
+export function payrollPermissions(role: BackendRole | string) {
+  const canRead = ['admin', 'hr_payroll_manager', 'hr_payroll_user'].includes(role)
+  const canConfigure = ['admin', 'hr_payroll_manager'].includes(role)
+  return {
+    role,
+    canRead,
+    canProcess: canRead,
+    canConfigure,
+    canDelete: canConfigure,
+    canReport: canRead || role === 'hr_manager'
+  }
 }
 export function usePayrollPermissions() {
-  const actor = useCurrentActorStore(state => state.actorId)
-  const users = useUsersStore(state => state.users)
-  return availablePermissions(users.find(user => user.id === actor)?.role)
+  return payrollPermissions(useCurrentUser().user.role)
 }

@@ -1,16 +1,105 @@
 'use client'
+
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PrinterIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { ArrowLeftIcon, FileTextIcon, LoaderCircleIcon, PrinterIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
-import { Card } from '@/features/nexacrm/components/ui/card'
-import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/features/nexacrm/components/ui/table'
+import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
+import ConfirmDialog from '@/features/nexacrm/components/ui/confirm-dialog'
 import RecordNotFound from '@/features/nexacrm/components/record/record-not-found'
-import { usePayrollStore } from '../store'
 import { usePayrollPermissions } from '../permissions'
-import { EditorDialog } from '@/features/hr/components/form'
-import { RULE_CATEGORIES, money } from '../types'
-import { downloadPayslipPdf } from '../documents'
-import { AccessDenied, Heading, Status, Warnings } from './shared'
-export default function PayslipDetail({id}:{id:string}) {const router=useRouter();const remove=usePayrollStore(s=>s.removePayslip);const [deleting,setDeleting]=useState(false);const slip=usePayrollStore(s=>s.payslips.find(p=>p.id===id));const run=usePayrollStore(s=>s.payruns.find(r=>r.id===slip?.payrunId));const {canRead,canDelete}=usePayrollPermissions();const [printing,setPrinting]=useState(false);const [error,setError]=useState<string|null>(null);if(!canRead)return <AccessDenied/>;if(!slip||!run)return <RecordNotFound label="Payslip" backHref="/payslips" backLabel="Payslips"/>;return <div className="flex min-h-full flex-col"><Heading title={`${slip.employeeName} · Payslip`} back="/payslips"><Status status={slip.status}/>{canDelete&&slip.status!=='validated'&&slip.status!=='paid'&&<Button size="sm" variant="outline" onClick={()=>setDeleting(true)}>Delete payslip</Button>}<Button size="sm" variant="outline" disabled={printing||slip.status==='draft'} onClick={async()=>{setPrinting(true);setError(null);try{await downloadPayslipPdf(slip,run)}catch{setError('Could not generate the payslip PDF. Please try again.')}finally{setPrinting(false)}}}><PrinterIcon/>{printing?'Preparing PDF…':'Print payslip'}</Button></Heading><div className="space-y-5 py-4">{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}<Card className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3"><div><p className="text-xs text-muted-foreground">Employee</p><Link className="text-sm font-medium hover:underline" href={`/employees/${slip.employeeId}`}>{slip.employeeName}</Link><p className="text-xs text-muted-foreground">{slip.employeeEmail}</p></div><div><p className="text-xs text-muted-foreground">Pay run</p><Link className="text-sm font-medium hover:underline" href={`/payroll/${run.id}`}>{run.name}</Link></div>{[['Salary structure',slip.structureName],['Payroll period',`${slip.startDate} – ${slip.endDate}`],['Worked days',`${slip.workedDays} / ${slip.expectedDays} scheduled days`],['Worked hours',`${slip.workedHours} / ${slip.expectedHours} scheduled hours`]].map(([label,value])=><div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className="text-sm font-medium">{value}</p></div>)}</Card><Warnings warnings={slip.warnings}/><section><h2 className="mb-3 text-sm font-semibold">Salary computation</h2><Card className="gap-0 overflow-hidden py-0"><Table><TableHeader><TableRow><TableHead>Rule</TableHead><TableHead>Code</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader><TableBody>{slip.lines.map((line,index)=><TableRow key={`${line.ruleId}-${index}`}><TableCell className="font-medium">{line.name}</TableCell><TableCell className="font-mono text-xs">{line.code}</TableCell><TableCell>{RULE_CATEGORIES[line.category]}</TableCell><TableCell className="text-right tabular-nums">{money(line.amount,slip.currency)}</TableCell></TableRow>)}{!slip.lines.length&&<TableRow><TableCell colSpan={4} className="py-10 text-center text-muted-foreground">Compute the parent payrun to generate the salary breakdown.</TableCell></TableRow>}</TableBody></Table><div className="grid gap-4 border-t bg-muted/20 p-4 sm:grid-cols-3">{[['Basic',slip.basic],['Allowances',slip.allowances],['Deductions',slip.deductions],['Employer contributions',slip.contributions],['Gross salary',slip.gross],['Net salary',slip.net]].map(([label,amount])=><div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 text-base font-semibold ${label==='Net salary'?'text-primary':''}`}>{money(Number(amount),slip.currency)}</p></div>)}</div></Card></section>{slip.contractSnapshot&&<Card className="gap-3 p-5"><h2 className="text-sm font-semibold">Contract used for this period</h2><div className="grid gap-4 text-sm sm:grid-cols-3"><div><p className="text-xs text-muted-foreground">Contract</p><p>{slip.contractSnapshot.name}</p></div><div><p className="text-xs text-muted-foreground">Effective dates</p><p>{slip.contractSnapshot.startDate} – {slip.contractSnapshot.endDate||'Ongoing'}</p></div><div><p className="text-xs text-muted-foreground">Contract wage</p><p>{money(slip.contractSnapshot.wage,slip.contractSnapshot.currency)} / {slip.contractSnapshot.wagePeriod}</p></div></div><p className="text-xs text-muted-foreground">{slip.status==='validated'||slip.status==='paid'?'This snapshot is preserved with the finalized payslip.':'Recomputing payroll refreshes this snapshot from the applicable contract.'}</p></Card>}</div>{deleting&&<EditorDialog title="Delete payslip?" description="Remove this employee from the unfinalized payrun. Recompute the remaining batch before validation." submitLabel="Delete payslip" onClose={()=>setDeleting(false)} onSubmit={e=>{e.preventDefault();const result=remove(id);if(result.ok)router.push(`/payroll/${run.id}`);else{setError(result.error);setDeleting(false)}}}><p className="text-sm">{slip.employeeName} · {run.name}</p></EditorDialog>}</div>}
+import { downloadPayslipPdf } from '../service'
+import { selectPayslip, usePayrollStore } from '../store'
+import { isLocked } from '../types'
+import usePayrollData from '../components/use-payroll-data'
+import PayrollStatusBadge from '../components/status-badge'
+import { AccessDenied } from '../components/list-page'
+import PayslipContent from './payslip-content'
+
+export default function PayslipDetail({ id }: { id: string }) {
+  usePayrollData()
+  const router = useRouter()
+  const slip = usePayrollStore(selectPayslip(id))
+  const hydrated = usePayrollStore(state => state.hasHydrated)
+  const loadError = usePayrollStore(state => state.error)
+  const { canRead, canDelete } = usePayrollPermissions()
+  const [printing, setPrinting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirm, setConfirm] = useState(false)
+  if (!canRead) return <AccessDenied />
+  if (!hydrated)
+    return (
+      <p role='status' className='py-8 text-sm'>
+        Loading payslip…
+      </p>
+    )
+  if (!slip && loadError)
+    return (
+      <p role='alert' className='text-destructive py-8 text-sm'>
+        {loadError}
+      </p>
+    )
+  if (!slip) return <RecordNotFound label='Payslip' backHref='/payslips' backLabel='Payslips' />
+  return (
+    <div className='space-y-4'>
+      <div className='flex flex-wrap items-center gap-2 border-b py-3'>
+        <Button variant='ghost' size='icon-sm' aria-label='Back to payslips' render={<Link href='/payslips' />}>
+          <ArrowLeftIcon />
+        </Button>
+        <FileTextIcon className='size-4 text-rose-600' />
+        <h1 className='mr-auto min-w-0 truncate text-base font-semibold tracking-tight'>{slip.employeeName} · Payslip</h1>
+        <PayrollStatusBadge status={slip.status} />
+        {canDelete && !isLocked(slip.status) && (
+          <Button size='icon-sm' variant='ghost' aria-label='Delete payslip' onClick={() => setConfirm(true)}>
+            <Trash2Icon />
+          </Button>
+        )}
+        <Button
+          size='sm'
+          variant='outline'
+          disabled={printing || slip.status === 'draft'}
+          onClick={async () => {
+            setPrinting(true)
+            try {
+              await downloadPayslipPdf(slip.id, `payslip-${slip.employeeName.replace(/[^a-z0-9]+/gi, '-')}-${slip.startDate}.pdf`)
+            } catch (cause) {
+              toast.error(cause instanceof Error ? cause.message : 'Could not generate the payslip PDF.')
+            } finally {
+              setPrinting(false)
+            }
+          }}
+        >
+          {printing ? <LoaderCircleIcon className='animate-spin' /> : <PrinterIcon />}
+          {printing ? 'Preparing PDF…' : 'Print payslip'}
+        </Button>
+      </div>
+      <Card className='max-w-4xl'>
+        <CardContent>
+          <PayslipContent slip={slip} />
+        </CardContent>
+      </Card>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title='Delete payslip?'
+        description='Removes this employee from the unfinalized payrun. Recompute the remaining batch before validation.'
+        confirmLabel='Delete payslip'
+        variant='destructive'
+        pending={deleting}
+        onConfirm={async () => {
+          setDeleting(true)
+          const result = await usePayrollStore.getState().removePayslip(slip.id)
+          setDeleting(false)
+          if (!result.ok) {
+            toast.error(result.error)
+            return
+          }
+          toast.success('Payslip deleted')
+          router.push(`/payroll/${result.id}`)
+        }}
+      />
+    </div>
+  )
+}

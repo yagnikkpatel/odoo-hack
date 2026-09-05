@@ -18,7 +18,7 @@ Use an Expo Go version compatible with SDK 57 or an Expo development build. The 
 - Profile: sample employee and work details.
 - Check-in: modal preview with demo check-in/check-out confirmation.
 
-The layout follows the supplied wireframe and web analytics, with a quieter visual language inspired by Linear, Emil Kowalski's interaction work, and the supplied mobile references. Rounded neutral surfaces, restrained violet accents and readable type replace the original brutalist scaffold. See [design research and decisions](docs/design-language.md).
+The layout follows the supplied wireframe and web analytics. The visual language is neo-brutalist and monochrome: white surfaces boxed by black rules, square corners, no elevation, filled-black selected states and Space Grotesk type. The pinned header keeps its frosted, gradient-masked backdrop. See [design research and decisions](docs/design-language.md).
 
 Shared controls provide brief touch feedback and system-reduced-motion support. The working-rhythm chart uses Expo Go-compatible `react-native-svg`; tap a plotted period to inspect its value. Native navigation remains native on iOS and Android.
 

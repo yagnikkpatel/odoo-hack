@@ -4,9 +4,9 @@ export default function TabLayout() {
   return (
     <NativeTabs
       backgroundColor={p.white}
-      tintColor={p.accentStrong}
-      iconColor={{ default: p.muted, selected: p.accentStrong }}
-      labelStyle={{ fontSize: 11, fontWeight: "600" }}
+      tintColor={p.ink}
+      iconColor={{ default: p.muted, selected: p.ink }}
+      labelStyle={{ fontSize: 11, fontWeight: "700" }}
       disableIndicator
       rippleColor="transparent"
       labelVisibilityMode="labeled"

@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { PlatformPressable } from "expo-router/react-navigation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarHeight } from "@/constants/navigation";
-import { palette as p } from "@/constants/theme";
+import { font, palette as p, rule } from "@/constants/theme";
 
 // NativeTabs uses a top menu on web. Keep the employee workspace bottom-aligned here.
 export default function WebTabLayout() {
@@ -12,7 +12,7 @@ export default function WebTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: p.accentStrong,
+        tabBarActiveTintColor: p.ink,
         tabBarInactiveTintColor: p.muted,
         tabBarButton: (props) => (
           <PlatformPressable
@@ -27,11 +27,17 @@ export default function WebTabLayout() {
           position: "absolute",
           height: tabBarHeight + insets.bottom,
           backgroundColor: p.white,
-          borderTopWidth: 0,
+          borderTopWidth: rule.thick,
+          borderTopColor: p.ink,
           paddingBottom: 8 + insets.bottom,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+          ...font.bold,
+        },
       }}
     >
       <Tabs.Screen

@@ -32,7 +32,7 @@ type ProfileAvatarProps = {
 export function ProfileAvatar({
   seed,
   size = 44,
-  radius = size / 2,
+  radius = 0,
   style,
 }: ProfileAvatarProps) {
   const hash = hashSeed(seed);

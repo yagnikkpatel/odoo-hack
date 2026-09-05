@@ -19,9 +19,11 @@ import {
 import { Choice } from '@/features/hr/components/form'
 import { employeeName } from '@/features/employees/types'
 import type { Employee } from '@/features/employees/types'
+import { listStructures } from '@/features/payroll/service'
+import type { SalaryStructure } from '@/features/payroll/types'
 import { listContractEmployees } from '../service'
 import { useContractsStore } from '../store'
-import { CONTRACT_STATUSES, today } from '../types'
+import { CONTRACT_EMPLOYMENT_TYPES, CONTRACT_STATUSES, today } from '../types'
 import type { Contract, ContractInput } from '../types'
 
 function Field({
@@ -49,6 +51,8 @@ function initialInput(contract?: Contract, employeeId?: string): ContractInput {
       endDate: contract.endDate,
       wage: contract.wage,
       status: contract.status,
+      salaryStructureId: contract.salaryStructureId ?? null,
+      employmentType: contract.employmentType ?? 'full_time',
     }
   }
   return {
@@ -57,6 +61,8 @@ function initialInput(contract?: Contract, employeeId?: string): ContractInput {
     endDate: '',
     wage: Number.NaN,
     status: 'running',
+    salaryStructureId: null,
+    employmentType: 'full_time',
   }
 }
 
@@ -76,7 +82,25 @@ export default function ContractEditor({
   const [employees, setEmployees] = useState<Employee[]>([])
   const [employeesLoading, setEmployeesLoading] = useState(!contract)
   const [employeeError, setEmployeeError] = useState<string | null>(null)
+  const [structures, setStructures] = useState<SalaryStructure[] | null>(null)
+  const [structuresDenied, setStructuresDenied] = useState(false)
   const save = useContractsStore((state) => state.save)
+
+  // Salary structures are payroll configuration; HR managers without payroll
+  // access keep the current assignment untouched.
+  useEffect(() => {
+    let active = true
+    void listStructures()
+      .then((records) => {
+        if (active) setStructures(records)
+      })
+      .catch(() => {
+        if (active) setStructuresDenied(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     if (contract) return
@@ -236,7 +260,52 @@ export default function ContractEditor({
                   }
                 />
               </Field>
+              <Field label="Employment type" id="contract-employment-type">
+                <Choice
+                  id="contract-employment-type"
+                  value={draft.employmentType ?? 'full_time'}
+                  options={Object.entries(CONTRACT_EMPLOYMENT_TYPES).map(
+                    ([value, label]) => ({ value, label }),
+                  )}
+                  onChange={(value) =>
+                    set({
+                      employmentType: value as ContractInput['employmentType'],
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Salary structure" id="contract-structure">
+                {structuresDenied ? (
+                  <Input
+                    id="contract-structure"
+                    value={contract?.salaryStructureName ?? 'Managed by payroll'}
+                    disabled
+                  />
+                ) : (
+                  <Choice
+                    id="contract-structure"
+                    value={draft.salaryStructureId ?? 'none'}
+                    disabled={structures === null}
+                    options={[
+                      { value: 'none', label: 'No structure yet' },
+                      ...(structures ?? [])
+                        .filter(
+                          (item) =>
+                            item.active || item.id === draft.salaryStructureId,
+                        )
+                        .map((item) => ({ value: item.id, label: item.name })),
+                    ]}
+                    onChange={(value) =>
+                      set({ salaryStructureId: value === 'none' ? null : value })
+                    }
+                  />
+                )}
+              </Field>
             </div>
+            <p className="text-muted-foreground text-xs">
+              Wage is the monthly amount payroll prorates for loss-of-pay days.
+              The salary structure decides which rules a payrun applies.
+            </p>
           </div>
           {submitState.error && (
             <p

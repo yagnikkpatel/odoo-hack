@@ -149,7 +149,7 @@ export const appNavigation: readonly NavigationGroup[] = [
           },
           {
             id: "hr-payroll-reports",
-            label: "HR & payroll reports",
+            label: "Payroll dashboard",
             href: "/reports",
             status: "ready",
           },

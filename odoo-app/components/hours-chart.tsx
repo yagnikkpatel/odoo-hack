@@ -1,13 +1,6 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient,
-  Line,
-  Path,
-  Stop,
-} from "react-native-svg";
+import Svg, { Line, Path } from "react-native-svg";
 import {
   Badge,
   Eyebrow,
@@ -15,7 +8,7 @@ import {
   s,
   SegmentControl,
 } from "@/components/workforce";
-import { palette as p } from "@/constants/theme";
+import { font, palette as p, rule } from "@/constants/theme";
 
 const ranges = ["Week", "Month"] as const;
 const series = {
@@ -34,37 +27,21 @@ const series = {
     description: "Hours worked · daily averages below",
   },
 };
+const PLOT = { width: 300, height: 160, floor: 144 };
 export function HoursChart() {
   const [range, setRange] = useState<(typeof ranges)[number]>("Month");
   const [selected, setSelected] = useState(3);
-  const gradientId = "hours" + useId().replace(/[^a-zA-Z0-9]/g, "");
   const data = series[range];
   // An explicitly labelled 6–10h domain keeps small differences legible.
-  const y = (value: number) => 144 - ((value - 6) / 4) * 128;
+  const y = (value: number) => PLOT.floor - ((value - 6) / 4) * 128;
   const points = data.values.map((value, index) => ({
     x: 8 + (index * 284) / (data.values.length - 1),
     y: y(value),
   }));
-  const curve = points.reduce((path, point, index) => {
-    if (!index) return "M " + point.x + " " + point.y;
-    const previous = points[index - 1];
-    const mid = (previous.x + point.x) / 2;
-    return (
-      path +
-      " C " +
-      mid +
-      " " +
-      previous.y +
-      ", " +
-      mid +
-      " " +
-      point.y +
-      ", " +
-      point.x +
-      " " +
-      point.y
-    );
-  }, "");
+  // Straight segments: the plot joins readings, it does not smooth them.
+  const line = points
+    .map((point, index) => (index ? "L" : "M") + point.x + " " + point.y)
+    .join(" ");
   const active = points[selected];
   return (
     <View style={[s.card, styles.card]}>
@@ -107,58 +84,65 @@ export function HoursChart() {
         <View style={styles.plot}>
           <Svg
             width="100%"
-            height={160}
-            viewBox="0 0 300 160"
+            height={PLOT.height}
+            viewBox={"0 0 " + PLOT.width + " " + PLOT.height}
             preserveAspectRatio="none"
             aria-hidden
           >
-            <Defs>
-              <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={p.accent} stopOpacity={0.16} />
-                <Stop offset="1" stopColor={p.accent} stopOpacity={0} />
-              </LinearGradient>
-            </Defs>
-            {[16, 80, 144].map((level) => (
+            {[16, 144].map((level) => (
               <Line
                 key={level}
                 x1={0}
                 y1={level}
-                x2={300}
+                x2={PLOT.width}
                 y2={level}
-                stroke={level === 80 ? p.accentBorder : p.line}
-                strokeDasharray="3 5"
+                stroke={p.ink}
+                strokeOpacity={0.18}
               />
             ))}
+            <Line
+              x1={0}
+              y1={80}
+              x2={PLOT.width}
+              y2={80}
+              stroke={p.ink}
+              strokeDasharray="4 4"
+            />
             <Path
-              d={curve + " L 292 144 L 8 144 Z"}
-              fill={"url(#" + gradientId + ")"}
+              d={line + " L 292 " + PLOT.floor + " L 8 " + PLOT.floor + " Z"}
+              fill={p.ink}
+              fillOpacity={0.06}
             />
             <Line
               x1={active.x}
               x2={active.x}
               y1={active.y}
-              y2={144}
-              stroke={p.accent}
-              strokeOpacity={0.22}
-              strokeDasharray="3 4"
+              y2={PLOT.floor}
+              stroke={p.ink}
+              strokeDasharray="2 3"
             />
             <Path
-              d={curve}
-              stroke={p.accent}
-              strokeWidth={2.6}
-              strokeLinecap="round"
+              d={line}
+              stroke={p.ink}
+              strokeWidth={2.5}
+              strokeLinecap="square"
+              strokeLinejoin="miter"
               fill="none"
             />
-            <Circle cx={active.x} cy={active.y} r={7} fill={p.accentSoft} />
-            <Circle
-              cx={active.x}
-              cy={active.y}
-              r={3.5}
-              fill={p.accent}
-              stroke={p.white}
-              strokeWidth={1.5}
-            />
           </Svg>
+          {/* Drawn outside the stretched SVG so the marker stays a true square. */}
+          <View
+            pointerEvents="none"
+            style={[
+              styles.marker,
+              {
+                left: `${(active.x / PLOT.width) * 100}%`,
+                top: `${(active.y / PLOT.height) * 100}%`,
+              },
+            ]}
+          >
+            <View style={styles.markerCore} />
+          </View>
           <View style={styles.touchLayer}>
             {data.values.map((value, index) => (
               <PressFeedback
@@ -183,7 +167,7 @@ export function HoursChart() {
         {data.labels.map((label, index) => (
           <Text
             key={label}
-            style={[styles.tick, selected === index && { color: p.accentStrong }]}
+            style={[styles.tick, selected === index && styles.tickActive]}
           >
             {label}
           </Text>
@@ -199,18 +183,26 @@ export function HoursChart() {
     </View>
   );
 }
+const MARKER = 14;
 const styles = StyleSheet.create({
   card: { marginTop: 16, padding: 20 },
   totalRow: { marginBottom: 20 },
   total: {
+    ...font.bold,
     fontSize: 36,
-    fontWeight: "600",
-    letterSpacing: -1.2,
+    lineHeight: 40,
+    letterSpacing: -1,
     color: p.ink,
     fontVariant: ["tabular-nums"],
   },
-  unit: { fontSize: 16, fontWeight: "400", letterSpacing: 0, color: p.muted },
-  subtitle: { fontSize: 12, color: p.muted, lineHeight: 18, marginTop: 4 },
+  unit: { ...font.regular, fontSize: 16, letterSpacing: 0, color: p.muted },
+  subtitle: {
+    ...font.regular,
+    fontSize: 12,
+    color: p.muted,
+    lineHeight: 18,
+    marginTop: 4,
+  },
   readout: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -218,11 +210,25 @@ const styles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 4,
   },
-  readoutLabel: { fontSize: 12, color: p.muted },
+  readoutLabel: { ...font.medium, fontSize: 12, color: p.muted },
   plotRow: { flexDirection: "row", gap: 12 },
   axis: { justifyContent: "space-between", paddingTop: 9, paddingBottom: 9 },
-  tick: { fontSize: 10, lineHeight: 16, color: p.muted },
-  plot: { flex: 1, height: 160 },
+  tick: { ...font.medium, fontSize: 10, lineHeight: 16, color: p.muted },
+  tickActive: { ...font.bold, color: p.ink },
+  plot: { flex: 1, height: PLOT.height },
+  marker: {
+    position: "absolute",
+    width: MARKER,
+    height: MARKER,
+    marginLeft: -MARKER / 2,
+    marginTop: -MARKER / 2,
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    backgroundColor: p.white,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  markerCore: { width: 6, height: 6, backgroundColor: p.ink },
   touchLayer: {
     position: "absolute",
     top: 0,
@@ -239,9 +245,9 @@ const styles = StyleSheet.create({
   },
   legend: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 20 },
   legendDash: {
-    width: 10,
-    borderTopWidth: 1,
-    borderColor: p.accentBorder,
+    width: 12,
+    borderTopWidth: rule.thin,
+    borderColor: p.ink,
     borderStyle: "dashed",
   },
 });

@@ -66,6 +66,10 @@ function toDomainError(error: unknown): AppError | null {
   const constraint = getErrorConstraint(error);
 
   if (code === "23503") {
+    if (constraint === "contracts_salary_structure_id_fkey") {
+      return new AppError(404, "Salary structure not found");
+    }
+
     return new AppError(404, "Employee not found");
   }
 
