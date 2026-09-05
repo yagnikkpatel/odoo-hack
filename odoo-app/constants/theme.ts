@@ -1,32 +1,43 @@
-import { Platform } from "react-native";
-
-// Native continuous corners, with progressive squircle support on the web.
-export function corners(radius: number) {
-  return {
-    borderRadius: radius,
-    borderCurve: "continuous" as const,
-    ...(Platform.OS === "web" ? { cornerShape: "squircle" } : {}),
-  };
-}
-
-// sRGB equivalents of odoo-client's Modern Minimal light preset.
-// The mobile canvas uses its muted surface to separate white cards.
+// Neo-brutalist structure — black-boxed rules, square corners, no elevation —
+// with the web workspace's own color tokens (odoo-client/app/globals.css,
+// light theme), converted from OKLCH to sRGB. Hierarchy still comes from
+// weight, size, fill and line thickness; color marks brand and active state,
+// it does not decorate every surface.
 export const palette = {
-  paper: "#F8F8F8",
+  paper: "#FFFFFF",
   white: "#FFFFFF",
+  // Site foreground, oklch(0.3211 0 0). Was pure black.
   ink: "#333333",
-  muted: "#6C727E",
-  line: "#E4E8EF",
-  soft: "#F5F5F5",
-  accent: "#3981F6",
-  accentSoft: "#DCF2FF",
-  accentText: "#1E3A8B",
-  // The preset's second chart blue gives small white button labels more contrast.
-  accentStrong: "#2463EF",
-  accentBorder: "#AFCDFB",
-  frost: "rgba(248, 248, 248, 0.78)",
-  success: "#33785D",
-  successSoft: "#EDF5F0",
-  warning: "#966827",
-  warningSoft: "#F9F2E5",
+  // Site muted-foreground, oklch(0.5103 0 0). 6:1 on white.
+  muted: "#666666",
+  // Site ring, oklch(0.665 0.015 286.067). Decorative marks only, never running text.
+  faint: "#93939D",
+  // Site secondary/muted surface, oklch(0.9581 0 0).
+  soft: "#F1F1F1",
+  line: "#333333",
+  // Site brand, oklch(0.5436 0.1913 267.08). The one accent color: selected
+  // and active state, primary actions, chart lines and progress fill —
+  // mirroring how the web dashboard uses it for charts and highlights.
+  accent: "#3E63DD",
+  accentForeground: "#FFFFFF",
+  frost: "rgba(255, 255, 255, 0.84)",
 };
+
+// Rule weights. Boxes and controls use thick; list separators use thin.
+export const rule = { thin: 1, thick: 2 };
+
+// Space Grotesk, loaded in app/_layout.tsx. Every weight is registered as its
+// own family, so text styles spread one of these and never set fontWeight.
+export const font = {
+  regular: { fontFamily: "SpaceGrotesk_400Regular" },
+  medium: { fontFamily: "SpaceGrotesk_500Medium" },
+  semibold: { fontFamily: "SpaceGrotesk_600SemiBold" },
+  bold: { fontFamily: "SpaceGrotesk_700Bold" },
+} as const;
+
+// A white surface boxed by a thick rule.
+export const box = {
+  borderWidth: rule.thick,
+  borderColor: palette.ink,
+  backgroundColor: palette.white,
+} as const;

@@ -1,0 +1,30 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+function load(file) {
+  const source = fs.readFileSync(file, 'utf8');
+  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', code)(name => name.startsWith('.') ? load(path.resolve(path.dirname(file), name + '.ts')) : require(name), module, module.exports);
+  return module.exports;
+}
+const stats = load(path.resolve(__dirname, '../features/attendance/stats.ts'));
+const types = load(path.resolve(__dirname, '../features/attendance/types.ts'));
+const make = (date, hours, status = 'present') => ({ attendanceDate: date, workedHours: hours, status, checkIn: date + 'T03:30:00Z', checkOut: date + 'T11:30:00Z' });
+const records = [make('2026-09-01', 8), make('2026-09-02', 6), make('2026-09-05', 4), make('2026-08-31', 8)];
+const overview = stats.monthOverview(records, '2026-09-06');
+assert.equal(overview.workdaysSoFar, 4);
+assert.equal(overview.presentDays, 3);
+assert.equal(overview.attendanceRate, 0.5, 'weekend work must not inflate weekday attendance');
+assert.equal(overview.totalHours, 18);
+assert.equal(stats.weekSeries(records, '2026-09-06').total, 26);
+assert.equal(stats.monthSeries(records, '2026-09-06').total, 18);
+assert.equal(stats.monthOverview([], '2026-08-01').attendanceRate, null);
+assert.equal(stats.monthOverview([], '2026-09-06').averageHours, null);
+assert.equal(types.hoursLabel(7.999), '8h 0m');
+assert.equal(types.timeLabel('2026-09-06T03:30:00Z').replace(/\s/g, '').toLowerCase(), '09:00am');
+assert.equal(types.monthStart('2026-09-06'), '2026-09-01');
+const inProgress = { ...make('2026-09-03', 0, 'incomplete'), checkOut: null };
+assert.equal(stats.weekSeries([inProgress], '2026-09-06').values[3], null);
+console.log('PASS: IST formatting, month/week boundaries, weekday targets, empty records, and incomplete sessions.');

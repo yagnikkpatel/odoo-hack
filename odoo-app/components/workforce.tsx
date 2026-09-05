@@ -11,12 +11,16 @@ import {
   type ReactNode,
 } from "react";
 import {
+  Platform,
   Pressable,
   type PressableProps,
+  RefreshControl,
   type StyleProp,
   type ViewStyle,
   StyleSheet,
   Text,
+  TextInput,
+  type TextInputProps,
   View,
 } from "react-native";
 import Animated, {
@@ -32,10 +36,13 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { tabBarHeight, tabContentGap } from "@/constants/navigation";
-import { corners, palette as p } from "@/constants/theme";
-import { useAttendance } from "@/features/attendance/demo-state";
-import { ProfileAvatar } from "@/components/profile-avatar";
+import { SafeAreaView as NativeScreenSafeAreaView } from "react-native-screens/experimental";
+import { tabContentGap } from "@/constants/navigation";
+import { box, font, palette as p, rule } from "@/constants/theme";
+import { useAttendance } from "@/features/attendance/store";
+import { useSession } from "@/features/auth/session";
+import { useEmployeeProfile } from "@/features/employee/use-profile";
+import { EmployeeAvatar } from "@/components/profile-avatar";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const motion = {
@@ -82,7 +89,15 @@ export function Page({
   children,
   tabbed = true,
   header,
-}: PropsWithChildren<{ tabbed?: boolean; header?: ReactNode }>) {
+  refreshing = false,
+  onRefresh,
+}: PropsWithChildren<{
+  tabbed?: boolean;
+  header?: ReactNode;
+  refreshing?: boolean;
+  /** Enables pull-to-refresh. */
+  onRefresh?: () => void;
+}>) {
   const insets = useSafeAreaInsets();
   const blurTarget = useRef<View | null>(null);
   const [headerHeight, setHeaderHeight] = useState(84);
@@ -97,15 +112,26 @@ export function Page({
     const opacity = progress * progress * (3 - 2 * progress);
     return { opacity: reducedMotion ? (scrollY.get() > 0 ? 1 : 0) : opacity };
   });
-  const bottomPadding =
-    insets.bottom + (tabbed ? tabBarHeight + tabContentGap : 28);
+  const bottomPadding = tabbed ? tabContentGap : insets.bottom + 28;
   const content = (
     <Animated.ScrollView
+      style={s.scrollTarget}
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}
       onScroll={onScroll}
       scrollEventThrottle={16}
       scrollIndicatorInsets={{ top: header ? headerHeight + insets.top : 0 }}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={p.accent}
+            colors={[p.accent]}
+            progressViewOffset={header ? headerHeight + insets.top : 0}
+          />
+        ) : undefined
+      }
       contentContainerStyle={[
         s.page,
         {
@@ -117,7 +143,7 @@ export function Page({
       {children}
     </Animated.ScrollView>
   );
-  return (
+  const page = (
     <SafeAreaView
       edges={header ? ["left", "right"] : ["top", "left", "right"]}
       style={s.safe}
@@ -153,6 +179,13 @@ export function Page({
       )}
     </SafeAreaView>
   );
+  // Android/web bars occupy their own layout space. Only native iOS tabs
+  // overlay their screen; account for their measured bottom safe area once.
+  return tabbed && Platform.OS === "ios" ? (
+    <NativeScreenSafeAreaView collapsable={false} edges={{ bottom: true }} style={s.safe}>
+      {page}
+    </NativeScreenSafeAreaView>
+  ) : page;
 }
 
 export function Eyebrow({ children }: PropsWithChildren) {
@@ -175,20 +208,25 @@ export function Title({
   );
 }
 
-const badgeColors = {
-  neutral: [p.soft, p.muted],
-  accent: [p.accentSoft, p.accentText],
-  success: [p.successSoft, p.success],
-  warning: [p.warningSoft, p.warning],
+// Monochrome status language: filled black is positive or selected, a
+// dashed outline is a caution, a grey fill is neutral.
+const badgeTones = {
+  neutral: { surface: { backgroundColor: p.soft }, ink: p.ink },
+  accent: { surface: { backgroundColor: p.accent }, ink: p.accentForeground },
+  success: { surface: { backgroundColor: p.accent }, ink: p.accentForeground },
+  warning: {
+    surface: { backgroundColor: p.white, borderStyle: "dashed" as const },
+    ink: p.ink,
+  },
 };
 export function Badge({
   children,
   tone = "neutral",
-}: PropsWithChildren<{ tone?: keyof typeof badgeColors }>) {
-  const [backgroundColor, color] = badgeColors[tone];
+}: PropsWithChildren<{ tone?: keyof typeof badgeTones }>) {
+  const { surface, ink } = badgeTones[tone];
   return (
-    <View style={[s.pill, { backgroundColor }]}>
-      <Text style={[s.badgeText, { color }]}>{children}</Text>
+    <View style={[s.pill, surface]}>
+      <Text style={[s.badgeText, { color: ink }]}>{children}</Text>
     </View>
   );
 }
@@ -204,7 +242,8 @@ export function SegmentControl<T extends string>({
 }) {
   const [width, setWidth] = useState(0);
   const offset = useSharedValue(0);
-  const itemWidth = Math.max(0, (width - 8) / options.length);
+  // onLayout reports the border-box; the indicator slides inside the rule.
+  const itemWidth = Math.max(0, (width - rule.thick * 2) / options.length);
   useEffect(() => {
     offset.set(withTiming(options.indexOf(value) * itemWidth, motion));
   }, [value, itemWidth, options, offset]);
@@ -225,19 +264,16 @@ export function SegmentControl<T extends string>({
           ]}
         />
       )}
-      {options.map((option) => (
+      {options.map((option, index) => (
         <PressFeedback
           key={option}
           accessibilityRole="button"
           accessibilityState={{ selected: value === option }}
           onPress={() => onChange(option)}
-          style={s.segment}
+          style={[s.segment, index > 0 && s.segmentDivider]}
         >
           <Text
-            style={[
-              s.segmentText,
-              value === option && { color: p.accentText, fontWeight: "600" },
-            ]}
+            style={[s.segmentText, value === option && s.segmentTextActive]}
           >
             {option}
           </Text>
@@ -251,27 +287,86 @@ export function Button({
   label,
   onPress,
   outline = false,
+  disabled = false,
   icon = "arrow-up-right",
 }: {
   label: string;
   onPress: () => void;
   outline?: boolean;
+  disabled?: boolean;
   icon?: ComponentProps<typeof Feather>["name"];
 }) {
   return (
     <PressFeedback
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={[s.button, outline && s.outline]}
+      style={[s.button, outline && s.outline, disabled && s.buttonDisabled]}
     >
       <Text style={[s.buttonText, outline && { color: p.ink }]}>{label}</Text>
-      <Feather name={icon} size={17} color={outline ? p.ink : p.white} />
+      <Feather name={icon} size={16} color={outline ? p.ink : p.white} />
     </PressFeedback>
   );
 }
+export function TextField({
+  label,
+  style,
+  onFocus,
+  onBlur,
+  ...props
+}: TextInputProps & { label: string }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={s.field}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <TextInput
+        {...props}
+        accessibilityLabel={props.accessibilityLabel ?? label}
+        placeholderTextColor={p.faint}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
+        style={[s.input, focused && s.inputFocused, style]}
+      />
+    </View>
+  );
+}
+// A dashed box for a problem the visitor can act on.
+export function Notice({
+  children,
+  actionLabel,
+  onAction,
+}: PropsWithChildren<{ actionLabel?: string; onAction?: () => void }>) {
+  return (
+    <View style={s.notice} accessibilityLiveRegion="polite">
+      <Feather name="alert-triangle" size={16} color={p.ink} />
+      <Text style={s.noticeText}>{children}</Text>
+      {actionLabel && onAction ? (
+        <PressFeedback
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          onPress={onAction}
+          style={s.noticeAction}
+        >
+          <Text style={s.noticeActionText}>{actionLabel}</Text>
+        </PressFeedback>
+      ) : null}
+    </View>
+  );
+}
 export function TopBar() {
-  const { checkedIn } = useAttendance();
+  const { checkedIn, dayComplete, loading } = useAttendance();
+  const { user } = useSession();
+  // Shows the employee's real HR photo once it loads, matching the Profile
+  // screen, instead of always falling back to the generated placeholder.
+  const { profile } = useEmployeeProfile();
   return (
     <View style={s.topBar}>
       <PressFeedback
@@ -280,12 +375,17 @@ export function TopBar() {
         onPress={() => router.navigate("/profile")}
         style={s.identity}
       >
-        <ProfileAvatar seed="alex-morgan" />
+        <EmployeeAvatar
+          imageUrl={profile?.imageUrl}
+          seed={user?.id ?? "employee"}
+          style={s.avatarFrame}
+        />
       </PressFeedback>
       <Button
-        label={checkedIn ? "Check out" : "Check in"}
+        label={dayComplete ? "Done today" : checkedIn ? "Check out" : "Check in"}
+        disabled={dayComplete || loading}
         onPress={() => router.push("/check-in")}
-        icon={checkedIn ? "log-out" : "arrow-up-right"}
+        icon={dayComplete ? "check" : checkedIn ? "log-out" : "arrow-up-right"}
       />
     </View>
   );
@@ -322,16 +422,31 @@ export const s = StyleSheet.create({
     flexShrink: 1,
     minHeight: 44,
   },
-  caption: { fontSize: 12, lineHeight: 18, color: p.muted, marginTop: 3 },
-  titleBlock: { gap: 7, marginTop: 12, marginBottom: 24 },
+  avatarFrame: { borderWidth: rule.thick, borderColor: p.ink },
+  caption: {
+    ...font.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    color: p.muted,
+    marginTop: 3,
+  },
+  titleBlock: { gap: 8, marginTop: 12, marginBottom: 24 },
   title: {
-    fontSize: 30,
-    fontWeight: "600",
-    letterSpacing: -1.15,
+    ...font.bold,
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: -0.8,
     color: p.ink,
   },
-  body: { fontSize: 14, lineHeight: 22, color: p.muted },
-  eyebrow: { fontSize: 12, lineHeight: 18, fontWeight: "500", color: p.muted },
+  body: { ...font.regular, fontSize: 14, lineHeight: 22, color: p.muted },
+  eyebrow: {
+    ...font.medium,
+    fontSize: 11,
+    lineHeight: 16,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: p.muted,
+  },
   section: {
     flexDirection: "row",
     alignItems: "center",
@@ -340,47 +455,113 @@ export const s = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    letterSpacing: -0.35,
+    ...font.bold,
+    fontSize: 13,
+    lineHeight: 18,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
     color: p.ink,
   },
   row: { flexDirection: "row", gap: 12 },
-  card: {
-    ...corners(22),
-    padding: 20,
-    backgroundColor: p.white,
-    boxShadow:
-      "0 2px 6px rgba(25, 25, 40, 0.025), 0 8px 24px rgba(25, 25, 40, 0.015)",
-  },
+  card: { ...box, padding: 20 },
+  // A thin rule between rows inside a card.
+  rowDivider: { borderTopWidth: rule.thin, borderTopColor: p.ink },
   button: {
-    minHeight: 44,
-    paddingHorizontal: 16,
+    minHeight: 48,
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    backgroundColor: p.accentStrong,
+    backgroundColor: p.accent,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    ...corners(14),
   },
-  buttonText: { fontSize: 13, fontWeight: "600", color: p.white },
-  outline: { backgroundColor: p.soft },
-  divider: { marginVertical: 24 },
+  buttonText: {
+    ...font.bold,
+    fontSize: 13,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: p.white,
+  },
+  // Only the outline (secondary) variant needs a rule to read as a button.
+  outline: {
+    backgroundColor: p.white,
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+  },
+  buttonDisabled: { opacity: 0.4 },
+  field: { gap: 6 },
+  fieldLabel: {
+    ...font.bold,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: p.muted,
+  },
+  input: {
+    ...font.medium,
+    height: 48,
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    backgroundColor: p.white,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: p.ink,
+    outlineWidth: 0,
+  },
+  inputFocused: { backgroundColor: p.soft },
+  notice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    borderStyle: "dashed",
+    padding: 12,
+  },
+  noticeText: {
+    ...font.medium,
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: p.ink,
+  },
+  noticeAction: {
+    minHeight: 32,
+    justifyContent: "center",
+    paddingHorizontal: 10,
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+  },
+  noticeActionText: {
+    ...font.bold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: p.ink,
+  },
+  divider: { height: rule.thin, backgroundColor: p.ink, marginVertical: 24 },
   pill: {
     alignSelf: "flex-start",
-    overflow: "hidden",
-    ...corners(8),
+    borderWidth: rule.thin,
+    borderColor: p.ink,
     backgroundColor: p.soft,
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
-  badgeText: { fontSize: 11, fontWeight: "500" },
+  badgeText: {
+    ...font.bold,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   segments: {
     flexDirection: "row",
-    padding: 4,
-    backgroundColor: p.soft,
-    ...corners(14),
+    borderWidth: rule.thick,
+    borderColor: p.ink,
+    backgroundColor: p.white,
     position: "relative",
   },
   segment: {
@@ -390,14 +571,14 @@ export const s = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 6,
   },
-  segmentText: { fontSize: 13, color: p.muted },
+  segmentDivider: { borderLeftWidth: rule.thin, borderLeftColor: p.ink },
+  segmentText: { ...font.medium, fontSize: 13, color: p.ink },
+  segmentTextActive: { ...font.bold, color: p.white },
   segmentIndicator: {
     position: "absolute",
-    top: 4,
-    bottom: 4,
-    left: 4,
-    ...corners(10),
-    backgroundColor: p.white,
-    boxShadow: "0 2px 5px rgba(25,25,40,0.07)",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: p.accent,
   },
 });

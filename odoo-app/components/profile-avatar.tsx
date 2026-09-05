@@ -1,3 +1,4 @@
+import { Image, type ImageStyle } from "expo-image";
 import { type StyleProp, View, type ViewStyle } from "react-native";
 import { Circle, G, Line, Path, Rect, Svg } from "react-native-svg";
 
@@ -32,7 +33,7 @@ type ProfileAvatarProps = {
 export function ProfileAvatar({
   seed,
   size = 44,
-  radius = size / 2,
+  radius = 0,
   style,
 }: ProfileAvatarProps) {
   const hash = hashSeed(seed);
@@ -191,5 +192,32 @@ export function ProfileAvatar({
         />
       </Svg>
     </View>
+  );
+}
+
+/**
+ * The account's real HR photo when it has one, the generated placeholder
+ * otherwise. Used everywhere a person's picture appears — the pinned header
+ * and the Profile screen — so a set photo shows up consistently rather than
+ * only on Profile.
+ */
+export function EmployeeAvatar({
+  imageUrl,
+  seed,
+  size = 44,
+  radius = 0,
+  style,
+}: ProfileAvatarProps & { imageUrl?: string | null }) {
+  if (!imageUrl) return <ProfileAvatar seed={seed} size={size} radius={radius} style={style} />;
+  return (
+    <Image
+      source={{ uri: imageUrl }}
+      style={[
+        { width: size, height: size, borderRadius: radius },
+        style as StyleProp<ImageStyle>,
+      ]}
+      contentFit="cover"
+      accessibilityLabel="Your photo"
+    />
   );
 }
