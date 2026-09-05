@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react'
 
 import Link from 'next/link'
+import { EyeIcon, EyeOffIcon } from 'lucide-react'
 
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Checkbox } from '@/features/nexacrm/components/ui/checkbox'
@@ -29,6 +30,7 @@ export function LoginForm() {
   const [formState, setFormState] = useState(initialFormState)
   const [pending, setPending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [passwordVisible, setPasswordVisible] = useState(false)
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -93,22 +95,39 @@ export function LoginForm() {
             Forgot password?
           </Button>
         </div>
-        <Input
-          id='password'
-          name='password'
-          type='password'
-          autoComplete='current-password'
-          required
-          disabled={pending}
-          value={formState.password}
-          onInput={event => {
-            const password = event.currentTarget.value
-            setFormState(current => ({
-              ...current,
-              password
-            }))
-          }}
-        />
+        <div className='relative'>
+          <Input
+            id='password'
+            name='password'
+            type={passwordVisible ? 'text' : 'password'}
+            autoComplete='current-password'
+            placeholder='Enter your password'
+            required
+            disabled={pending}
+            className='pr-8'
+            value={formState.password}
+            onInput={event => {
+              const password = event.currentTarget.value
+              setFormState(current => ({
+                ...current,
+                password
+              }))
+            }}
+          />
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon-sm'
+            className='absolute top-1/2 right-0.5 -translate-y-1/2'
+            disabled={pending}
+            aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+            aria-pressed={passwordVisible}
+            aria-controls='password'
+            onClick={() => setPasswordVisible(current => !current)}
+          >
+            {passwordVisible ? <EyeOffIcon /> : <EyeIcon />}
+          </Button>
+        </div>
       </div>
 
       <div className='flex items-center gap-2'>
