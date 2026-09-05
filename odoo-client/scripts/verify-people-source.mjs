@@ -26,5 +26,5 @@ function verify(relative) {
 }
 for (const relative of ['views/apps/people', 'components/data-table', 'components/calendar', 'components/record']) verify(relative)
 assert.ok(readFileSync(path.join(project, 'app/(app)/employees/page.tsx'), 'utf8')
-  .includes('@/features/nexacrm/views/apps/people'))
-console.log(`PASS: ${verified} People and supporting UI files match warehouse source; only imports and /employees routing differ.`)
+  .includes('@/features/employees'))
+console.log(`PASS: ${verified} preserved People/supporting UI files match warehouse source; Employees uses its isolated HR adaptation.`)
