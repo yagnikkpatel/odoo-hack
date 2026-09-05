@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { Button } from '@/features/nexacrm/components/ui/button'
 
 export function SessionUnavailable() {
   return (

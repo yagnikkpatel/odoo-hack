@@ -6,18 +6,15 @@ import { AUTH_REQUEST_TIMEOUT_MS } from './auth-constants'
 import { isRecord, parseSessionUser } from './auth-validation'
 import type { SessionUser } from './auth-types'
 
+// Re-exported so route handlers keep a single auth import.
+export { cookieOptions, applySessionCookies, clearSessionCookies } from './auth-cookies'
+export { parseAuthTokens, requestTokenRefresh, tokenLifetime, type AuthTokens } from './auth-tokens'
+
 export class AuthServiceUnavailableError extends Error {
   constructor() {
     super('The authentication service is currently unavailable. Please try again shortly.')
     this.name = 'AuthServiceUnavailableError'
   }
-}
-
-export const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/'
 }
 
 export function authJson(body: unknown, status = 200) {
@@ -108,18 +105,4 @@ export async function readVerifiedUser(token: string): Promise<SessionUser | nul
   const user = parseSessionUser(payload.data.user)
   if (!user) throw new AuthServiceUnavailableError()
   return user
-}
-
-// Decode ONLY expiry to bound cookie lifetime, never to authenticate identity.
-// Identity is verified by the backend's authenticated /auth/me on each request.
-export function tokenLifetime(token: string, now = Date.now()): number | null {
-  if (token.length > 3800 || !/^[\w-]+\.[\w-]+\.[\w-]+$/.test(token)) return null
-  try {
-    const payload: unknown = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
-    if (!isRecord(payload) || typeof payload.exp !== 'number' || !Number.isSafeInteger(payload.exp)) return null
-    const seconds = Math.floor(payload.exp - now / 1000)
-    return seconds > 0 ? seconds : null
-  } catch {
-    return null
-  }
 }

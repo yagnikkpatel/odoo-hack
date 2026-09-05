@@ -1,10 +1,11 @@
 import { cookies } from 'next/headers'
-import { PASSWORD_RESET_COOKIE_NAME, SESSION_COOKIE_NAME } from '@/features/auth/auth-constants'
+import { PASSWORD_RESET_COOKIE_NAME } from '@/features/auth/auth-constants'
 import {
   authError,
   authJson,
   backendFailure,
   checkSameOrigin,
+  clearSessionCookies,
   cookieOptions,
   readAuthBody,
   requestAuthBackend,
@@ -33,9 +34,8 @@ export async function POST(request: Request) {
       success: true,
       message: 'Your password has been reset. Sign in with your new password.'
     })
-    response.cookies.set(PASSWORD_RESET_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
-    response.cookies.set(SESSION_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
-    return response
+    // The backend revokes every refresh session on reset; drop the cookies too.
+    return clearSessionCookies(response)
   } catch {
     return serviceUnavailable()
   }

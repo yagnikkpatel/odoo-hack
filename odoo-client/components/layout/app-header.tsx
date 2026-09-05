@@ -7,7 +7,7 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/features/nexacrm/components/ui/button";
 import { getNavigationLabel } from "@/config/app-navigation";
 import { usePathname } from "next/navigation";
 

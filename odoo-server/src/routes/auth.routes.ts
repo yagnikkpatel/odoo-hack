@@ -3,6 +3,8 @@ import {
   currentUserHandler,
   forgotPasswordHandler,
   loginHandler,
+  logoutHandler,
+  refreshHandler,
   resetPasswordHandler,
   verifyOtpHandler,
 } from "../controllers/auth.controller";
@@ -13,6 +15,8 @@ export const authRouter = Router();
 authRouter.get("/me", requireAuth, currentUserHandler);
 
 authRouter.post("/login", loginHandler);
+authRouter.post("/refresh", refreshHandler);
+authRouter.post("/logout", logoutHandler);
 authRouter.post("/forgot-password", forgotPasswordHandler);
 authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/reset-password", resetPasswordHandler);

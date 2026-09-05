@@ -1,11 +1,18 @@
-import { SESSION_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME } from '@/features/auth/auth-constants'
-import { authJson, checkSameOrigin, cookieOptions } from '@/features/auth/auth-server'
+import { cookies } from 'next/headers'
+import { REFRESH_COOKIE_NAME } from '@/features/auth/auth-constants'
+import {
+  authJson,
+  checkSameOrigin,
+  clearSessionCookies,
+  requestAuthBackend
+} from '@/features/auth/auth-server'
 
 export async function POST(request: Request) {
   const rejected = checkSameOrigin(request)
   if (rejected) return rejected
-  const response = authJson({ success: true })
-  response.cookies.set(SESSION_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
-  response.cookies.set(PASSWORD_RESET_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
-  return response
+  const refreshToken = (await cookies()).get(REFRESH_COOKIE_NAME)?.value
+  // Revoke the session server-side so the refresh token cannot outlive the
+  // cookie. A failure here must still sign the visitor out locally.
+  if (refreshToken) await requestAuthBackend('logout', { refreshToken }).catch(() => null)
+  return clearSessionCookies(authJson({ success: true }))
 }

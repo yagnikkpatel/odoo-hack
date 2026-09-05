@@ -5,11 +5,14 @@ import { parseOrThrow } from "../lib/validate";
 import {
   forgotPasswordSchema,
   loginSchema,
+  refreshTokenSchema,
   resetPasswordSchema,
   verifyOtpSchema,
 } from "../types/user.dto";
 import {
   login,
+  logout,
+  refreshSession,
   requestPasswordReset,
   resetPassword,
   verifyPasswordResetOtp,
@@ -32,6 +35,34 @@ export async function loginHandler(
   res.status(200).json({
     success: true,
     data: result,
+  });
+}
+
+export async function refreshHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseOrThrow(refreshTokenSchema, req.body);
+  const result = await refreshSession(input);
+
+  res.setHeader("Cache-Control", "no-store, private");
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+}
+
+export async function logoutHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseOrThrow(refreshTokenSchema, req.body);
+
+  await logout(input);
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
   });
 }
 

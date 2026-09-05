@@ -13,6 +13,14 @@ export type TokenPayload = {
   role: UserRole;
 };
 
+// Refresh tokens carry a session id so they can be rotated and revoked
+// server-side, and a `type` claim so an access token can never be replayed
+// on the refresh endpoint.
+export type RefreshTokenPayload = TokenPayload & {
+  sessionId: string;
+  type: "refresh";
+};
+
 export type UserRecord = {
   id: string;
   name: string;

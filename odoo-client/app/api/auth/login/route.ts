@@ -1,10 +1,10 @@
-import { SESSION_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME } from '@/features/auth/auth-constants'
 import {
+  applySessionCookies,
   authError,
   authJson,
   backendFailure,
   checkSameOrigin,
-  cookieOptions,
+  parseAuthTokens,
   readAuthBody,
   readVerifiedUser,
   requestAuthBackend,
@@ -24,25 +24,15 @@ export async function POST(request: Request) {
       password: input.password
     })
     if (!upstream.ok) return backendFailure(upstream.status, 'login')
-    if (
-      !isRecord(payload) ||
-      payload.success !== true ||
-      !isRecord(payload.data) ||
-      typeof payload.data.accessToken !== 'string'
-    )
+    if (!isRecord(payload) || payload.success !== true || !isRecord(payload.data))
       return backendFailure(502, 'login')
+    const tokens = parseAuthTokens(payload.data)
     const reportedUser = parseSessionUser(payload.data.user)
-    const token = payload.data.accessToken
-    if (!reportedUser || !tokenLifetime(token)) return backendFailure(502, 'login')
-    const user = await readVerifiedUser(token)
+    if (!tokens || !reportedUser || !tokenLifetime(tokens.accessToken)) return backendFailure(502, 'login')
+    const user = await readVerifiedUser(tokens.accessToken)
     if (!user) return authError('The session could not be verified. Please sign in again.', 401)
     if (user.id !== reportedUser.id) return backendFailure(502, 'login')
-    const maxAge = tokenLifetime(token)
-    if (!maxAge) return authError('The session expired. Please sign in again.', 401)
-    const response = authJson({ success: true })
-    response.cookies.set(SESSION_COOKIE_NAME, token, { ...cookieOptions, ...(input.rememberMe ? { maxAge } : {}) })
-    response.cookies.set(PASSWORD_RESET_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
-    return response
+    return applySessionCookies(authJson({ success: true }), tokens, input.rememberMe)
   } catch {
     return serviceUnavailable()
   }

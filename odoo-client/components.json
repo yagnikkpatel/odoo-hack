@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/features/nexacrm/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "registries": {
+    "@ss-pages": {
+      "url": "https://shadcnstudio.com/r/pages/new-york-v4/{name}.json",
+      "params": {
+        "email": "${SHADCN_STUDIO_EMAIL}",
+        "license_key": "${SHADCN_STUDIO_LICENSE_KEY}"
+      }
+    }
+  }
+}

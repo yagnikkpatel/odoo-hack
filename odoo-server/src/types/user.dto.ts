@@ -61,6 +61,12 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1).max(4096),
+});
+
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
