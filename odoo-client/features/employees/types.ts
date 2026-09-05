@@ -42,8 +42,8 @@ export type EmployeeProfileInput = {
   workingSchedule: string
   companyName: string
   workLocation: string
-  managerId?: string | null
-  location?: string | null
+  managerId: string
+  location: string
 }
 export type EmployeeCreateInput = EmployeeProfileInput & { userId: string }
 export type EmployeeUpdateInput = Partial<EmployeeProfileInput>

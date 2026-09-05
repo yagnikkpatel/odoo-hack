@@ -1,11 +1,7 @@
 "use client";
 
-import {
-  IconBell,
-  IconLayoutSidebarLeftCollapse,
-  IconMenu2,
-  IconSearch,
-} from "@tabler/icons-react";
+import { IconMenu2 } from "@tabler/icons-react";
+import { PanelLeftIcon } from "lucide-react";
 
 import { Button } from "@/features/nexacrm/components/ui/button";
 import { getNavigationLabel } from "@/config/app-navigation";
@@ -46,9 +42,9 @@ export function AppHeader({
         className="-ml-2 hidden md:inline-flex"
         onClick={onDesktopToggle}
       >
-        <IconLayoutSidebarLeftCollapse
+        <PanelLeftIcon
           className={`size-5 transition-transform ${collapsed ? "rotate-180" : ""}`}
-          stroke={1.8}
+          strokeWidth={1.8}
         />
         <span className="sr-only">
           {collapsed ? "Expand navigation" : "Collapse navigation"}
@@ -57,24 +53,6 @@ export function AppHeader({
 
       <div className="bg-border mx-2 h-5 w-px" />
       <p className="truncate text-sm font-medium">{pageLabel}</p>
-
-      <div className="ml-auto flex items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-muted-foreground hidden gap-2 sm:inline-flex"
-        >
-          <IconSearch className="size-4" stroke={1.8} />
-          <span>Search</span>
-          <kbd className="bg-muted rounded border px-1.5 py-0.5 text-[10px]">
-            ⌘ K
-          </kbd>
-        </Button>
-        <Button type="button" variant="ghost" size="icon">
-          <IconBell className="size-5" stroke={1.8} />
-          <span className="sr-only">Notifications</span>
-        </Button>
-      </div>
     </header>
   );
 }

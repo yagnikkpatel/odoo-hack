@@ -45,10 +45,14 @@ export default function EmployeesToolbar({
       onViewTypeChange={onViewTypeChange}
       viewTypes={EMPLOYEE_VIEW_TYPES}
       showSort={false}
+      showSearch={false}
+      showFilterFieldLabels={false}
+      showFilterChips={false}
       options={
         <DataTableViewOptions
           table={table}
           reorderableColumnIds={REORDERABLE_COLUMN_IDS}
+          showCopyLink={false}
           onExport={exportCurrentPage}
           exportLabel="Export current page to CSV"
         />

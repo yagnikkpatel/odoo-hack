@@ -140,7 +140,7 @@ const DataTable = <TData,>({
                 <TableCell
                   key={column.id}
                   style={{ width: column.getSize() }}
-                  className={cn('border-r px-3 py-2 last:border-r-0', column.columnDef.meta?.cellClassName)}
+                  className={cn('px-3 py-2', column.columnDef.meta?.cellClassName)}
                 >
                   <Skeleton className='h-5 w-full' />
                 </TableCell>
@@ -168,7 +168,7 @@ const DataTable = <TData,>({
                   key={cell.id}
                   style={{ width: cell.column.getSize() }}
                   className={cn(
-                    'truncate border-r px-3 py-2 last:border-r-0',
+                    'truncate px-3 py-2',
                     cell.column.columnDef.meta?.cellClassName
                   )}
                 >

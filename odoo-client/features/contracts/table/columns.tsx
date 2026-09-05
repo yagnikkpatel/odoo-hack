@@ -11,7 +11,6 @@ import {
 import { Checkbox } from '@/features/nexacrm/components/ui/checkbox'
 import DataTableColumnHeader from '@/features/nexacrm/components/data-table/data-table-column-header'
 import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
-import ContractActions from '../components/contract-actions'
 import ContractStatusBadge from '../components/status-badge'
 import { formatContractDate, formatWage } from '../types'
 import type { Contract } from '../types'
@@ -25,11 +24,7 @@ export const REORDERABLE_COLUMN_IDS = [
   'status',
 ]
 
-export const INITIAL_COLUMN_ORDER = [
-  'select',
-  ...REORDERABLE_COLUMN_IDS,
-  'actions',
-]
+export const INITIAL_COLUMN_ORDER = ['select', ...REORDERABLE_COLUMN_IDS]
 
 export const columns: ColumnDef<Contract>[] = [
   {
@@ -138,20 +133,5 @@ export const columns: ColumnDef<Contract>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => <ContractStatusBadge status={row.original.status} />,
-  },
-  {
-    id: 'actions',
-    size: 48,
-    enableSorting: false,
-    enableHiding: false,
-    enableResizing: false,
-    enableGlobalFilter: false,
-    header: () => <span className="sr-only">Actions</span>,
-    cell: ({ row, table }) => (
-      <ContractActions
-        contract={row.original}
-        onEdit={() => table.options.meta?.onEditRow?.(row.original)}
-      />
-    ),
   },
 ]

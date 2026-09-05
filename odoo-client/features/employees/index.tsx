@@ -44,9 +44,7 @@ function EmployeeDirectory({ defaultView }: EmployeesViewProps) {
       .withDefault(defaultView)
       .withOptions({ history: 'push', shallow: true }),
   )
-  const { table, isFiltered, visibleCount, isLoading, error, retry } = useEmployeesTable({
-    onEditEmployee: (employee) => setPreviewId(employee.id),
-  })
+  const { table, isFiltered, visibleCount, isLoading, error, retry } = useEmployeesTable()
 
   function selectView(view: RecordViewType) {
     if (view !== 'table' && view !== 'grid') return
@@ -59,8 +57,8 @@ function EmployeeDirectory({ defaultView }: EmployeesViewProps) {
     createAction = (
       <Button size="sm" className={ACCENT_ICON_BUTTON} onClick={() => setCreateOpen(true)}>
         <PlusIcon />
-        <span className="max-sm:hidden">New employee</span>
-        <span className="sr-only sm:hidden">New employee</span>
+        <span className="max-sm:hidden">New users</span>
+        <span className="sr-only sm:hidden">New users</span>
       </Button>
     )
   }

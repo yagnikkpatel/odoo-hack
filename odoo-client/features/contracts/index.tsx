@@ -162,6 +162,9 @@ function ContractDirectory() {
         icon={FileTextIcon}
         searchPlaceholder="Search employee name or email…"
         showSort={false}
+        showSearch={false}
+        showFilterFieldLabels={false}
+        showFilterChips={false}
         dynamicFilterOptions={{
           status: Object.entries(CONTRACT_STATUSES).map(([value, label]) => ({
             value,
@@ -172,6 +175,7 @@ function ContractDirectory() {
           <DataTableViewOptions
             table={table}
             reorderableColumnIds={REORDERABLE_COLUMN_IDS}
+            showCopyLink={false}
             onExport={() => downloadContractsCsv(contracts)}
           />
         }

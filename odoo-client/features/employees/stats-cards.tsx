@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2Icon, UserCheckIcon, UserXIcon, UsersIcon } from 'lucide-react'
+import { Building2Icon, UserRoundCheckIcon, UsersIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
 import { Skeleton } from '@/features/nexacrm/components/ui/skeleton'
@@ -11,18 +11,17 @@ import { employeeStats } from './stats'
 export default function EmployeesStatsCards() {
   const summary = useEmployeesStore((state) => state.summary)
   const hasHydrated = useEmployeesStore((state) => state.hasHydrated)
-  const { total, departments, withManager, withoutManager } = employeeStats(summary)
+  const { total, departments, active } = employeeStats(summary)
   const stats: { label: string; value: number; icon: LucideIcon }[] = [
     { label: 'Total employees', value: total, icon: UsersIcon },
     { label: 'Departments', value: departments, icon: Building2Icon },
-    { label: 'With manager', value: withManager, icon: UserCheckIcon },
-    { label: 'Without manager', value: withoutManager, icon: UserXIcon },
+    { label: 'Active employees', value: active, icon: UserRoundCheckIcon },
   ]
 
   return (
     <div
       aria-label="Employee directory totals"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-6 xl:grid-cols-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-6 xl:grid-cols-3"
     >
       {stats.map(({ label, value, icon: Icon }) => {
         let content = <Skeleton className="h-7 w-20" />

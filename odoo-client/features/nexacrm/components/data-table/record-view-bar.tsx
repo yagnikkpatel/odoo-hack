@@ -24,6 +24,7 @@ import { Input } from '@/features/nexacrm/components/ui/input'
 import SearchableMenuSection from '@/features/nexacrm/components/ui/searchable-menu-section'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -65,6 +66,12 @@ type RecordViewBarProps<TData> = {
   viewTypes?: readonly RecordViewType[]
   showSort?: boolean
   showSearch?: boolean
+
+  /** Hides each filter field's icon+label header, leaving just its options. Off by default. */
+  showFilterFieldLabels?: boolean
+
+  /** Hides the whole chips row below (active-filter chips, Add filter, Reset). On by default. */
+  showFilterChips?: boolean
 }
 
 export const VIEW_BAR_TRIGGER = 'max-sm:border-border max-sm:size-6 max-sm:border'
@@ -107,7 +114,9 @@ const RecordViewBar = <TData,>({
   viewType = 'table',
   onViewTypeChange,
   showSort = true,
-  showSearch = true
+  showSearch = true,
+  showFilterFieldLabels = true,
+  showFilterChips = true
 }: RecordViewBarProps<TData>) => {
   const optionsFor = (column: Column<TData, unknown>) =>
     dynamicFilterOptions?.[column.id] ?? column.columnDef.meta?.filterOptions ?? []
@@ -145,39 +154,44 @@ const RecordViewBar = <TData,>({
   }
 
   const renderFilterField = (column: Column<TData, unknown>) => (
-    <DropdownMenuSub key={column.id}>
-      <DropdownMenuSubTrigger>
-        <FieldIcon column={column} />
-        {columnLabel(column)}
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className={isTextFilter(column) ? 'p-1' : undefined}>
-        {isTextFilter(column) ? (
+    <div key={column.id} className='border-border/60 border-b py-1.5 last:border-b-0'>
+      {showFilterFieldLabels ? (
+        <div className='text-muted-foreground flex items-center gap-1.5 px-1.5 py-1 text-xs font-medium'>
+          <FieldIcon column={column} />
+          {columnLabel(column)}
+        </div>
+      ) : null}
+      {isTextFilter(column) ? (
+        <div className='px-1.5 pb-0.5'>
           <Input
-            autoFocus
             value={(column.getFilterValue() as string) ?? ''}
             onChange={event => column.setFilterValue(event.target.value || undefined)}
             onKeyDown={event => event.stopPropagation()}
             placeholder={`${columnLabel(column)} contains…`}
             aria-label={`Filter by ${columnLabel(column)}`}
-            className='input-sm w-52'
+            className='input-sm w-full'
           />
-        ) : (
-          <SearchableMenuSection
-            items={optionsFor(column)}
-            getLabel={option => option.label}
-            label={columnLabel(column).toLowerCase()}
-          >
-            {options =>
-              options.map(option => (
-                <DropdownMenuItem key={option.value} onClick={() => column.setFilterValue(option.value)}>
-                  {option.label}
-                </DropdownMenuItem>
-              ))
-            }
-          </SearchableMenuSection>
-        )}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+        </div>
+      ) : (
+        <SearchableMenuSection
+          items={optionsFor(column)}
+          getLabel={option => option.label}
+          label={columnLabel(column).toLowerCase()}
+        >
+          {options =>
+            options.map(option => (
+              <DropdownMenuCheckboxItem
+                key={option.value}
+                checked={column.getFilterValue() === option.value}
+                onCheckedChange={checked => column.setFilterValue(checked ? option.value : undefined)}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))
+          }
+        </SearchableMenuSection>
+      )}
+    </div>
   )
 
   const renderFieldGroup = (
@@ -187,7 +201,9 @@ const RecordViewBar = <TData,>({
   ) =>
     columns.length > 0 ? (
       <DropdownMenuGroup>
-        <DropdownMenuLabel className='text-muted-foreground text-xs font-normal'>{label}</DropdownMenuLabel>
+        {label ? (
+          <DropdownMenuLabel className='text-muted-foreground text-xs font-normal'>{label}</DropdownMenuLabel>
+        ) : null}
         <SearchableMenuSection items={columns} getLabel={columnLabel} label={label.toLowerCase()}>
           {options => options.map(render)}
         </SearchableMenuSection>
@@ -249,7 +265,7 @@ const RecordViewBar = <TData,>({
               </div>}
               {showSearch && <DropdownMenuSeparator />}
               {renderFieldGroup('Visible fields', visible(filterableColumns), renderFilterField)}
-              {renderFieldGroup('Hidden fields', hidden(filterableColumns), renderFilterField)}
+              {renderFieldGroup('', hidden(filterableColumns), renderFilterField)}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -282,7 +298,7 @@ const RecordViewBar = <TData,>({
         </div>
       </div>
 
-      {hasChips ? (
+      {hasChips && showFilterChips ? (
         <div className='flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-1.5 sm:px-6'>
           {sorting.map(sort => {
             const column = table.getColumn(sort.id)

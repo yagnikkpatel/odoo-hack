@@ -10,18 +10,13 @@ import type {
   Updater,
   VisibilityState,
 } from '@tanstack/react-table'
-import type { Employee } from '../types'
 import { useEmployeesStore } from '../store'
 import { INITIAL_COLUMN_ORDER, columns } from './columns'
 import { employeeListQuery, employeeQueriesMatch, lastEmployeePage } from './query'
 
 const DEFAULT_PAGE_SIZE = 15
 
-export const useEmployeesTable = ({
-  onEditEmployee,
-}: {
-  onEditEmployee: (employee: Employee) => void
-}) => {
+export const useEmployeesTable = () => {
   const employees = useEmployeesStore((state) => state.employees)
   const serverPagination = useEmployeesStore((state) => state.pagination)
   const isLoading = useEmployeesStore((state) => state.isLoading)
@@ -31,10 +26,7 @@ export const useEmployeesTable = ({
   const hasHydrated = useEmployeesStore((state) => state.hasHydrated)
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    phone: false,
-    role: false,
-  })
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnOrder, setColumnOrder] = useState<string[]>(INITIAL_COLUMN_ORDER)
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
   const [rowSelection, setRowSelection] = useState({})
@@ -108,7 +100,6 @@ export const useEmployeesTable = ({
     return () => window.clearTimeout(timer)
   }, [retry])
 
-  const meta = useMemo(() => ({ onEditRow: onEditEmployee }), [onEditEmployee])
   const table = useReactTable({
     data: employees,
     columns,
@@ -121,7 +112,6 @@ export const useEmployeesTable = ({
       globalFilter,
       pagination,
     },
-    meta,
     rowCount: serverPagination.total,
     getRowId: (row) => row.id,
     onColumnFiltersChange: handleColumnFiltersChange,

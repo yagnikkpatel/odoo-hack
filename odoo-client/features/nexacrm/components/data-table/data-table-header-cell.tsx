@@ -42,7 +42,7 @@ const DataTableHeaderCell = <TData, TValue>({
         transform: transform ? CSS.Translate.toString({ ...transform, y: 0 }) : undefined
       }}
       className={cn(
-        'group/head relative border-r px-3 last:border-r-0',
+        'group/head relative px-3',
         header.column.columnDef.meta?.cellClassName,
         isDragging && 'bg-muted z-10 opacity-90',
         className

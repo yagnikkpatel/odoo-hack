@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { DialogFooter } from '@/features/nexacrm/components/ui/dialog'
 import { Input } from '@/features/nexacrm/components/ui/input'
@@ -21,6 +22,7 @@ export default function CreateAccountForm({ onCreated, onCancel, onPendingChange
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [role, setRole] = useState<UserRole>('employee')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,9 +70,15 @@ export default function CreateAccountForm({ onCreated, onCancel, onPendingChange
         </div>
         <div className="grid gap-2">
           <Label htmlFor={`${id}-password`}>Initial password</Label>
-          <Input id={`${id}-password`} type="password" required minLength={8} maxLength={72} autoComplete="new-password"
-            value={password} onChange={event => setPassword(event.target.value)} />
-          <p className="text-muted-foreground text-xs">8–72 characters. Share these login details securely; no invitation email is sent.</p>
+          <div className="relative">
+            <Input id={`${id}-password`} type={passwordVisible ? 'text' : 'password'} required minLength={8} maxLength={72}
+              autoComplete="new-password" className="pr-8" value={password} onChange={event => setPassword(event.target.value)} />
+            <Button type="button" variant="ghost" size="icon-sm" className="absolute top-1/2 right-0.5 -translate-y-1/2"
+              disabled={pending} aria-label={passwordVisible ? 'Hide password' : 'Show password'} aria-pressed={passwordVisible}
+              aria-controls={`${id}-password`} onClick={() => setPasswordVisible(current => !current)}>
+              {passwordVisible ? <EyeOffIcon /> : <EyeIcon />}
+            </Button>
+          </div>
         </div>
         <div className="grid gap-2">
           <Label htmlFor={`${id}-role`}>Role</Label>

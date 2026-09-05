@@ -21,7 +21,7 @@ const PROFILE_FIELDS: Record<string, number> = {
   workLocation: 160,
   location: 160
 }
-const REQUIRED_PROFILE_FIELDS = ['jobPosition', 'department', 'contact', 'workingSchedule', 'companyName', 'workLocation']
+const REQUIRED_PROFILE_FIELDS = ['jobPosition', 'department', 'contact', 'workingSchedule', 'companyName', 'workLocation', 'location']
 const ROLE_NAMES = new Set(['admin', 'employee', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager'])
 
 class EmployeeRequestError extends Error {
@@ -113,7 +113,7 @@ async function readLimitedBody(request: Request, maximumBytes: number): Promise<
   }
 }
 
-async function readProfileInput(request: Request): Promise<Record<string, string | null>> {
+async function readProfileInput(request: Request): Promise<Record<string, string>> {
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
     throw new EmployeeRequestError(415, 'Send employee details as JSON.')
   }
@@ -127,21 +127,17 @@ async function readProfileInput(request: Request): Promise<Record<string, string
   if (!isRecord(input) || Object.keys(input).length === 0) {
     throw new EmployeeRequestError(400, 'Provide at least one employee field.')
   }
-  const fields: Record<string, string | null> = {}
+  const fields: Record<string, string> = {}
   for (const [key, rawValue] of Object.entries(input)) {
     if (key === 'managerId') {
-      if (rawValue !== null && (typeof rawValue !== 'string' || !UUID_PATTERN.test(rawValue))) {
-        throw new EmployeeRequestError(400, 'Choose a valid manager or leave the manager unassigned.')
+      if (typeof rawValue !== 'string' || !UUID_PATTERN.test(rawValue)) {
+        throw new EmployeeRequestError(400, 'Choose a valid manager.')
       }
       fields.managerId = rawValue
       continue
     }
     if (!Object.hasOwn(PROFILE_FIELDS, key)) {
       throw new EmployeeRequestError(400, `The employee profile does not support the field ${key}.`)
-    }
-    if (key === 'location' && rawValue === null) {
-      fields.location = null
-      continue
     }
     if (typeof rawValue !== 'string' || !rawValue.trim() || rawValue.trim().length > PROFILE_FIELDS[key]) {
       throw new EmployeeRequestError(400, `Enter ${key} between 1 and ${PROFILE_FIELDS[key]} characters.`)
@@ -157,6 +153,9 @@ async function readProfileInput(request: Request): Promise<Record<string, string
       if (!fields[key]) {
         throw new EmployeeRequestError(400, `The ${key} field is required.`)
       }
+    }
+    if (!fields.managerId) {
+      throw new EmployeeRequestError(400, 'The manager field is required.')
     }
   }
   return fields

@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table'
 import {
-  BriefcaseIcon, Building2Icon, CircleCheckIcon, MailIcon,
+  BriefcaseIcon, Building2Icon, CircleCheckIcon, ExternalLinkIcon, MailIcon,
   PhoneIcon, ShieldIcon, UserIcon, UsersIcon,
 } from 'lucide-react'
 import { Checkbox } from '@/features/nexacrm/components/ui/checkbox'
@@ -13,13 +13,12 @@ import { employeeName } from '../types'
 import type { Employee } from '../types'
 import EmployeeCompany from '../components/employee-company'
 import EmployeeStatusBadge from '../components/status-badge'
-import EmployeeRowActions from './row-actions'
 
 export const REORDERABLE_COLUMN_IDS = [
   'name', 'email', 'companyName', 'department', 'jobTitle',
   'managerName', 'status', 'role', 'phone',
 ]
-export const INITIAL_COLUMN_ORDER = ['select', ...REORDERABLE_COLUMN_IDS, 'actions']
+export const INITIAL_COLUMN_ORDER = ['select', ...REORDERABLE_COLUMN_IDS]
 
 function TextCell({ value }: { value?: string }) {
   if (!value) return <span className="text-muted-foreground">Not set</span>
@@ -65,6 +64,7 @@ export const columns: ColumnDef<Employee>[] = [
       <span className="flex min-w-0 items-center gap-2">
         <PersonAvatar name={employeeName(row.original)} src={row.original.avatar} className="size-6" />
         <span className="truncate">{employeeName(row.original)}</span>
+        <ExternalLinkIcon className="text-muted-foreground ml-auto size-4 shrink-0 opacity-0 transition-opacity group-hover/row:opacity-100" />
       </span>
     ),
   },
@@ -96,7 +96,7 @@ export const columns: ColumnDef<Employee>[] = [
   {
     accessorKey: 'department',
     size: 160,
-    meta: { label: 'Department', icon: Building2Icon, textFilter: true },
+    meta: { label: 'Department', icon: Building2Icon },
     header: ({ column }) => <DataTableColumnHeader column={column} title="Department" />,
     cell: ({ row }) => <TextCell value={row.original.department} />,
   },
@@ -127,7 +127,10 @@ export const columns: ColumnDef<Employee>[] = [
     meta: {
       label: 'Role',
       icon: ShieldIcon,
-      filterOptions: Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label })),
+      // Admin accounts aren't part of the employee directory; don't offer them as a filter.
+      filterOptions: Object.entries(ROLE_LABELS)
+        .filter(([value]) => value !== 'admin')
+        .map(([value, label]) => ({ value, label })),
     },
     header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
     cell: ({ row }) => {
@@ -141,15 +144,5 @@ export const columns: ColumnDef<Employee>[] = [
     meta: { label: 'Phone', icon: PhoneIcon },
     header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
     cell: ({ row }) => <TextCell value={row.original.phone} />,
-  },
-  {
-    id: 'actions',
-    size: 48,
-    enableSorting: false,
-    enableHiding: false,
-    enableResizing: false,
-    enableGlobalFilter: false,
-    header: () => <span className="sr-only">Actions</span>,
-    cell: ({ row, table }) => <EmployeeRowActions row={row} table={table} />,
   },
 ]

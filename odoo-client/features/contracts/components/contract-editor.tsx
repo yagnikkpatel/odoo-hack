@@ -162,7 +162,7 @@ export default function ContractEditor({
           </DialogDescription>
         </DialogHeader>
         <form className="flex min-h-0 flex-col gap-4" action={formAction}>
-          <div className="-mx-1 min-h-0 space-y-5 overflow-y-auto px-1">
+          <div className="-mx-1 -my-1 min-h-0 space-y-5 overflow-y-auto px-1 py-1">
             <Field label="Employee" id="contract-employee">
               {contract ? (
                 <Input

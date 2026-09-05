@@ -29,7 +29,7 @@ export function AppShell({ children, user }: AppShellProps) {
           onMobileClose={() => setMobileOpen(false)}
           user={user}
         />
-        <div className="bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:border xl:rounded-tl-3xl">
+        <div className="bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:rounded-tl-3xl md:border">
           <AppHeader
             role={user.role}
             collapsed={collapsed}

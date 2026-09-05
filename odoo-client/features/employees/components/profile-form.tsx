@@ -67,12 +67,7 @@ const profileFields: {
     required: true,
     maxLength: 160,
   },
-  {
-    name: 'location',
-    label: 'Location (optional)',
-    required: false,
-    maxLength: 160,
-  },
+  { name: 'location', label: 'Location', required: true, maxLength: 160 },
 ]
 
 function initialValues(employee?: Employee): ProfileValues {
@@ -89,11 +84,6 @@ function initialValues(employee?: Employee): ProfileValues {
 }
 
 function buildProfileInput(values: ProfileValues): EmployeeProfileInput {
-  let managerId: string | null = null
-  let location: string | null = null
-  if (values.managerId) managerId = values.managerId
-  if (values.location.trim()) location = values.location.trim()
-
   return {
     jobPosition: values.jobPosition.trim(),
     department: values.department.trim(),
@@ -101,8 +91,8 @@ function buildProfileInput(values: ProfileValues): EmployeeProfileInput {
     workingSchedule: values.workingSchedule.trim(),
     companyName: values.companyName.trim(),
     workLocation: values.workLocation.trim(),
-    managerId,
-    location,
+    managerId: values.managerId,
+    location: values.location.trim(),
   }
 }
 
@@ -138,17 +128,14 @@ export default function ProfileForm({
     value: account.id,
     label: `${account.name || 'Not set'} (${account.email})`,
   }))
-  const managerOptions = [
-    { value: '', label: 'Not assigned' },
-    ...managers
-      .filter(
-        (manager) => manager.id !== employee?.id && manager.id !== accountId,
-      )
-      .map((manager) => ({
-        value: manager.id,
-        label: `${manager.name || 'Not set'} (${manager.email})`,
-      })),
-  ]
+  const managerOptions = managers
+    .filter(
+      (manager) => manager.id !== employee?.id && manager.id !== accountId,
+    )
+    .map((manager) => ({
+      value: manager.id,
+      label: `${manager.name || 'Not set'} (${manager.email})`,
+    }))
   if (
     employee?.managerId &&
     !managerOptions.some((option) => option.value === employee.managerId)
@@ -177,6 +164,10 @@ export default function ProfileForm({
         setError(`${field.label} is required.`)
         return
       }
+    }
+    if (!values.managerId) {
+      setError('Manager is required.')
+      return
     }
     const contact = values.contact.trim()
     if (contact.length < 7 || !/^[0-9+()\-\s]+$/.test(contact)) {
@@ -291,7 +282,7 @@ export default function ProfileForm({
             </div>
           ))}
           <div className="grid content-start gap-2">
-            <Label htmlFor={`${formId}-manager`}>Manager (optional)</Label>
+            <Label htmlFor={`${formId}-manager`}>Manager</Label>
             <SearchableSelect
               id={`${formId}-manager`}
               label="Manager"

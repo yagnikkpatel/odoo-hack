@@ -93,6 +93,9 @@ type DataTableViewOptionsProps<TData> = {
   showSummary?: boolean
   onShowSummaryChange?: (next: boolean) => void
 
+  /** Shows the "Copy link to view" item. On by default. */
+  showCopyLink?: boolean
+
   onExport?: () => void
   exportLabel?: string
 
@@ -104,6 +107,7 @@ const DataTableViewOptions = <TData,>({
   reorderableColumnIds,
   showSummary,
   onShowSummaryChange,
+  showCopyLink = true,
   onExport,
   exportLabel = 'Export to CSV',
   onImport
@@ -205,14 +209,16 @@ const DataTableViewOptions = <TData,>({
             </DropdownMenuCheckboxItem>
           ) : null}
 
-          <DropdownMenuItem
-            onClick={async () => {
-              if (await copyText(window.location.href)) toast.success('Link copied')
-              else toast.error(COPY_FAILED, { description: COPY_FAILED_DESCRIPTION })
-            }}
-          >
-            <LinkIcon /> Copy link to view
-          </DropdownMenuItem>
+          {showCopyLink ? (
+            <DropdownMenuItem
+              onClick={async () => {
+                if (await copyText(window.location.href)) toast.success('Link copied')
+                else toast.error(COPY_FAILED, { description: COPY_FAILED_DESCRIPTION })
+              }}
+            >
+              <LinkIcon /> Copy link to view
+            </DropdownMenuItem>
+          ) : null}
 
           {onImport ? (
             <DropdownMenuItem onClick={onImport}>

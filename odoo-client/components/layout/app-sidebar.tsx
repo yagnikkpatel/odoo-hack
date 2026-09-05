@@ -95,12 +95,12 @@ export function AppSidebar({
           if (event.key === "Escape" && mobileOpen) onMobileClose();
         }}
         className={cn(
-          "bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r transition-[transform,width] duration-200 motion-reduce:transition-none md:visible md:relative md:z-auto md:translate-x-0",
+          "bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r transition-[transform,width] duration-200 motion-reduce:transition-none md:visible md:relative md:z-auto md:translate-x-0 md:border-r-0",
           mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full",
           collapsed && "md:w-[4.5rem]",
         )}
       >
-        <div className="flex h-16 shrink-0 items-center border-b px-3">
+        <div className="flex h-16 shrink-0 items-center px-3">
           <div
             className={cn(
               "hover:bg-sidebar-accent flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 transition-colors",

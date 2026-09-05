@@ -94,7 +94,7 @@ export function EditorDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex min-h-0 flex-col gap-4">
-          <div className="-mx-1 min-h-0 space-y-5 overflow-y-auto px-1">
+          <div className="-mx-1 -my-1 min-h-0 space-y-5 overflow-y-auto px-1 py-1">
             {children}
           </div>
           {error && (
