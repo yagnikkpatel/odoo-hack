@@ -30,7 +30,8 @@ const FieldRow = ({
     <span
       className={cn(
         'truncate text-[0.8rem]',
-        value ? 'text-foreground/75' : 'text-muted-foreground/45',
+        value && 'text-foreground/75',
+        !value && 'text-muted-foreground/45',
       )}
     >
       {value || placeholder}
@@ -73,7 +74,7 @@ const EmployeeCard = ({
                   {employeeName(employee)}
                 </span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {employee.jobTitle || 'No job title'}
+                  {employee.jobTitle || 'Not set'}
                 </span>
               </span>
             </span>
@@ -82,7 +83,7 @@ const EmployeeCard = ({
               <FieldRow
                 icon={MailIcon}
                 value={employee.email}
-                placeholder="No email"
+                placeholder="Not set"
               />
             </span>
 

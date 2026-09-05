@@ -122,7 +122,10 @@ for (const file of ['features/employees/employee-panel.tsx', 'features/employees
   assert.match(read(file), /<TabsTrigger value="attendance">/)
   assert.match(read(file), /<TabsContent value="attendance">/)
 }
-assert.match(read('features/employees/components/employee-fields.tsx'), /<EmployeeSchedule employeeId=\{employee.id\}/)
+// Employee profiles now display the backend schedule text; the separate
+// working-schedule assignment store remains disconnected until its API lands.
+assert.match(read('features/employees/components/employee-fields.tsx'), /employee\.workingSchedule/)
+assert.doesNotMatch(read('features/employees/components/employee-fields.tsx'), /<EmployeeSchedule/)
 assert.match(read('features/employees/components/employee-fields.tsx'), /<EmployeeAttendanceLink employeeId=\{employee.id\}/)
 const initializer = read('features/hr/data-stores-initializer.tsx')
 assert.match(initializer, /useAttendanceStore.getState\(\).initialize\(\[\]\)/)

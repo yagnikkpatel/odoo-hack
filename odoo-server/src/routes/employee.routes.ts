@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
+import { requireCurrentEmployeeAccount } from "../middlewares/employee-account.middleware";
 import {
   requirePermission,
   requireScopedPermission,
@@ -11,6 +12,7 @@ import {
   deleteEmployeeProfileHandler,
   getEmployeeProfileHandler,
   listEmployeesHandler,
+  listEmployeeAccountsHandler,
   listManagersHandler,
   updateEmployeeProfileHandler,
   uploadEmployeeImagesHandler,
@@ -19,11 +21,20 @@ import {
 export const employeeRouter = Router();
 
 employeeRouter.use(requireAuth);
+employeeRouter.use(requireCurrentEmployeeAccount);
 
 employeeRouter.get(
   "/",
   requirePermission("employee:read:any"),
   listEmployeesHandler,
+);
+
+employeeRouter.get(
+  "/accounts",
+  // HR can select eligible accounts without receiving user-management access.
+  requirePermission("employee:create"),
+  requirePermission("employee:read:any"),
+  listEmployeeAccountsHandler,
 );
 
 employeeRouter.get(
@@ -66,6 +77,5 @@ employeeRouter.delete(
 employeeRouter.delete(
   "/:userId",
   requirePermission("employee:delete"),
-  deleteEmployeeImageHandler,
   deleteEmployeeProfileHandler,
 );

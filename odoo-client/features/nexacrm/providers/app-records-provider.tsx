@@ -13,8 +13,8 @@ import AttachmentsStoreHydrator from '@/features/nexacrm/store/attachments-store
 import CalendarEventsStoreHydrator from '@/features/nexacrm/store/calendar-events-store-hydrator'
 import EmailsStoreHydrator from '@/features/nexacrm/store/emails-store-hydrator'
 
-/** Authentication is connected; record APIs deliberately remain disconnected.
- * Only the backend-verified identity enters the user store. Other stores are empty.
+/** Authentication is connected and Employees loads through its own API store.
+ * Only the backend-verified identity enters the user store. Other modules remain empty.
  */
 export default function AppRecordsProvider({ user: session, children }: { user: SessionUser; children: ReactNode }) {
   const user = { id: session.id, email: session.email, role: session.role, name: session.name || session.email }

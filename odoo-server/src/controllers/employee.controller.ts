@@ -11,6 +11,7 @@ import {
   createEmployeeProfile,
   getEmployeeProfile,
   listEmployeeProfiles,
+  listEmployeeAccounts,
   listManagerOptions,
   removeEmployeeImage,
   removeEmployeeProfile,
@@ -26,6 +27,14 @@ function extractImages(req: Request): ProfileImageUploads {
     employeeImage: files?.employeeImage?.[0]?.buffer ?? null,
     companyImage: files?.companyImage?.[0]?.buffer ?? null,
   };
+}
+
+export async function listEmployeeAccountsHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  const accounts = await listEmployeeAccounts();
+  res.status(200).json({ success: true, data: accounts });
 }
 
 export async function listManagersHandler(

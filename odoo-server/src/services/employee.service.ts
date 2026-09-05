@@ -13,6 +13,7 @@ import {
   clearProfileImage,
   deleteProfileByUserId,
   findAllProfiles,
+  findEligibleEmployeeAccounts,
   findManagerOptions,
   findManagerRole,
   findProfileByUserId,
@@ -27,6 +28,7 @@ import {
 } from "../types/employee.dto";
 import {
   EmployeeImages,
+  EmployeeAccountOption,
   EmployeeListResult,
   EmployeeProfileRecord,
   MANAGER_ROLES,
@@ -51,15 +53,15 @@ function employeeListCacheKey(
   version: number,
   query: ListEmployeesQuery,
 ): string {
-  const parts = [
-    `limit=${query.limit}`,
-    `offset=${query.offset}`,
-    `department=${query.department ?? ""}`,
-    `role=${query.role ?? ""}`,
-    `search=${query.search ?? ""}`,
-  ];
+  const parameters = new URLSearchParams({
+    limit: String(query.limit),
+    offset: String(query.offset),
+    department: query.department ?? "",
+    role: query.role ?? "",
+    search: query.search ?? "",
+  });
 
-  return `${EMPLOYEE_LIST_NAMESPACE}:v${version}:${parts.join("&")}`;
+  return `${EMPLOYEE_LIST_NAMESPACE}:directory-v3:v${version}:${parameters.toString()}`;
 }
 
 function getErrorCode(error: unknown): string | undefined {
@@ -83,7 +85,7 @@ function isCheckViolation(error: unknown): boolean {
 }
 
 async function assertManagerIsSelectable(
-  managerId: string | undefined,
+  managerId: string | null | undefined,
   userId: string,
 ): Promise<void> {
   if (!managerId) {
@@ -115,6 +117,10 @@ async function invalidateEmployeeCaches(userId: string): Promise<void> {
 
 export async function listManagerOptions(): Promise<ManagerOption[]> {
   return findManagerOptions(MANAGER_ROLES);
+}
+
+export async function listEmployeeAccounts(): Promise<EmployeeAccountOption[]> {
+  return findEligibleEmployeeAccounts();
 }
 
 export async function createEmployeeProfile(
@@ -157,10 +163,11 @@ export async function listEmployeeProfiles(
     return cached;
   }
 
-  const { rows, total } = await findAllProfiles(query);
+  const { rows, total, summary } = await findAllProfiles(query);
 
   const result: EmployeeListResult = {
     employees: rows,
+    summary,
     pagination: {
       total,
       limit: query.limit,

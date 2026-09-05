@@ -2,6 +2,8 @@ import { PoolClient } from "pg";
 import { pool } from "../lib/db";
 import {
   EmployeeProfileImageIds,
+  EmployeeAccountOption,
+  EmployeeDirectorySummary,
   EmployeeProfileRecord,
   ManagerOption,
   StoredImage,
@@ -77,11 +79,11 @@ export type ProfileFields = {
   jobPosition?: string;
   department?: string;
   contact?: string;
-  managerId?: string;
+  managerId?: string | null;
   workingSchedule?: string;
   companyName?: string;
   workLocation?: string;
-  location?: string;
+  location?: string | null;
 };
 
 type ImageIdRow = {
@@ -137,6 +139,18 @@ export async function findManagerOptions(
   return result.rows;
 }
 
+export async function findEligibleEmployeeAccounts(): Promise<EmployeeAccountOption[]> {
+  const result = await pool.query<EmployeeAccountOption>(
+    `SELECT u.id, u.name, u.email, r.name AS role, u.status
+     FROM users u
+     JOIN roles r ON r.id = u.role_id
+     WHERE u.status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM employee_profiles p WHERE p.user_id = u.id)
+     ORDER BY u.name, u.id`,
+  );
+  return result.rows;
+}
+
 export async function findManagerRole(
   managerId: string,
 ): Promise<string | null> {
@@ -144,7 +158,7 @@ export async function findManagerRole(
     `SELECT r.name AS role
      FROM users u
      JOIN roles r ON r.id = u.role_id
-     WHERE u.id = $1`,
+     WHERE u.id = $1 AND u.status = 'active'`,
     [managerId],
   );
 
@@ -170,12 +184,16 @@ export async function findAllProfiles(query: {
   department?: string;
   role?: string;
   search?: string;
-}): Promise<{ rows: EmployeeProfileRecord[]; total: number }> {
+}): Promise<{
+  rows: EmployeeProfileRecord[];
+  total: number;
+  summary: EmployeeDirectorySummary;
+}> {
   const conditions: string[] = [];
   const values: unknown[] = [];
 
   if (query.department) {
-    values.push(query.department);
+    values.push(`%${query.department}%`);
     conditions.push(`p.department ILIKE $${values.length}`);
   }
 
@@ -191,25 +209,46 @@ export async function findAllProfiles(query: {
     );
   }
 
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  let where = "";
+  if (conditions.length > 0) {
+    where = `WHERE ${conditions.join(" AND ")}`;
+  }
+
+  const filterValues = [...values];
 
   values.push(query.limit);
   const limitPlaceholder = `$${values.length}`;
   values.push(query.offset);
   const offsetPlaceholder = `$${values.length}`;
 
-  const result = await pool.query<ProfileRow & { total: number }>(
-    `SELECT COUNT(*) OVER()::int AS "total", ${PROFILE_COLUMNS}
-     ${PROFILE_FROM}
-     ${where}
-     ORDER BY u.name
-     LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
-    values,
-  );
+  const [result, count, directory] = await Promise.all([
+    pool.query<ProfileRow>(
+      `SELECT ${PROFILE_COLUMNS}
+       ${PROFILE_FROM}
+       ${where}
+       ORDER BY u.name, p.user_id
+       LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
+      values,
+    ),
+    pool.query<{ total: number }>(
+      `SELECT COUNT(*)::int AS total ${PROFILE_FROM} ${where}`,
+      filterValues,
+    ),
+    pool.query<EmployeeDirectorySummary>(
+      `SELECT COUNT(*)::int AS total,
+         COUNT(*) FILTER (WHERE u.status = 'active')::int AS active,
+         COUNT(DISTINCT p.department)::int AS departments,
+         COUNT(DISTINCT p.work_location)::int AS locations,
+         COUNT(*) FILTER (WHERE p.manager_id IS NOT NULL)::int AS "withManager",
+         COUNT(*) FILTER (WHERE p.manager_id IS NULL)::int AS "withoutManager"
+       ${PROFILE_FROM}`,
+    ),
+  ]);
 
   return {
     rows: result.rows.map(toProfileRecord),
-    total: result.rows[0]?.total ?? 0,
+    total: count.rows[0].total,
+    summary: directory.rows[0],
   };
 }
 

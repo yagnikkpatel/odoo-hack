@@ -7,11 +7,8 @@ export default function EmployeeStatusBadge({
 }: {
   status?: EmployeeStatus
 }) {
-  return status ? (
-    <Badge variant={status === 'active' ? 'secondary' : 'outline'}>
-      {STATUS_LABELS[status]}
-    </Badge>
-  ) : (
-    <span className="text-muted-foreground">Not set</span>
-  )
+  if (!status) return <span className="text-muted-foreground">Not set</span>
+  if (status === 'active')
+    return <Badge variant="secondary">{STATUS_LABELS.active}</Badge>
+  return <Badge variant="outline">{STATUS_LABELS.inactive}</Badge>
 }

@@ -53,7 +53,12 @@ export async function getCacheVersion(namespace: string): Promise<number> {
   try {
     const value = await redis.get(`${namespace}:version`);
 
-    return value ? Number(value) : 1;
+    // INCR creates a missing key at 1. Start reads at 0 so the first write
+    // invalidates entries cached before any record has been created.
+    if (value === null) {
+      return 0;
+    }
+    return Number(value);
   } catch (error) {
     logger.warn({ err: error, namespace }, "cache version read failed");
 

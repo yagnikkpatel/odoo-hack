@@ -63,6 +63,7 @@ type RecordViewBarProps<TData> = {
   dynamicFilterOptions?: Record<string, { label: string; value: string }[]>
 
   viewTypes?: readonly RecordViewType[]
+  showSort?: boolean
 }
 
 export const VIEW_BAR_TRIGGER = 'max-sm:border-border max-sm:size-6 max-sm:border'
@@ -103,7 +104,8 @@ const RecordViewBar = <TData,>({
   dynamicFilterOptions,
   viewTypes = ['table'],
   viewType = 'table',
-  onViewTypeChange
+  onViewTypeChange,
+  showSort = true
 }: RecordViewBarProps<TData>) => {
   const optionsFor = (column: Column<TData, unknown>) =>
     dynamicFilterOptions?.[column.id] ?? column.columnDef.meta?.filterOptions ?? []
@@ -249,7 +251,7 @@ const RecordViewBar = <TData,>({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
+          {showSort && <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant='ghost' size='sm' className={VIEW_BAR_TRIGGER} />}>
               <ArrowUpDownIcon /> <span className='max-sm:hidden'>Sort</span>
             </DropdownMenuTrigger>
@@ -271,7 +273,7 @@ const RecordViewBar = <TData,>({
                 </DropdownMenuSub>
               ))}
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
 
           {options ?? null}
           {actions ? <div className='ml-1 flex items-center gap-2'>{actions}</div> : null}

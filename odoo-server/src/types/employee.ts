@@ -11,6 +11,19 @@ export type ManagerOption = {
   role: string;
 };
 
+export type EmployeeAccountOption = ManagerOption & {
+  status: "active";
+};
+
+export type EmployeeDirectorySummary = {
+  total: number;
+  active: number;
+  departments: number;
+  locations: number;
+  withManager: number;
+  withoutManager: number;
+};
+
 export type ImageRef = {
   imageId: string;
   imageUrl: string;
@@ -39,6 +52,7 @@ export type EmployeeProfileRecord = {
 
 export type EmployeeListResult = {
   employees: EmployeeProfileRecord[];
+  summary: EmployeeDirectorySummary;
   pagination: {
     total: number;
     limit: number;

@@ -94,6 +94,7 @@ type DataTableViewOptionsProps<TData> = {
   onShowSummaryChange?: (next: boolean) => void
 
   onExport?: () => void
+  exportLabel?: string
 
   onImport?: () => void
 }
@@ -104,6 +105,7 @@ const DataTableViewOptions = <TData,>({
   showSummary,
   onShowSummaryChange,
   onExport,
+  exportLabel = 'Export to CSV',
   onImport
 }: DataTableViewOptionsProps<TData>) => {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -220,7 +222,7 @@ const DataTableViewOptions = <TData,>({
 
           {onExport ? (
             <DropdownMenuItem onClick={onExport}>
-              <DownloadIcon /> Export to CSV
+              <DownloadIcon /> {exportLabel}
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuGroup>

@@ -1,19 +1,14 @@
 'use client'
 import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { Button } from '@/features/nexacrm/components/ui/button'
-import { Input } from '@/features/nexacrm/components/ui/input'
-import { Label } from '@/features/nexacrm/components/ui/label'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/features/nexacrm/components/ui/dialog'
-import { splitPersonName } from '@/features/nexacrm/types/apps/person-types'
-import { useEmployeesStore } from '../store'
+import { useEmployeePermissions } from '../permissions'
+import ProfileForm from './profile-form'
 
 export default function CreateEmployeeDialog({
   open,
@@ -24,76 +19,37 @@ export default function CreateEmployeeDialog({
   onOpenChange: (open: boolean) => void
   onCreate: (id: string) => void
 }) {
-  const add = useEmployeesStore((state) => state.addEmployee)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [position, setPosition] = useState('')
-  const close = () => {
-    onOpenChange(false)
-    setName('')
-    setEmail('')
-    setPosition('')
-  }
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!name.trim()) return
-    const id = add({
-      ...splitPersonName(name),
-      email: email.trim(),
-      jobTitle: position.trim() || undefined,
-    })
-    close()
-    onCreate(id)
+  const [pending, setPending] = useState(false)
+  const { canCreate } = useEmployeePermissions()
+  if (!canCreate) return null
+
+  function changeOpen(next: boolean) {
+    if (pending) return
+    onOpenChange(next)
   }
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(value) => (value ? onOpenChange(true) : close())}
-    >
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={changeOpen}>
+      <DialogContent
+        className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
+        showCloseButton={!pending}
+      >
         <DialogHeader>
           <DialogTitle>New employee</DialogTitle>
           <DialogDescription>
-            Add basic details. You can complete their work information in the
-            profile.
+            Add a work profile to an existing account. Name, email, and account
+            status are managed separately.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="new-employee-name">Name</Label>
-            <Input
-              id="new-employee-name"
-              autoComplete="name"
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="new-employee-email">Work email</Label>
-            <Input
-              id="new-employee-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="new-employee-position">Job position</Label>
-            <Input
-              id="new-employee-position"
-              value={position}
-              onChange={(event) => setPosition(event.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button type="submit">Create employee</Button>
-          </DialogFooter>
-        </form>
+        {open && (
+          <ProfileForm
+            onCancel={() => changeOpen(false)}
+            onPendingChange={setPending}
+            onSaved={(id) => {
+              onOpenChange(false)
+              onCreate(id)
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

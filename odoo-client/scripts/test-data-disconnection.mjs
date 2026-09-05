@@ -46,13 +46,13 @@ const stores = [
   useTimeOffStore,
   usePayrollStore
 ]
-for (const store of stores.slice(0, 5))
+for (const store of stores.slice(1, 5))
   assert.equal(store.getState().hasHydrated, true, 'empty data must resolve loading')
 const snapshots = stores.map(store => store.getState())
 initializeEmptyDataStores()
 stores.forEach((store, i) => assert.equal(store.getState(), snapshots[i], 'repeated initialization is idempotent'))
 assert.deepEqual(useEmployeesStore.getState().employees, [])
-assert.deepEqual(useEmployeesStore.getState().activities, [])
+assert.equal(useEmployeesStore.getState().hasHydrated, false, 'Employees loads from its API, not the empty-store initializer')
 assert.deepEqual(useContractsStore.getState().contracts, [])
 assert.deepEqual(useAttendanceStore.getState().records, [])
 assert.deepEqual(useSchedulesStore.getState().schedules, [])
@@ -61,9 +61,6 @@ for (const key of ['types', 'allocations', 'requests']) assert.deepEqual(useTime
 for (const key of ['rules', 'structures', 'payruns', 'payslips']) assert.deepEqual(usePayrollStore.getState()[key], [])
 assert.deepEqual(usePayrollStore.getState().bankDetails, {})
 
-for (const method of ['addEmployee', 'addEmployees', 'updateEmployee', 'deleteEmployees']) {
-  assert.throws(() => useEmployeesStore.getState()[method](), /Data connection pending/)
-}
 assert.throws(() => useContractsStore.getState().remove('unavailable'), /Data connection pending/)
 assert.throws(() => useAttendanceStore.getState().remove('unavailable'), /Data connection pending/)
 for (const [store, methods] of [

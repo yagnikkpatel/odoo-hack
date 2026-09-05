@@ -1,17 +1,16 @@
-import type { Employee } from "./types";
+type EmployeeSummaryValues = {
+  total?: number
+  departments?: number
+  withManager?: number
+  withoutManager?: number
+}
 
-export function employeeStats(employees: readonly Employee[]) {
-  const departments = new Set(
-    employees
-      .map((employee) => employee.department?.trim().toLowerCase())
-      .filter(Boolean),
-  ).size;
-  const withManager = employees.filter((employee) => employee.managerId).length;
-
+// These are server aggregates for the whole directory, not current-page counts.
+export function employeeStats(summary: EmployeeSummaryValues) {
   return {
-    total: employees.length,
-    departments,
-    withManager,
-    withoutManager: employees.length - withManager,
-  };
+    total: summary.total ?? 0,
+    departments: summary.departments ?? 0,
+    withManager: summary.withManager ?? 0,
+    withoutManager: summary.withoutManager ?? 0,
+  }
 }

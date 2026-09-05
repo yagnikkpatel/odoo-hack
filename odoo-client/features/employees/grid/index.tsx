@@ -1,55 +1,44 @@
 'use client'
 
-// Third-party Imports
 import type { Table } from '@tanstack/react-table'
-import { UsersIcon } from 'lucide-react'
-
-// Type Imports
-import type { Employee } from '@/features/employees/types'
-
-// Component Imports
-import DataTableEmptyState from '@/features/nexacrm/components/data-table/data-table-empty-state'
-
-// Local Imports
+import { LoaderCircleIcon } from 'lucide-react'
+import type { Employee } from '../types'
+import { Card } from '@/features/nexacrm/components/ui/card'
+import { EmployeeEmptyState } from '../table/employees-table'
+import EmployeePagination from '../table/employee-pagination'
 import EmployeeCard from './employee-card'
 
-/*
- * ! `getPrePaginationRowModel()` - this grid renders no pager, so `getRowModel()` would hide every
- * ! row past page 1. See the row-model note in `components/calendar/record-calendar`.
- */
-const EmployeesGrid = ({
-  table,
-  onOpenRecord,
-}: {
+export default function EmployeesGrid({ table, onOpenRecord, isFiltered, isLoading }: {
   table: Table<Employee>
   onOpenRecord: (id: string) => void
-}) => {
-  const rows = table.getPrePaginationRowModel().rows
-
-  if (rows.length === 0) {
-    return (
-      <DataTableEmptyState
-        icon={UsersIcon}
-        title="No employees to show"
-        description="Employee records will appear after the data connection is configured."
-      />
-    )
-  }
-
-  return (
-    <ul
-      data-testid="employees-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-4"
-    >
+  isFiltered: boolean
+  isLoading: boolean
+}) {
+  const rows = table.getRowModel().rows
+  let content = (
+    <ul data-testid="employees-grid" className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-4">
       {rows.map((row) => (
-        <EmployeeCard
-          key={row.original.id}
-          employee={row.original}
-          onOpen={() => onOpenRecord(row.original.id)}
-        />
+        <EmployeeCard key={row.original.id} employee={row.original}
+          onOpen={() => onOpenRecord(row.original.id)} />
       ))}
     </ul>
   )
+  if (rows.length === 0) {
+    content = <EmployeeEmptyState table={table} isFiltered={isFiltered} />
+  }
+  if (isLoading) {
+    content = (
+      <div role="status" className="text-muted-foreground flex items-center justify-center gap-2 py-16">
+        <LoaderCircleIcon className="size-5 animate-spin" /> Loading employees…
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-1 flex-col gap-4" aria-busy={isLoading}>
+      {content}
+      <Card className="mt-auto gap-0 py-0">
+        <EmployeePagination table={table} isLoading={isLoading} />
+      </Card>
+    </div>
+  )
 }
-
-export default EmployeesGrid

@@ -1,4 +1,4 @@
-/** Only authentication is connected. Domain actions must use real APIs before this is enabled. */
+/** Employee APIs have their own connected store. Other HR modules remain disconnected. */
 export const DATA_API_CONNECTED = false
 export const DATA_CONNECTION_MESSAGE = 'Data connection pending. Records will appear when the data API is connected.'
 

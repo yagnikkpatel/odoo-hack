@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeftIcon, LoaderCircleIcon } from 'lucide-react'
+import { ArrowLeftIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { ScrollArea } from '@/features/nexacrm/components/ui/scroll-area'
 import {
@@ -17,49 +17,53 @@ import SidePanel, {
 import RecordNotFound from '@/features/nexacrm/components/record/record-not-found'
 import RecordNavigation from '@/features/nexacrm/components/record/record-navigation'
 import PersonAvatar from '@/features/nexacrm/components/record/person-avatar'
-import EditableTitle from '@/features/nexacrm/components/record/editable-title'
-import { splitPersonName } from '@/features/nexacrm/types/apps/person-types'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
-import { useEmployee, useEmployeesStore } from './store'
+import { useEmployeesStore } from './store'
 import { employeeName } from './types'
 import EmployeeFields from './components/employee-fields'
 import EmployeeTimeline from './components/employee-timeline'
 import EmployeeActions from './components/employee-actions'
 import EmployeeAttendance from '@/features/attendance/employee-attendance'
+import { useEmployeeRecord } from './components/use-employee-record'
+import EmployeeLoadState from './components/employee-load-state'
+import { useEmployeePermissions } from './permissions'
 
 export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const router = useRouter()
+  const { canReadAll } = useEmployeePermissions()
   const [railOpen, setRailOpen] = useState(false)
-  const employee = useEmployee(employeeId)
+  const { employee, isLoading, error, retry } = useEmployeeRecord(employeeId)
   const employees = useEmployeesStore((state) => state.employees)
-  const hasHydrated = useEmployeesStore((state) => state.hasHydrated)
-  const update = useEmployeesStore((state) => state.updateEmployee)
-  const { can } = useCurrentUser()
-  if (!employee)
-    return hasHydrated ? (
+  if (isLoading || error)
+    return <EmployeeLoadState error={error} onRetry={retry} />
+  if (!employee) {
+    return (
       <RecordNotFound
         label="Employee"
         backHref="/employees"
         backLabel="Employees"
       />
-    ) : (
-      <div className="flex flex-1 items-center justify-center py-16">
-        <LoaderCircleIcon className="text-muted-foreground size-5 animate-spin" />
-      </div>
     )
+  }
   const index = employees.findIndex((item) => item.id === employeeId)
+  let previousHref: string | undefined
+  let nextHref: string | undefined
+  if (index > 0) previousHref = '/employees/' + employees[index - 1].id
+  if (index >= 0 && index < employees.length - 1)
+    nextHref = '/employees/' + employees[index + 1].id
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b py-2">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back to employees"
-          render={<Link href="/employees" />}
-          className="text-muted-foreground hover:text-foreground -ml-1 shrink-0"
-        >
-          <ArrowLeftIcon />
-        </Button>
+        {canReadAll && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Back to employees"
+            render={<Link href="/employees" />}
+            className="text-muted-foreground hover:text-foreground -ml-1 shrink-0"
+          >
+            <ArrowLeftIcon />
+          </Button>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <PersonAvatar
@@ -67,16 +71,8 @@ export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
               src={employee.avatar}
               size="default"
             />
-            <h1 className="min-w-0">
-              <EditableTitle
-                key={employee.id}
-                value={employeeName(employee)}
-                canEdit={can('records:update')}
-                placeholder="Employee name"
-                ariaLabel="Employee name"
-                onCommit={(name) => update(employee.id, splitPersonName(name))}
-                className="text-base font-semibold tracking-tight"
-              />
+            <h1 className="min-w-0 truncate text-base font-semibold tracking-tight">
+              {employeeName(employee)}
             </h1>
             {employee.jobTitle && (
               <span className="text-muted-foreground shrink-0 truncate text-xs max-lg:hidden">
@@ -86,19 +82,15 @@ export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <RecordNavigation
-            index={index}
-            total={employees.length}
-            moduleLabel="Employees"
-            previousHref={
-              index > 0 ? '/employees/' + employees[index - 1].id : undefined
-            }
-            nextHref={
-              index < employees.length - 1
-                ? '/employees/' + employees[index + 1].id
-                : undefined
-            }
-          />
+          {canReadAll && index >= 0 && (
+            <RecordNavigation
+              index={index}
+              total={employees.length}
+              moduleLabel="Employees on this page"
+              previousHref={previousHref}
+              nextHref={nextHref}
+            />
+          )}
           <SidePanelTrigger
             side="left"
             breakpoint="xl"
@@ -135,9 +127,12 @@ export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 <TabsTrigger value="attendance">Attendance</TabsTrigger>
               </TabsList>
               <TabsContent value="timeline">
-                <EmployeeTimeline employeeId={employee.id} />
+                <EmployeeTimeline />
               </TabsContent>
               <TabsContent value="attendance">
+                <p className="text-muted-foreground mb-3 text-xs">
+                  Attendance data is not connected yet.
+                </p>
                 <EmployeeAttendance employeeId={employee.id} />
               </TabsContent>
             </Tabs>
