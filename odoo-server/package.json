@@ -13,6 +13,7 @@
     "seed": "tsx src/scripts/seed.ts",
     "seed:dummy": "tsx src/scripts/seed-dummy.ts",
     "seed:contracts": "tsx src/scripts/seed-contracts.ts",
+    "seed:attendance": "tsx src/scripts/seed-attendance.ts",
     "worker": "tsx src/workers/deleteCloudinaryImage.worker.ts",
     "worker:attendance": "tsx src/workers/markAbsentees.worker.ts"
   },
