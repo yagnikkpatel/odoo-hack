@@ -6,6 +6,8 @@ import { allocateNumber } from "../lib/sequences";
 import { parseOrThrow } from "../lib/validate";
 import * as employeeRepository from "../repositories/employee.repository";
 import * as orgRepository from "../repositories/org.repository";
+import * as contractService from "./contract.service";
+import * as contractRepository from "../repositories/contract.repository";
 import { EmployeeRow, EmployeeWriteData } from "../types/employee";
 
 const SORTABLE = [
@@ -141,31 +143,34 @@ export async function terminate(id: string, input: unknown) {
 
   await employeeRepository.terminate(id, terminationDate);
 
-  // Phase 2 extends this to expire the running contract as of the same date (BR-CON-8).
+  // BR-CON-8: the running contract is expired as of the same date, never deleted — payroll
+  // history and any payslip referencing it must survive.
+  await contractService.expireRunningForEmployee(id, terminationDate);
 }
 
 export async function getSummary(id: string, scope: { onlyId: string | null }) {
   const employee = await loadVisible(id, scope.onlyId);
+  const today = new Date().toISOString().slice(0, 10);
+  const currentContract = await contractRepository.findApplicable(id, today, today);
 
   return {
     employee: slim(employee),
     counts: {
-      // Filled in as each module lands: contracts (Phase 2), attendance (3A),
-      // time off (3B), payslips (5).
-      contracts: 0,
+      // Filled in as each module lands: attendance (3A), time off (3B), payslips (5).
+      contracts: await contractRepository.countForEmployee(id),
       attendances_this_month: 0,
       time_off_requests_pending: 0,
       allocations_active: 0,
       payslips: 0,
     },
-    current_contract: null,
+    current_contract: currentContract,
     leave_balances: [],
     data_completeness: {
       has_bank_details: Boolean(
         employee.bank_name && employee.bank_account_number && employee.bank_ifsc,
       ),
       has_working_schedule: Boolean(employee.working_schedule_id),
-      has_running_contract: employee.has_running_contract,
+      has_running_contract: currentContract !== null,
       has_work_email: Boolean(employee.work_email),
     },
   };

@@ -99,9 +99,47 @@ export async function createTestDepartment(name?: string): Promise<{ id: string;
   return result.rows[0];
 }
 
+export async function createTestSchedule(
+  hoursPerWeek = "40.00",
+): Promise<{ id: string; name: string }> {
+  const result = await pool.query<{ id: string; name: string }>(
+    `INSERT INTO working_schedules (name, hours_per_week)
+     VALUES ($1, $2) RETURNING id, name`,
+    [`${TEST_PREFIX}sched-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, hoursPerWeek],
+  );
+
+  return result.rows[0];
+}
+
+export async function createTestStructure(): Promise<{ id: string; code: string }> {
+  const code = `T${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const result = await pool.query<{ id: string; code: string }>(
+    `INSERT INTO salary_structures (name, code) VALUES ($1, $2) RETURNING id, code`,
+    [`${TEST_PREFIX}struct-${code}`, code],
+  );
+
+  return result.rows[0];
+}
+
+export async function employmentTypeId(code = "FULL_TIME"): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    "SELECT id FROM employment_types WHERE code = $1",
+    [code],
+  );
+
+  return result.rows[0].id;
+}
+
 export async function cleanup(): Promise<void> {
-  // Employees first: users.id is referenced by employees.user_id.
+  // FK order matters: contracts reference employees, which reference users.
+  await pool.query(
+    `DELETE FROM contracts WHERE employee_id IN
+       (SELECT id FROM employees WHERE employee_number LIKE $1)`,
+    [`${TEST_PREFIX}%`],
+  );
   await pool.query("DELETE FROM employees WHERE employee_number LIKE $1", [`${TEST_PREFIX}%`]);
+  await pool.query("DELETE FROM salary_structures WHERE name LIKE $1", [`${TEST_PREFIX}%`]);
+  await pool.query("DELETE FROM working_schedules WHERE name LIKE $1", [`${TEST_PREFIX}%`]);
   await pool.query("DELETE FROM job_positions WHERE name LIKE $1", [`${TEST_PREFIX}%`]);
   await pool.query("DELETE FROM departments WHERE name LIKE $1", [`${TEST_PREFIX}%`]);
   await pool.query("DELETE FROM employment_types WHERE code LIKE $1", [`${TEST_PREFIX.toUpperCase().replace(/-/g, "_")}%`]);

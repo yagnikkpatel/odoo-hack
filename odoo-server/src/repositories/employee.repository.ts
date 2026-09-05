@@ -2,10 +2,7 @@ import { pool, Queryable } from "../lib/db";
 import { PageParams } from "../types/common";
 import { EmployeeRow, EmployeeWriteData } from "../types/employee";
 
-/**
- * `has_running_contract` is FALSE until Phase 2 creates the contracts table; the subquery is
- * added there rather than shipping a column the API promises but cannot populate.
- */
+/** `has_running_contract` reflects a contract in force *today*, not merely one that exists. */
 const EMPLOYEE_SELECT = `
   SELECT e.*,
          d.name AS department_name,
@@ -16,7 +13,13 @@ const EMPLOYEE_SELECT = `
          m.photo_url AS manager_photo_url,
          ws.name AS working_schedule_name,
          ws.hours_per_week::text AS working_schedule_hours,
-         FALSE AS has_running_contract
+         EXISTS (
+           SELECT 1 FROM contracts c
+            WHERE c.employee_id = e.id
+              AND c.status = 'running'
+              AND c.start_date <= CURRENT_DATE
+              AND (c.end_date IS NULL OR c.end_date >= CURRENT_DATE)
+         ) AS has_running_contract
     FROM employees e
     LEFT JOIN departments      d  ON d.id  = e.department_id
     LEFT JOIN job_positions    j  ON j.id  = e.job_position_id
