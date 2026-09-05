@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
-import { requireAdmin } from "../middlewares/admin.middleware";
+import { requirePermission } from "../middlewares/permission.middleware";
 import {
   createUserHandler,
   deleteUserHandler,
@@ -11,10 +11,10 @@ import {
 
 export const userRouter = Router();
 
-userRouter.use(requireAuth, requireAdmin);
+userRouter.use(requireAuth);
 
-userRouter.post("/", createUserHandler);
-userRouter.get("/", listUsersHandler);
-userRouter.get("/:id", getUserHandler);
-userRouter.patch("/:id", updateUserHandler);
-userRouter.delete("/:id", deleteUserHandler);
+userRouter.post("/", requirePermission("user:create"), createUserHandler);
+userRouter.get("/", requirePermission("user:read"), listUsersHandler);
+userRouter.get("/:id", requirePermission("user:read"), getUserHandler);
+userRouter.patch("/:id", requirePermission("user:update"), updateUserHandler);
+userRouter.delete("/:id", requirePermission("user:delete"), deleteUserHandler);

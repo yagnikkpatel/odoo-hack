@@ -1,72 +1,83 @@
-import { v2 as cloudinary } from "cloudinary";
+import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 import { AppError } from "../errors/AppError";
+import { StoredImage } from "../types/employee";
 
-type UploadResult = {
-  secureUrl: string;
-  publicId: string;
-};
+let isConfigured = false;
 
-export async function uploadBannerImageToCloudinary(
-  buffer: Buffer,
-  options?: { folder?: string },
-): Promise<UploadResult> {
+function configureCloudinary(): void {
+  if (isConfigured) {
+    return;
+  }
+
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
   if (!cloudName || !apiKey || !apiSecret) {
-    throw new AppError(500, "cloudinary is not confgured properly");
+    throw new AppError(500, "Cloudinary is not configured");
   }
 
-  // configure
   cloudinary.config({
     cloud_name: cloudName,
     api_key: apiKey,
     api_secret: apiSecret,
+    secure: true,
   });
 
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: "image",
-        folder: options?.folder,
-      },
+  isConfigured = true;
+}
 
+export async function uploadImageToCloudinary(
+  buffer: Buffer,
+  folder: string,
+): Promise<StoredImage> {
+  configureCloudinary();
+
+  const uploaded = await new Promise<UploadApiResponse>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { resource_type: "image", folder },
       (error, result) => {
         if (error) {
-          reject(error);
+          const httpCode = (error as { http_code?: number }).http_code;
+          const message = (error as { message?: string }).message;
+
+          reject(
+            httpCode && httpCode < 500
+              ? new AppError(httpCode, `Image upload rejected: ${message}`)
+              : error,
+          );
+
           return;
         }
 
-        resolve({
-          secureUrl: result?.secure_url ?? "",
-          publicId: result?.public_id ?? "",
-        });
+        if (!result) {
+          reject(new Error("Cloudinary upload returned no result"));
+
+          return;
+        }
+
+        resolve(result);
       },
     );
 
-    // sending raw image bytes to cloudinary
     uploadStream.end(buffer);
   });
+
+  return {
+    url: uploaded.secure_url,
+    publicId: uploaded.public_id,
+  };
 }
 
-export async function deleteBannerImageFromCloudinary(
+export async function deleteImageFromCloudinary(
   publicId: string,
-): Promise<void> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+): Promise<string> {
+  configureCloudinary();
 
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new AppError(500, "cloudinary is not confgured properly");
-  }
-
-  // configure
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
+  const result = await cloudinary.uploader.destroy(publicId, {
+    resource_type: "image",
+    invalidate: true,
   });
 
-  return cloudinary.uploader.destroy(publicId);
+  return result.result;
 }

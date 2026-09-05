@@ -48,3 +48,28 @@ export async function invalidateCache(keys: string[]): Promise<void> {
     logger.warn({ err: error, keys }, "cache invalidation failed");
   }
 }
+
+export async function getCacheVersion(namespace: string): Promise<number> {
+  try {
+    const value = await redis.get(`${namespace}:version`);
+
+    return value ? Number(value) : 1;
+  } catch (error) {
+    logger.warn({ err: error, namespace }, "cache version read failed");
+
+    return 0;
+  }
+}
+
+export async function bumpCacheVersion(namespace: string): Promise<void> {
+  try {
+    const version = await redis.incr(`${namespace}:version`);
+
+    logger.info(
+      { cache: "VERSION", namespace, version },
+      "cache version bumped",
+    );
+  } catch (error) {
+    logger.warn({ err: error, namespace }, "cache version bump failed");
+  }
+}
