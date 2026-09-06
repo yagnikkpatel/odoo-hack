@@ -115,10 +115,13 @@ async function assertEmployeesAreEligible(
     throw new AppError(400, "An employee was selected more than once");
   }
 
+  // This is a membership check across the whole company, not a paginated
+  // listing -- a small limit here would silently reject valid employees once
+  // headcount grows past it.
   const { rows } = await findEligibleEmployees({
     startDate,
     endDate,
-    limit: 500,
+    limit: 100000,
     offset: 0,
   });
 

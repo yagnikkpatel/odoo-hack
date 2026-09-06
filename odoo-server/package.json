@@ -12,6 +12,7 @@
     "migrate": "tsx src/scripts/migrate.ts",
     "seed": "tsx src/scripts/seed.ts",
     "seed:demo": "npm run seed",
+    "seed:additional": "tsx src/scripts/seed-additional.ts",
     "worker": "tsx src/workers/deleteCloudinaryImage.worker.ts",
     "worker:attendance": "tsx src/workers/markAbsentees.worker.ts",
     "worker:payroll": "tsx src/workers/payslipEmail.worker.ts",
