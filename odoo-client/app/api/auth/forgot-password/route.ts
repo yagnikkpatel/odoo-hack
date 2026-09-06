@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     if (!isRecord(payload) || payload.success !== true) return backendFailure(502, 'recovery')
     const response = authJson({
       success: true,
-      message: 'If this account exists, a recovery code has been issued. Contact your administrator for the code.'
+      message: 'If this account exists, a recovery code has been emailed to that address.'
     })
     response.cookies.set(PASSWORD_RESET_COOKIE_NAME, '', { ...cookieOptions, maxAge: 0 })
     return response

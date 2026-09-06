@@ -61,7 +61,7 @@ export function VerifyOtpView({ email }: { email: string }) {
     try {
       await requestPasswordReset({ email })
       setOtp('')
-      setNotice('A new recovery code has been issued. The previous code no longer works.')
+      setNotice('A new recovery code has been emailed. The previous code no longer works.')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to resend the recovery code.')
     } finally {
@@ -76,7 +76,7 @@ export function VerifyOtpView({ email }: { email: string }) {
       subtitle={
         <>
           If an account exists for <span className='text-foreground font-medium break-all'>{email}</span>, a six-digit
-          code has been issued. It expires shortly.
+          code has been emailed to it. It expires shortly.
         </>
       }
       footer={

@@ -84,6 +84,9 @@ export async function requestAuthBackend(path: string, input?: unknown, token?: 
 
 export function backendFailure(status: number, operation: 'login' | 'recovery') {
   if (status === 429) return authError('Too many attempts. Please wait before trying again.', 429)
+  // The backend reports 503 when it cannot mail a code; that is a wait-and-retry
+  // condition for the caller, not the unexpected response 502 describes.
+  if (status === 503) return serviceUnavailable()
   if (operation === 'login' && status === 401) return authError('Invalid email or password.', 401)
   if (operation === 'login' && status === 403)
     return authError('This account is inactive. Contact your administrator.', 403)
