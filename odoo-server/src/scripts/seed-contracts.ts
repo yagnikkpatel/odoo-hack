@@ -1,3 +1,4 @@
+import { seedContract } from "./lib/seed-contract";
 import type { PoolClient } from "pg";
 import { pool } from "../lib/db";
 import { logger } from "../lib/logger";
@@ -83,23 +84,6 @@ async function fetchEmployeesWithRunningContract(
   return new Set(result.rows.map((row) => row.employeeId));
 }
 
-async function insertContract(
-  client: PoolClient,
-  params: {
-    employeeId: string;
-    startDate: string;
-    endDate: string;
-    wage: number;
-    status: string;
-  },
-): Promise<void> {
-  await client.query(
-    `INSERT INTO contracts (employee_id, start_date, end_date, wage, status)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [params.employeeId, params.startDate, params.endDate, params.wage, params.status],
-  );
-}
-
 async function seedContracts(): Promise<void> {
   const client = await pool.connect();
 
@@ -119,7 +103,7 @@ async function seedContracts(): Promise<void> {
       const hasRunningContract = employeesWithRunningContract.has(user.id);
       const { startDate, endDate, status } = contractDates(hasRunningContract);
 
-      await insertContract(client, {
+      await seedContract(client, {
         employeeId: user.id,
         startDate,
         endDate,

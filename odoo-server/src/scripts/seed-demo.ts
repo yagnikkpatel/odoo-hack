@@ -20,6 +20,7 @@
  */
 
 import bcrypt from "bcryptjs";
+import { seedContract } from "./lib/seed-contract";
 import type { PoolClient } from "pg";
 import { pool } from "../lib/db";
 import { redis } from "../lib/redis";
@@ -519,6 +520,7 @@ async function reset(client: PoolClient): Promise<void> {
       time_off_allocations,
       time_off_types,
       attendances,
+      contract_history,
       contracts,
       employee_bank_accounts,
       employee_profiles,
@@ -847,18 +849,15 @@ async function insertContracts(client: PoolClient, people: SeedUser[]): Promise<
       const end = addDays(cursor, randomInt(300, 420));
       const factor = 0.72 + i * 0.12;
 
-      await client.query(
-        `INSERT INTO contracts (employee_id, start_date, end_date, wage, status, currency, wage_period, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, 'expired', 'INR', 'month', $5, $6)`,
-        [
-          person.id,
-          isoDate(cursor),
-          isoDate(end),
-          Math.round(person.wage * factor),
-          cursor,
-          end,
-        ],
-      );
+      await seedContract(client, {
+        employeeId: person.id,
+        startDate: isoDate(cursor),
+        endDate: isoDate(end),
+        wage: Math.round(person.wage * factor),
+        status: "expired",
+        createdAt: cursor,
+        updatedAt: end,
+      });
 
       count++;
       cursor = addDays(end, 1);
@@ -878,26 +877,27 @@ async function insertContracts(client: PoolClient, people: SeedUser[]): Promise<
     if (person.status === "inactive") {
       const leftOn = addDays(TODAY, -randomInt(5, 90));
 
-      await client.query(
-        `INSERT INTO contracts (employee_id, start_date, end_date, wage, status, currency, wage_period, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, 'expired', 'INR', 'month', $5, $6)`,
-        [person.id, isoDate(start), isoDate(leftOn), person.wage, start, leftOn],
-      );
+      await seedContract(client, {
+        employeeId: person.id,
+        startDate: isoDate(start),
+        endDate: isoDate(leftOn),
+        wage: person.wage,
+        status: "expired",
+        createdAt: start,
+        updatedAt: leftOn,
+      });
       count++;
       continue;
     }
 
-    await client.query(
-      `INSERT INTO contracts (employee_id, start_date, end_date, wage, status, currency, wage_period, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'running', 'INR', 'month', $5, NOW())`,
-      [
-        person.id,
-        isoDate(start),
-        isoDate(addDays(TODAY, randomInt(200, 900))),
-        person.wage,
-        start,
-      ],
-    );
+    await seedContract(client, {
+      employeeId: person.id,
+      startDate: isoDate(start),
+      endDate: isoDate(addDays(TODAY, randomInt(200, 900))),
+      wage: person.wage,
+      status: "running",
+      createdAt: start,
+    });
     count++;
   }
 
@@ -1743,6 +1743,7 @@ async function seed(): Promise<void> {
       users: counts.users,
       profiles: counts.users,
       contracts: counts.contracts,
+      contractHistory: counts.contracts,
       attendance: counts.attendance,
       timeOffTypes: TIME_OFF_TYPES.length,
       timeOffAllocations: allocationSummary.count,

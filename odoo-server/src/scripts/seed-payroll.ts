@@ -12,6 +12,8 @@ type RuleInput = {
   percentage?: number;
   base?: string;
   formula?: string;
+  quantity?: number;
+  active?: boolean;
 };
 
 /**
@@ -191,8 +193,8 @@ async function seedRules(client: PoolClient): Promise<Map<string, string>> {
   for (const rule of RULES) {
     const result = await client.query<{ id: string }>(
       `INSERT INTO salary_rules
-         (name, code, category, sequence, method, amount, percentage, base, formula)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (name, code, category, sequence, method, amount, percentage, base, formula, quantity, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (code) DO UPDATE
          SET name = EXCLUDED.name,
              category = EXCLUDED.category,
@@ -202,6 +204,8 @@ async function seedRules(client: PoolClient): Promise<Map<string, string>> {
              percentage = EXCLUDED.percentage,
              base = EXCLUDED.base,
              formula = EXCLUDED.formula,
+             quantity = EXCLUDED.quantity,
+             active = EXCLUDED.active,
              updated_at = NOW()
        RETURNING id`,
       [
@@ -214,6 +218,8 @@ async function seedRules(client: PoolClient): Promise<Map<string, string>> {
         rule.percentage ?? 0,
         rule.base ?? "",
         rule.formula ?? "",
+        rule.quantity ?? 1,
+        rule.active ?? true,
       ],
     );
 

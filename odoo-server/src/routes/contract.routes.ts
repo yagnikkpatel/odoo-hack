@@ -5,6 +5,8 @@ import {
   createContractHandler,
   deleteContractHandler,
   getContractHandler,
+  getContractHistoryHandler,
+  getEmployeeContractHistoryHandler,
   listContractsHandler,
   updateContractHandler,
 } from "../controllers/contract.controller";
@@ -29,6 +31,18 @@ contractRouter.get(
   "/:id",
   requirePermission("contract:read"),
   getContractHandler,
+);
+
+contractRouter.get(
+  "/:id/history",
+  requirePermission("contract:read"),
+  getContractHistoryHandler,
+);
+
+contractRouter.get(
+  "/by-employee/:employeeId/history",
+  requirePermission("contract:read"),
+  getEmployeeContractHistoryHandler,
 );
 
 contractRouter.patch(

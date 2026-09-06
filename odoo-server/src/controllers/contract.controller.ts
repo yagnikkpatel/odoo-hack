@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { parseOrThrow } from "../lib/validate";
 import {
+  contractEmployeeIdParamSchema,
   contractIdParamSchema,
   createContractSchema,
   listContractsQuerySchema,
@@ -9,6 +10,8 @@ import {
 import {
   createContract,
   getContract,
+  getContractHistory,
+  getEmployeeContractHistory,
   listContracts,
   removeContract,
   updateContract,
@@ -19,7 +22,7 @@ export async function createContractHandler(
   res: Response,
 ): Promise<void> {
   const input = parseOrThrow(createContractSchema, req.body);
-  const contract = await createContract(input);
+  const contract = await createContract(input, req.user?.userId ?? null);
 
   res.status(201).json({
     success: true,
@@ -59,7 +62,7 @@ export async function updateContractHandler(
 ): Promise<void> {
   const { id } = parseOrThrow(contractIdParamSchema, req.params);
   const input = parseOrThrow(updateContractSchema, req.body);
-  const contract = await updateContract(id, input);
+  const contract = await updateContract(id, input, req.user?.userId ?? null);
 
   res.status(200).json({
     success: true,
@@ -72,10 +75,39 @@ export async function deleteContractHandler(
   res: Response,
 ): Promise<void> {
   const { id } = parseOrThrow(contractIdParamSchema, req.params);
-  const deletedId = await removeContract(id);
+  const deletedId = await removeContract(id, req.user?.userId ?? null);
 
   res.status(200).json({
     success: true,
     data: { id: deletedId },
+  });
+}
+
+export async function getContractHistoryHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { id } = parseOrThrow(contractIdParamSchema, req.params);
+  const history = await getContractHistory(id);
+
+  res.status(200).json({
+    success: true,
+    data: history,
+  });
+}
+
+export async function getEmployeeContractHistoryHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { employeeId } = parseOrThrow(
+    contractEmployeeIdParamSchema,
+    req.params,
+  );
+  const history = await getEmployeeContractHistory(employeeId);
+
+  res.status(200).json({
+    success: true,
+    data: history,
   });
 }

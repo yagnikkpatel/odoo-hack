@@ -15,6 +15,7 @@
     "seed:dummy": "tsx src/scripts/seed-dummy.ts",
     "seed:contracts": "tsx src/scripts/seed-contracts.ts",
     "seed:attendance": "tsx src/scripts/seed-attendance.ts",
+    "seed:payroll": "tsx src/scripts/seed-payroll.ts",
     "seed:time-off": "tsx src/scripts/seed-time-off.ts",
     "worker": "tsx src/workers/deleteCloudinaryImage.worker.ts",
     "worker:attendance": "tsx src/workers/markAbsentees.worker.ts"

@@ -9,19 +9,30 @@
 -- Promote them to child tables the day something queries a line field-wise --
 -- this is a deliberate choice, not an oversight.
 
--- Two migrations recorded on some development databases,
--- 011_create_salary_structures_table.sql and 012_create_salary_rules_table.sql,
--- created an earlier payroll schema and were then dropped from the repository:
--- a fresh database can no longer reproduce them and no committed code reads
--- them. Their salary_rules is shaped differently from the one below -- a rule
--- belonged to exactly one structure, and the computation lived in
--- computation_type/percentage_base rather than method/base -- so the two cannot
--- be reconciled column by column. No payrun has ever been created against them,
--- so removing them is safe, and it is the only way a fresh database and a
--- database still carrying them end up on the same schema.
-DROP TABLE IF EXISTS salary_rules CASCADE;
-
-DROP TABLE IF EXISTS salary_structures CASCADE;
+-- Older branches created the current payroll schema as
+-- 011_create_payroll_tables.sql. Preserve it, including its data and foreign
+-- keys. Only replace the obsolete per-structure schema when it is empty.
+DO $$
+BEGIN
+  IF to_regclass('salary_rules') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = to_regclass('salary_rules')
+      AND attname = 'method' AND NOT attisdropped
+  ) THEN
+    IF EXISTS (SELECT 1 FROM salary_rules) THEN
+      RAISE EXCEPTION 'Legacy salary_rules contains data; convert existing payroll configuration before replacing the tables';
+    END IF;
+    IF to_regclass('salary_structures') IS NOT NULL THEN
+      IF EXISTS (SELECT 1 FROM salary_structures) THEN
+        RAISE EXCEPTION 'Legacy salary_structures contains data; convert existing payroll configuration before replacing the tables';
+      END IF;
+    END IF;
+    -- Do not cascade: unexpected dependencies must stop the migration.
+    DROP TABLE salary_rules;
+    DROP TABLE IF EXISTS salary_structures;
+  END IF;
+END;
+$$;
 
 -- Payroll needs contract terms the contracts module never recorded. Existing
 -- rows keep the monthly INR basis the seeds and the client already assume.

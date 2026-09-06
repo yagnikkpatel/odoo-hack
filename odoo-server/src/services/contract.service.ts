@@ -14,11 +14,22 @@ import {
   updateContractById,
 } from "../repositories/contract.repository";
 import {
+  findContractHistory,
+  findContractHistoryByEmployeeId,
+  insertContractHistory,
+} from "../repositories/contract-history.repository";
+import {
   CreateContractInput,
   ListContractsQuery,
   UpdateContractInput,
 } from "../types/contract.dto";
-import { ContractListResult, ContractRecord } from "../types/contract";
+import {
+  ContractHistoryChange,
+  ContractHistoryEntry,
+  ContractHistorySnapshot,
+  ContractListResult,
+  ContractRecord,
+} from "../types/contract";
 
 const CONTRACT_LIST_NAMESPACE = "contract-list";
 // Employee image uploads/deletions already bump this version.
@@ -96,13 +107,32 @@ async function invalidateContractCaches(id: string): Promise<void> {
   await bumpCacheVersion(CONTRACT_LIST_NAMESPACE);
 }
 
+function toSnapshot(contract: ContractRecord): ContractHistorySnapshot {
+  return {
+    employeeId: contract.employeeId,
+    startDate: contract.startDate,
+    endDate: contract.endDate,
+    wage: contract.wage,
+    status: contract.status,
+  };
+}
+
 export async function createContract(
   input: CreateContractInput,
+  actorId: string | null,
 ): Promise<ContractRecord> {
   try {
     const contract = await insertContract(input);
 
     await invalidateContractCaches(contract.id);
+    await insertContractHistory({
+      contractId: contract.id,
+      employeeId: contract.employeeId,
+      action: "created",
+      changes: {},
+      snapshot: toSnapshot(contract),
+      changedBy: actorId,
+    });
 
     return contract;
   } catch (error) {
@@ -166,9 +196,35 @@ export async function getContract(id: string): Promise<ContractRecord> {
   return contract;
 }
 
+const HISTORY_TRACKED_FIELDS = ["startDate", "endDate", "wage", "status"] as const;
+
+function diffContractFields(
+  existing: ContractRecord,
+  input: UpdateContractInput,
+): Record<string, ContractHistoryChange> {
+  const changes: Record<string, ContractHistoryChange> = {};
+
+  for (const field of HISTORY_TRACKED_FIELDS) {
+    const nextValue = input[field];
+
+    if (nextValue === undefined) {
+      continue;
+    }
+
+    const previousValue = existing[field];
+
+    if (previousValue !== nextValue) {
+      changes[field] = { old: previousValue, new: nextValue };
+    }
+  }
+
+  return changes;
+}
+
 export async function updateContract(
   id: string,
   input: UpdateContractInput,
+  actorId: string | null,
 ): Promise<ContractRecord> {
   const existing = await findContractById(id);
 
@@ -183,6 +239,8 @@ export async function updateContract(
     throw new AppError(400, "endDate must be after startDate");
   }
 
+  const changes = diffContractFields(existing, input);
+
   try {
     const contract = await updateContractById(id, input);
 
@@ -191,6 +249,17 @@ export async function updateContract(
     }
 
     await invalidateContractCaches(id);
+
+    if (Object.keys(changes).length > 0) {
+      await insertContractHistory({
+        contractId: id,
+        employeeId: contract.employeeId,
+        action: "updated",
+        changes,
+        snapshot: toSnapshot(contract),
+        changedBy: actorId,
+      });
+    }
 
     return contract;
   } catch (error) {
@@ -208,7 +277,16 @@ export async function updateContract(
   }
 }
 
-export async function removeContract(id: string): Promise<string> {
+export async function removeContract(
+  id: string,
+  actorId: string | null,
+): Promise<string> {
+  const existing = await findContractById(id);
+
+  if (!existing) {
+    throw new AppError(404, "Contract not found");
+  }
+
   const deletedId = await deleteContractById(id);
 
   if (!deletedId) {
@@ -216,6 +294,26 @@ export async function removeContract(id: string): Promise<string> {
   }
 
   await invalidateContractCaches(id);
+  await insertContractHistory({
+    contractId: id,
+    employeeId: existing.employeeId,
+    action: "deleted",
+    changes: {},
+    snapshot: toSnapshot(existing),
+    changedBy: actorId,
+  });
 
   return deletedId;
+}
+
+export async function getContractHistory(
+  id: string,
+): Promise<ContractHistoryEntry[]> {
+  return findContractHistory(id);
+}
+
+export async function getEmployeeContractHistory(
+  employeeId: string,
+): Promise<ContractHistoryEntry[]> {
+  return findContractHistoryByEmployeeId(employeeId);
 }

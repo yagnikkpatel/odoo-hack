@@ -45,6 +45,7 @@ async function runMigration(fileName: string): Promise<void> {
     logger.info(`migration completed: ${fileName}`);
   } catch (error) {
     await client.query("ROLLBACK");
+    logger.error({ err: error, migration: fileName }, "Migration failed");
     throw error;
   } finally {
     client.release();

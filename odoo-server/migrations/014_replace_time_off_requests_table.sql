@@ -1,12 +1,21 @@
--- 010_create_time_off_requests_table.sql created time_off_requests with a
--- narrower schema (free-text type, no link to time_off_types/allocations).
--- The module was later redesigned around time_off_types and
--- time_off_allocations (013_create_time_off_types_and_allocations_tables.sql),
--- but that table already existed by then so it could never be created with
--- the new columns (type_id, unit, duration, charges, consumptions, history)
--- the current repository/service expect -- every request against it has been
--- failing. No environment has ever had a row in it, so it is safe to drop and
--- recreate rather than write a column-by-column ALTER migration.
+-- Some databases already have the redesigned table from
+-- 010_create_time_off_tables.sql. Preserve that table and its requests.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = to_regclass('time_off_requests')
+      AND attname = 'type_id' AND NOT attisdropped
+  ) THEN
+    RETURN;
+  END IF;
+
+  IF to_regclass('time_off_requests') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM time_off_requests) THEN
+      RAISE EXCEPTION 'Legacy time_off_requests contains data; convert existing requests before replacing the table';
+    END IF;
+  END IF;
+
 DROP TABLE IF EXISTS time_off_requests;
 
 CREATE TABLE time_off_requests (
@@ -45,3 +54,6 @@ CREATE INDEX IF NOT EXISTS time_off_requests_status_idx
 
 CREATE INDEX IF NOT EXISTS time_off_requests_type_idx
   ON time_off_requests (type_id);
+
+END;
+$$;

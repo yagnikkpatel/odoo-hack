@@ -46,5 +46,17 @@ CREATE INDEX IF NOT EXISTS time_off_requests_status_idx
 CREATE INDEX IF NOT EXISTS time_off_requests_start_date_idx
   ON time_off_requests (start_date DESC);
 
-CREATE INDEX IF NOT EXISTS time_off_requests_type_idx
-  ON time_off_requests (time_off_type);
+-- Older branches already created the redesigned table under a different
+-- migration filename. Only the legacy schema has this column.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'time_off_requests'::regclass
+      AND attname = 'time_off_type' AND NOT attisdropped
+  ) THEN
+    CREATE INDEX IF NOT EXISTS time_off_requests_type_idx
+      ON time_off_requests (time_off_type);
+  END IF;
+END;
+$$;

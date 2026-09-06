@@ -25,3 +25,32 @@ export type ContractListResult = {
     hasMore: boolean;
   };
 };
+
+export const CONTRACT_HISTORY_ACTIONS = ["created", "updated", "deleted"] as const;
+
+export type ContractHistoryAction = (typeof CONTRACT_HISTORY_ACTIONS)[number];
+
+export type ContractHistoryChange = {
+  old: unknown;
+  new: unknown;
+};
+
+export type ContractHistorySnapshot = {
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  wage: number;
+  status: ContractStatus;
+};
+
+export type ContractHistoryEntry = {
+  id: string;
+  contractId: string;
+  employeeId: string;
+  action: ContractHistoryAction;
+  changes: Record<string, ContractHistoryChange>;
+  snapshot: ContractHistorySnapshot;
+  changedBy: string | null;
+  changedByName: string | null;
+  createdAt: Date;
+};
