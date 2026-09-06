@@ -1,4 +1,6 @@
 import { CheckInSheet } from "@/components/check-in-sheet";
+import { CaptureFeedback, type CaptureResult } from "@/components/capture-feedback";
+import { captureFailureLabel, FACE_RETAKE_CODES } from "@/features/attendance/capture-feedback";
 import {
   SelfieCamera,
   type SelfieCameraHandle,
@@ -37,7 +39,7 @@ type PositionState =
   | { status: "failed"; message: string };
 
 // Server reason codes and what the visitor should do about them.
-const RETAKE = new Set(["FACE_MISMATCH", "NO_FACE", "MULTIPLE_FACES"]);
+const RETAKE = FACE_RETAKE_CODES;
 const RELOCATE = new Set(["OUTSIDE_GEOFENCE", "LOCATION_IMPRECISE", "LOCATION_REQUIRED"]);
 const SET_UP = new Set(["FACE_NOT_ENROLLED", "PROFILE_MISSING"]);
 
@@ -68,6 +70,7 @@ export default function CheckIn() {
   const camera = useRef<SelfieCameraHandle>(null);
   const [result, setResult] = useState<Attendance | null>(null);
   const [pending, setPending] = useState(false);
+  const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null);
   const [error, setError] = useState<{ message: string; code: string | null } | null>(null);
   const dismiss = () =>
     router.canGoBack() ? router.back() : router.replace("/");
@@ -105,15 +108,19 @@ export default function CheckIn() {
   }, [requestPosition, finished]);
 
   const retake = () => {
+    setCaptureResult(null);
+    setError(null);
     setSelfieUri(null);
     setCameraReady(false);
   };
   const takeSelfie = async () => {
+    setCaptureResult(null);
     setError(null);
     try {
       setSelfieUri((await camera.current?.capture()) ?? null);
       setCameraReady(false);
     } catch (cause) {
+      setCaptureResult({ status: "error", label: "Couldn’t capture photo" });
       setError({
         message: cause instanceof Error ? cause.message : "The selfie could not be taken.",
         code: null,
@@ -124,12 +131,17 @@ export default function CheckIn() {
   const submit = async () => {
     if (pending || done || !selfieUri || position.status !== "ready") return;
     setPending(true);
+    setCaptureResult(null);
     setError(null);
     const attempt = { selfieUri, position: position.value };
     try {
       const record =
         action === "Check-in" ? await checkIn(attempt) : await checkOut(attempt);
       setResult(record);
+      const acceptedProof = action === "Check-in" ? record.checkInVerification : record.checkOutVerification;
+      if (acceptedProof?.face.status === "matched") {
+        setCaptureResult({ status: "success", label: "Face verified" });
+      }
       feedback(Haptics.NotificationFeedbackType.Success);
     } catch (cause) {
       const code = cause instanceof ClockError ? cause.code : null;
@@ -137,7 +149,8 @@ export default function CheckIn() {
         message: cause instanceof Error ? cause.message : "Attendance could not be saved.",
         code,
       });
-      if (code && RETAKE.has(code)) retake();
+      // Keep the failed still visible beneath the red flash until manual retake.
+      setCaptureResult({ status: "error", label: captureFailureLabel(code) });
       feedback(Haptics.NotificationFeedbackType.Error);
     } finally {
       setPending(false);
@@ -147,10 +160,12 @@ export default function CheckIn() {
   const [faceProof, placeProof] = proofCopy(proof);
   const faceRow: { state: CheckState; detail: string } = done
     ? { state: proof ? "done" : "pending", detail: faceProof }
+    : error?.code && RETAKE.has(error.code)
+      ? { state: "failed", detail: error.message }
     : !enrolled
       ? { state: "pending", detail: "Set up from your profile first" }
       : selfieUri
-        ? { state: "done", detail: "Selfie ready" }
+        ? { state: "pending", detail: pending ? "Verifying your selfie…" : "Selfie captured · confirm to verify" }
         : { state: "active", detail: cameraReady ? "Take a selfie inside the frame" : "Starting the camera…" };
   const placeRow: { state: CheckState; detail: string } = done
     ? { state: proof ? "done" : "pending", detail: placeProof }
@@ -185,7 +200,9 @@ export default function CheckIn() {
             ? { label: "Set up face check-in", icon: "user-check" as const, onPress: () => router.push("/enroll-face") }
             : !selfieUri
               ? { label: "Take selfie", icon: "camera" as const, disabled: !cameraReady, onPress: () => void takeSelfie() }
-              : { label: `Confirm ${action.toLowerCase()}`, icon: "check" as const, disabled: position.status !== "ready", onPress: () => void submit() };
+              : error?.code && RETAKE.has(error.code)
+                ? { label: "Retake selfie", icon: "camera" as const, onPress: retake }
+                : { label: `Confirm ${action.toLowerCase()}`, icon: "check" as const, disabled: position.status !== "ready", onPress: () => void submit() };
 
   return (
     <CheckInSheet onDismiss={dismiss}>
@@ -230,7 +247,7 @@ export default function CheckIn() {
               : !enrolled
                 ? "Face check-in not set up"
                 : selfieUri
-                  ? "Looking good"
+                  ? error?.code && RETAKE.has(error.code) ? "Please retake your selfie" : "Ready to verify"
                   : "Your face goes in the frame"
           }
           caption={
@@ -256,6 +273,7 @@ export default function CheckIn() {
               <Feather name="user" size={48} color={p.white} />
             </View>
           )}
+          <CaptureFeedback result={captureResult} />
         </CaptureBox>
 
         {error ? (
