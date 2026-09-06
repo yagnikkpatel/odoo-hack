@@ -113,7 +113,7 @@ async function readLimitedBody(request: Request, maximumBytes: number): Promise<
   }
 }
 
-async function readProfileInput(request: Request): Promise<Record<string, string>> {
+async function readProfileInput(request: Request): Promise<Record<string, string | number | null>> {
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
     throw new EmployeeRequestError(415, 'Send employee details as JSON.')
   }
@@ -127,8 +127,21 @@ async function readProfileInput(request: Request): Promise<Record<string, string
   if (!isRecord(input) || Object.keys(input).length === 0) {
     throw new EmployeeRequestError(400, 'Provide at least one employee field.')
   }
-  const fields: Record<string, string> = {}
+  const fields: Record<string, string | number | null> = {}
   for (const [key, rawValue] of Object.entries(input)) {
+    if (key === 'workLatitude' || key === 'workLongitude' || key === 'workRadiusM') {
+      const coordinate = key !== 'workRadiusM'
+      const maximum = key === 'workLatitude' ? 90 : key === 'workLongitude' ? 180 : 5000
+      const minimum = coordinate ? -maximum : 10
+      if (!(coordinate && rawValue === null) && (
+        typeof rawValue !== 'number' || !Number.isFinite(rawValue) ||
+        rawValue < minimum || rawValue > maximum || (!coordinate && !Number.isInteger(rawValue))
+      )) {
+        throw new EmployeeRequestError(400, `Enter a valid ${key} between ${minimum} and ${maximum}.`)
+      }
+      fields[key] = rawValue as number | null
+      continue
+    }
     if (key === 'managerId') {
       if (typeof rawValue !== 'string' || !UUID_PATTERN.test(rawValue)) {
         throw new EmployeeRequestError(400, 'Choose a valid manager.')
@@ -143,6 +156,10 @@ async function readProfileInput(request: Request): Promise<Record<string, string
       throw new EmployeeRequestError(400, `Enter ${key} between 1 and ${PROFILE_FIELDS[key]} characters.`)
     }
     fields[key] = rawValue.trim()
+  }
+  if ((fields.workLatitude === undefined) !== (fields.workLongitude === undefined) ||
+      (fields.workLatitude === null) !== (fields.workLongitude === null)) {
+    throw new EmployeeRequestError(400, 'Set or clear latitude and longitude together.')
   }
   const contact = fields.contact
   if (typeof contact === 'string' && (contact.length < 7 || !/^[0-9+()\-\s]+$/.test(contact))) {

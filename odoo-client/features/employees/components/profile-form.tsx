@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { LoaderCircleIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
@@ -9,6 +9,7 @@ import { Input } from '@/features/nexacrm/components/ui/input'
 import { Label } from '@/features/nexacrm/components/ui/label'
 import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select'
 import { useEmployeesStore } from '../store'
+import OfficeLocationSearch from './office-location-search'
 import type {
   Employee,
   EmployeeAccount,
@@ -106,6 +107,13 @@ export default function ProfileForm({
 }: ProfileFormProps) {
   const formId = useId()
   const [values, setValues] = useState(() => initialValues(employee))
+  const [latitude, setLatitude] = useState(employee?.workLatitude?.toString() ?? '')
+  const [longitude, setLongitude] = useState(employee?.workLongitude?.toString() ?? '')
+  const [radius, setRadius] = useState(employee?.workRadiusM?.toString() ?? '150')
+  const [locationEdited, setLocationEdited] = useState(false)
+  const [manualLocation, setManualLocation] = useState(false)
+  const [locationSearchPending, setLocationSearchPending] = useState(false)
+  const showManualLocation = useCallback(() => setManualLocation(true), [])
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const accountId = account?.id || selectedAccountId
   const [pending, setPending] = useState(false)
@@ -152,7 +160,7 @@ export default function ProfileForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pending) return
+    if (pending || locationSearchPending) return
     setError(null)
 
     if (!employee && !accountId) {
@@ -165,7 +173,7 @@ export default function ProfileForm({
         return
       }
     }
-    if (!values.managerId) {
+    if (!values.managerId && (!employee || employee.managerId)) {
       setError('Manager is required.')
       return
     }
@@ -177,13 +185,36 @@ export default function ProfileForm({
       return
     }
 
+    if (locationEdited) {
+      if (!!latitude.trim() !== !!longitude.trim()) {
+        setError('Enter both latitude and longitude, or leave both blank.')
+        return
+      }
+      if ((latitude.trim() && (!Number.isFinite(Number(latitude)) || Math.abs(Number(latitude)) > 90)) ||
+          (longitude.trim() && (!Number.isFinite(Number(longitude)) || Math.abs(Number(longitude)) > 180)) ||
+          !Number.isInteger(Number(radius)) || Number(radius) < 10 || Number(radius) > 5000) {
+        setError('Use latitude −90 to 90, longitude −180 to 180, and a whole-number distance from 10 to 5,000 metres.')
+        return
+      }
+    }
+
     setPending(true)
     onPendingChange(true)
     try {
       const profile = buildProfileInput(values)
+      if (locationEdited) {
+        profile.workLatitude = latitude.trim() ? Number(latitude) : null
+        profile.workLongitude = longitude.trim() ? Number(longitude) : null
+        profile.workRadiusM = Number(radius)
+      }
       let savedId: string
       if (employee) {
-        await updateEmployee(employee.id, profile)
+        // Existing assignments may predate the current manager-role rules.
+        // Only validate/reassign the manager when the user changes it.
+        const { managerId, ...workDetails } = profile
+        await updateEmployee(employee.id, managerId === (employee.managerId ?? '')
+          ? workDetails
+          : profile)
         savedId = employee.id
       } else {
         const input: EmployeeCreateInput = { ...profile, userId: accountId }
@@ -296,6 +327,37 @@ export default function ProfileForm({
             />
           </div>
         </div>
+        {employee && <div className="space-y-3 rounded-lg border p-3">
+          <p className="text-sm font-medium">Office location for attendance</p>
+          <p className="text-muted-foreground text-xs">Search for the office to fill its coordinates, then set the allowed distance.</p>
+          <OfficeLocationSearch onFallback={showManualLocation} onPendingChange={setLocationSearchPending}
+            onSelect={place => {
+              setLatitude(String(place.latitude)); setLongitude(String(place.longitude)); setLocationEdited(true)
+              setValues(previous => ({ ...previous, workLocation: place.name.slice(0, 160), location: (place.formattedAddress || place.name).slice(0, 160) }))
+            }} />
+          {latitude && longitude && <p className="text-xs text-muted-foreground">Coordinates: {latitude}, {longitude}</p>}
+          <details open={manualLocation} onToggle={event => setManualLocation(event.currentTarget.open)}>
+            <summary className="cursor-pointer text-sm">Manual coordinates</summary>
+            <p className="my-2 text-xs text-muted-foreground">Use these if search is unavailable. Leave both blank to turn off the distance check.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor={`${formId}-latitude`}>Latitude</Label>
+              <Input id={`${formId}-latitude`} disabled={locationSearchPending} type="number" step="any" min={-90} max={90} placeholder="23.022505"
+                value={latitude} onChange={event => { setLatitude(event.target.value); setLocationEdited(true) }} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`${formId}-longitude`}>Longitude</Label>
+              <Input id={`${formId}-longitude`} disabled={locationSearchPending} type="number" step="any" min={-180} max={180} placeholder="72.5713621"
+                value={longitude} onChange={event => { setLongitude(event.target.value); setLocationEdited(true) }} />
+            </div>
+            </div>
+          </details>
+            <div className="grid gap-2">
+              <Label htmlFor={`${formId}-radius`}>Allowed distance (metres)</Label>
+              <Input id={`${formId}-radius`} type="number" step={1} min={10} max={5000} required={locationEdited}
+                value={radius} onChange={event => { setRadius(event.target.value); setLocationEdited(true) }} />
+            </div>
+        </div>}
       </fieldset>
       {error && (
         <p role="alert" className="text-destructive text-sm">
@@ -314,7 +376,7 @@ export default function ProfileForm({
         <Button
           type="submit"
           disabled={
-            pending ||
+            pending || locationSearchPending ||
             (!employee && !accountId)
           }
         >

@@ -11,6 +11,30 @@ Next.js frontend for PeoplePay360. Authentication, Employees, Contracts, and Att
 
 `BACKEND_API_URL` is server-only. Do not prefix it with `NEXT_PUBLIC_`, copy backend secrets into this client, or put access tokens in local/session storage.
 
+## Office location search
+
+Employee edit dialogs support Google Places search, with manual coordinates as a fallback.
+Add `GOOGLE_PLACES_API_KEY=your_key` to `odoo-client/.env.local` and restart Next.js.
+Enable **Places API (New)** and billing for that Google Cloud project. Restrict the key
+to Places API and, where available, your server's egress IPs (these are server calls,
+so browser referrer restrictions do not apply). Never use a `NEXT_PUBLIC_` key.
+
+Typing an office/address searches India after a 300 ms debounce. Selection fetches
+coordinates and fills Work location and Location; the existing Save changes action
+persists them. Manual entry remains available for missing configuration, errors,
+no results, or places outside India. Existing coordinates are preserved until edited.
+
+Both Google calls go through the authenticated, employee-edit-permission-gated
+`POST /api/employees/places` route. The same UUID is used for autocomplete and its
+final details call, then discarded. Details requests use only
+`id,formattedAddress,location,attributions`; the name comes from the selected prediction.
+Search responses are not cached. A per-user, per-process limit allows 60 Google calls
+per minute; set Google Cloud project quotas for an overall deployment limit.
+Session pricing depends on the requested fields; see
+[Google's current session pricing](https://developers.google.com/maps/documentation/places/web-service/session-pricing).
+
+Run `node scripts/test-employee-places.mjs` for isolated API tests without a Google key or paid requests.
+
 ## Authentication
 
 The browser talks only to same-origin Next.js auth routes. Those routes call the configured backend under `/api/auth`.

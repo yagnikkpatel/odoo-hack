@@ -21,6 +21,9 @@ export type Employee = {
   workingSchedule?: string
   workLocation?: string
   location?: string
+  workLatitude?: number | null
+  workLongitude?: number | null
+  workRadiusM?: number
   role?: BackendRole
   status?: EmployeeStatus
   createdAt: string
@@ -44,6 +47,9 @@ export type EmployeeProfileInput = {
   workLocation: string
   managerId: string
   location: string
+  workLatitude?: number | null
+  workLongitude?: number | null
+  workRadiusM?: number
 }
 export type EmployeeCreateInput = EmployeeProfileInput & { userId: string }
 export type EmployeeUpdateInput = Partial<EmployeeProfileInput>

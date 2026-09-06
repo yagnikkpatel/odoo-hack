@@ -78,7 +78,7 @@ function request(method = 'GET', suffix = '', body, headers = {}) {
 const validProfile = {
   jobPosition: 'Engineer', department: 'Engineering', contact: '+91 12345678',
   workingSchedule: 'Weekdays', companyName: 'Test company', workLocation: 'Office',
-  managerId: null, location: null
+  managerId: accountId, location: 'Test city'
 }
 try {
   sessionToken = ''
@@ -113,7 +113,26 @@ try {
   assert.equal((await profile.GET(request(), { params: Promise.resolve({ userId: '../auth/me' }) })).status, 400)
   assert.equal((await profile.POST(request('POST', '', validProfile), context)).status, 200)
   assert.deepEqual(JSON.parse(calls.at(-1).options.body), validProfile)
-  assert.equal((await profile.PATCH(request('PATCH', '', { managerId: null, location: null }), context)).status, 200)
+  assert.equal((await profile.PATCH(request('PATCH', '', { managerId: null, location: null }), context)).status, 400)
+  for (const location of [
+    { workLatitude: 23.022505, workLongitude: 72.5713621, workRadiusM: 200 },
+    { workLatitude: 0, workLongitude: 0, workRadiusM: 10 },
+    { workLatitude: null, workLongitude: null },
+    { workRadiusM: 5000 },
+  ]) {
+    assert.equal((await profile.PATCH(request('PATCH', '', location), context)).status, 200)
+    assert.deepEqual(JSON.parse(calls.at(-1).options.body), location)
+  }
+  for (const location of [
+    { workLatitude: 91, workLongitude: 0 }, { workLatitude: 0, workLongitude: -181 },
+    { workLatitude: 0 }, { workLatitude: null, workLongitude: 0 },
+    { workLatitude: '23', workLongitude: 72 }, { workRadiusM: 0 },
+    { workRadiusM: 5001 }, { workRadiusM: 10.5 }, { workRadiusM: null },
+  ]) {
+    const before = calls.length
+    assert.equal((await profile.PATCH(request('PATCH', '', location), context)).status, 400)
+    assert.equal(calls.length, before, 'Invalid office coordinates must not reach the backend')
+  }
   for (const body of [{}, { name: 'Not a profile field' }, { contact: 'invalid phone' }, { managerId: 'bad' }, { department: '' }, { location: 1 }]) {
     assert.equal((await profile.PATCH(request('PATCH', '', body), context)).status, 400)
   }

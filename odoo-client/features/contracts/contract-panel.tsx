@@ -27,7 +27,7 @@ import type { Contract } from './types'
 import { contractTitle } from './types'
 import { useContractPermissions } from './permissions'
 import ContractFields from './components/contract-fields'
-import ContractHistory from './components/contract-history'
+import ContractAuditLog from './components/contract-audit-log'
 import ContractActions from './components/contract-actions'
 import { useContractRecord } from './components/use-contract-record'
 
@@ -126,7 +126,7 @@ export default function ContractPanel({
                   )}
                 </TabsContent>
                 <TabsContent value="history">
-                  <ContractHistory contract={contract} />
+                  <ContractAuditLog contract={contract} />
                 </TabsContent>
               </div>
             </ScrollArea>

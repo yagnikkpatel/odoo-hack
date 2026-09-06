@@ -32,6 +32,12 @@ const ACTION_ICON: Record<ContractHistoryEntry['action'], typeof PlusIcon> = {
 }
 
 export default function ContractAuditLog({ contract }: { contract: Contract }) {
+  // A saved edit updates the record without navigating away. Reload its log,
+  // including loading/error state, and discard any request for the old version.
+  return <ContractAuditEntries key={`${contract.id}:${contract.updatedAt}`} contract={contract} />
+}
+
+function ContractAuditEntries({ contract }: { contract: Contract }) {
   const [entries, setEntries] = useState<ContractHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

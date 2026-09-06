@@ -84,6 +84,9 @@ export function mapEmployee(value: unknown): Employee {
     workingSchedule: optionalText(record.workingSchedule),
     workLocation: optionalText(record.workLocation),
     location: optionalText(record.location),
+    workLatitude: typeof record.workLatitude === 'number' ? record.workLatitude : null,
+    workLongitude: typeof record.workLongitude === 'number' ? record.workLongitude : null,
+    workRadiusM: typeof record.workRadiusM === 'number' ? record.workRadiusM : undefined,
     createdAt: text(record.createdAt),
     updatedAt: text(record.updatedAt)
   }

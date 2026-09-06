@@ -17,6 +17,10 @@ import type { Contract } from '../types'
 import ContractStatusBadge from './status-badge'
 
 export default function ContractHistory({ contract }: { contract: Contract }) {
+  return <EmployeeContracts key={`${contract.id}:${contract.updatedAt}`} contract={contract} />
+}
+
+function EmployeeContracts({ contract }: { contract: Contract }) {
   const [history, setHistory] = useState<Contract[]>([contract])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -60,9 +64,9 @@ export default function ContractHistory({ contract }: { contract: Contract }) {
 
   return (
     <section className="space-y-4">
-      <RecordHeading title="Employee contract history" count={history.length} />
+      <RecordHeading title="Employee contracts" count={history.length} />
       <p className="text-muted-foreground text-sm">
-        Contracts returned by the backend for this employee, newest first.
+        Contracts held by this employee, newest first.
       </p>
       {loading && (
         <p role="status" className="text-muted-foreground flex gap-2 text-sm">

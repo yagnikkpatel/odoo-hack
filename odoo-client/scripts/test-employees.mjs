@@ -64,6 +64,11 @@ const { mapEmployee, mapSummary } = load('features/employees/employee-mapper.ts'
 const { employeeName } = load('features/employees/types.ts')
 const { employeePermissions } = load('features/employees/permissions.ts')
 try {
+  const office = { workLatitude: 0, workLongitude: 72.5713621, workRadiusM: 200 }
+  const withOffice = mapEmployee({ ...raw, ...office })
+  for (const [field, value] of Object.entries(office)) assert.equal(withOffice[field], value)
+  assert.equal(mapEmployee(raw).workLatitude, null)
+  assert.equal(mapEmployee(raw).workLongitude, null)
   const mapped = mapEmployee(raw)
   assert.equal(mapped.id, id)
   assert.equal(mapped.companyName, raw.company)
