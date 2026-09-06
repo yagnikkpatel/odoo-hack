@@ -11,6 +11,7 @@
     "docker:down": "docker compose down",
     "migrate": "tsx src/scripts/migrate.ts",
     "seed": "tsx src/scripts/seed.ts",
+    "seed:demo": "tsx src/scripts/seed-demo.ts",
     "seed:dummy": "tsx src/scripts/seed-dummy.ts",
     "seed:contracts": "tsx src/scripts/seed-contracts.ts",
     "seed:attendance": "tsx src/scripts/seed-attendance.ts",
