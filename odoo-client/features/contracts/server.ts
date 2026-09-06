@@ -34,6 +34,20 @@ export function contractPath(id: string) {
   return `/contracts/${id}`
 }
 
+export function contractHistoryPath(id: string) {
+  if (!UUID_PATTERN.test(id)) {
+    throw new ContractRequestError(400, 'Choose a valid contract.')
+  }
+  return `/contracts/${id}/history`
+}
+
+export function employeeContractHistoryPath(employeeId: string) {
+  if (!UUID_PATTERN.test(employeeId)) {
+    throw new ContractRequestError(400, 'Choose a valid employee.')
+  }
+  return `/contracts/by-employee/${employeeId}/history`
+}
+
 export function contractListPath(request: Request) {
   const input = new URL(request.url).searchParams
   const output = new URLSearchParams()

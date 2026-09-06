@@ -134,7 +134,8 @@ function AttendanceDirectory() {
         viewName={scope === 'own' ? 'My attendance' : 'Attendance'}
         count={total}
         icon={ClockIcon}
-        showSearch={false}
+        showSearch={scope === 'all'}
+        searchPlaceholder="Search employee name or email…"
         showSort={false}
         showFilterFieldLabels={false}
         showFilterChips={false}

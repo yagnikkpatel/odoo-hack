@@ -1,24 +1,14 @@
 'use client'
 
 import type { BackendRole } from '@/features/auth/auth-types'
+import { attendanceAccess } from '@/features/auth/permissions'
 import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 
-// Mirrors migration 007; the API enforces permissions.
+/** Role defaults support callers without a session; hooks use the API's grants. */
 export function attendancePermissions(role: BackendRole) {
-  const own = [
-    'employee', 'admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager',
-  ].includes(role)
-  const manage = own && role !== 'employee'
-  return {
-    canReadOwn: own,
-    canCheckIn: own,
-    canReadAny: manage,
-    canCreate: manage,
-    canUpdate: manage,
-    canDelete: manage,
-  }
+  return attendanceAccess({ role })
 }
 
 export function useAttendancePermissions() {
-  return attendancePermissions(useCurrentUser().user.role)
+  return attendanceAccess(useCurrentUser().user)
 }

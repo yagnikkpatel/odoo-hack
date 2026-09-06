@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { moduleAccess, type Actor } from "@/features/auth/permissions";
 import {
   IconCalendarTime,
   IconClockHour4,
@@ -157,11 +158,19 @@ const employeeNavigation: readonly NavigationGroup[] = [
     label: "My workspace",
     items: [
       {
-        id: "attendance-records",
+        id: "attendance",
         label: "My Attendance",
         href: "/attendance",
         icon: IconClockHour4,
         iconClassName: "text-emerald-600",
+        status: "ready",
+      },
+      {
+        id: "time-off-requests",
+        label: "Time off",
+        href: "/time-off/requests",
+        icon: IconCalendarTime,
+        iconClassName: "text-amber-600",
         status: "ready",
       },
       {
@@ -176,20 +185,61 @@ const employeeNavigation: readonly NavigationGroup[] = [
   },
 ];
 
-export function getNavigationForRole(role: string): readonly NavigationGroup[] {
-  if (role === "employee") return employeeNavigation;
-  if (["admin", "hr_manager", "hr_payroll_user", "hr_payroll_manager"].includes(role)) {
-    return appNavigation;
-  }
-  return [];
+/** Match each destination to the API capability needed to load its page. */
+export function getNavigationForUser(user: Actor): readonly NavigationGroup[] {
+  const access = moduleAccess(user);
+  const visible: Record<string, boolean> = {
+    employees: access.employees.canRead,
+    attendance: access.attendance.canReadOwn,
+    contracts: access.contracts.canRead,
+    "time-off-requests": access.timeOff.canReadOwn,
+    "time-off-allocations": access.timeOff.canReadAllocations,
+    "time-off-types": access.timeOff.canReadTypes,
+    payruns: access.payroll.canReadPayruns,
+    payslips: access.payroll.canReadPayslips,
+    "salary-structures": access.payroll.canReadStructures,
+    "salary-rules": access.payroll.canReadRules,
+    dashboard: access.payroll.canReport,
+    "hr-payroll-reports": access.payroll.canReport,
+  };
+  const navigation = user.role === "employee" ? employeeNavigation : appNavigation;
+  return navigation.map(group => ({
+    ...group,
+    items: group.items.flatMap((item): NavigationItem[] => {
+      if (!("children" in item)) return visible[item.id] ? [item] : [];
+      const children = item.children.filter(child => visible[child.id]);
+      return children.length ? [{ ...item, children }] : [];
+    }),
+  })).filter(group => group.items.length > 0);
 }
 
-export function getNavigationLabel(pathname: string, role: string) {
+export function getNavigationForRole(role: string): readonly NavigationGroup[] {
+  return getNavigationForUser({ role });
+}
+
+export function getNavigationLabel(pathname: string, user: Actor | string) {
   const active = getActiveNavigationDestination(pathname);
-  const destinations = getNavigationForRole(role).flatMap(group =>
-    group.items.flatMap(item => "children" in item ? [...item.children] : [item]),
-  );
+  const destinations = getNavigationForUser(typeof user === "string" ? { role: user } : user)
+    .flatMap(group => group.items.flatMap(item => "children" in item ? [...item.children] : [item]));
   return destinations.find(item => item.id === active?.id)?.label;
+}
+
+/** UI guard only; backend permissions still authorize every data request. */
+export function canAccessNavigationRoute(pathname: string, user: Actor) {
+  // The original CRM demo pages have no HR permissions or navigation entry.
+  if (["/kanban", "/opportunities"].some(href => pathname === href || pathname.startsWith(href + "/"))) {
+    return false;
+  }
+  const active = getActiveNavigationDestination(pathname);
+  if (!active) return true;
+  if (active.id === "attendance" && pathname !== "/attendance" && pathname !== "/attendance/") {
+    return moduleAccess(user).attendance.canReadAny;
+  }
+  return getNavigationForUser(user).some(group => group.items.some(item =>
+    "children" in item
+      ? item.children.some(child => child.id === active.id)
+      : item.id === active.id,
+  ));
 }
 
 export function getActiveNavigationDestination(pathname: string) {

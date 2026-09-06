@@ -3,10 +3,12 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "node scripts/connect-backend.cjs dev",
+    "android": "node scripts/connect-backend.cjs dev --android",
+    "ios": "node scripts/connect-backend.cjs dev --ios",
+    "web": "node scripts/connect-backend.cjs dev --web",
+    "connect": "node scripts/connect-backend.cjs",
+    "backend:check": "node scripts/connect-backend.cjs check",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"
   },

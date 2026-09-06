@@ -1,26 +1,14 @@
 'use client'
 
 import type { BackendRole } from '@/features/auth/auth-types'
+import { timeOffAccess } from '@/features/auth/permissions'
 import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 
-// Mirrors migration 007; the API enforces permissions.
+/** Role defaults support callers without a session; hooks use the API's grants. */
 export function timeOffPermissions(role: BackendRole) {
-  const own = [
-    'employee', 'admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager',
-  ].includes(role)
-  const manage = own && role !== 'employee'
-  return {
-    canReadOwn: own,
-    canReadAny: manage,
-    canCreateOwn: own,
-    canCreateAny: manage,
-    canUpdate: manage,
-    canDelete: manage,
-    canApprove: manage,
-    canManageTypes: manage,
-  }
+  return timeOffAccess({ role })
 }
 
 export function useTimeOffPermissions() {
-  return timeOffPermissions(useCurrentUser().user.role)
+  return timeOffAccess(useCurrentUser().user)
 }

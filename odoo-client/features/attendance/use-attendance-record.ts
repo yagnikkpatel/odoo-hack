@@ -7,7 +7,8 @@ import { useAttendanceStore } from './store'
 
 export function useAttendanceRecord(id: string | null) {
   const { user } = useCurrentUser()
-  const { canReadAny } = useAttendancePermissions()
+  const { canReadAny, canReadOwn } = useAttendancePermissions()
+  const allowed = canReadAny || canReadOwn
   const scope = canReadAny ? 'all' : 'own'
   const cached = useAttendanceStore((state) =>
     id
@@ -15,7 +16,7 @@ export function useAttendanceRecord(id: string | null) {
       : undefined,
   )
   const record =
-    cached && (canReadAny || cached.employeeId === user.id) ? cached : undefined
+    allowed && cached && (canReadAny || cached.employeeId === user.id) ? cached : undefined
   const loadRecord = useAttendanceStore((state) => state.loadRecord)
   const [attempt, setAttempt] = useState(0)
   const [failure, setFailure] = useState<{
@@ -24,7 +25,7 @@ export function useAttendanceRecord(id: string | null) {
   } | null>(null)
 
   useEffect(() => {
-    if (!id || record) return
+    if (!id || record || !allowed) return
     let active = true
     void loadRecord(id, scope).catch((cause) => {
       if (active)
@@ -39,9 +40,9 @@ export function useAttendanceRecord(id: string | null) {
     return () => {
       active = false
     }
-  }, [id, record, loadRecord, scope, attempt])
+  }, [id, record, loadRecord, scope, attempt, allowed])
 
-  const error = failure?.id === id && !record ? failure.message : null
+  const error = !allowed ? 'You do not have access to attendance.' : failure?.id === id && !record ? failure.message : null
   function retry() {
     setFailure(null)
     setAttempt((value) => value + 1)

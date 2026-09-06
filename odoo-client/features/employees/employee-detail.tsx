@@ -127,12 +127,9 @@ export default function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 <TabsTrigger value="attendance">Attendance</TabsTrigger>
               </TabsList>
               <TabsContent value="timeline">
-                <EmployeeTimeline />
+                <EmployeeTimeline employeeId={employee.id} />
               </TabsContent>
               <TabsContent value="attendance">
-                <p className="text-muted-foreground mb-3 text-xs">
-                  Attendance data is not connected yet.
-                </p>
                 <EmployeeAttendance employeeId={employee.id} />
               </TabsContent>
             </Tabs>

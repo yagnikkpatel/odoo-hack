@@ -7,9 +7,13 @@ import TimeOffDetailPage from '../components/detail-page'
 import RequestActions from './actions'
 import RequestContent from './content'
 import RequestEditor from './editor'
+import { useTimeOffPermissions } from '../permissions'
+import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 
 export default function RequestDetail({ requestId }: { requestId: string }) {
-  const record = useTimeOffStore(state => state.requests.find(request => request.id === requestId))
+  const { user } = useCurrentUser()
+  const { canReadAny } = useTimeOffPermissions()
+  const record = useTimeOffStore(state => state.requests.find(request => request.id === requestId && (canReadAny || request.employeeId === user.id)))
   const hydrated = useTimeOffStore(state => state.hasHydrated)
   const error = useTimeOffStore(state => state.error)
   const [editing, setEditing] = useState(false)

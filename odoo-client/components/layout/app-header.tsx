@@ -8,21 +8,21 @@ import { getNavigationLabel } from "@/config/app-navigation";
 import { usePathname } from "next/navigation";
 
 type AppHeaderProps = {
-  role: string;
+  user: { role: string; permissions?: readonly string[] };
   collapsed: boolean;
   onDesktopToggle: () => void;
   onMobileOpen: () => void;
 };
 
 export function AppHeader({
-  role,
+  user,
   collapsed,
   onDesktopToggle,
   onMobileOpen,
 }: AppHeaderProps) {
   const pathname = usePathname();
   const pageLabel =
-    getNavigationLabel(pathname, role) ?? "PeoplePay360";
+    getNavigationLabel(pathname, user) ?? "PeoplePay360";
   return (
     <header className="bg-muted/40 flex h-12 shrink-0 items-center border-b px-4">
       <Button

@@ -35,11 +35,9 @@ export const payrollRouter = Router();
 
 payrollRouter.use(requireAuth);
 
-// Reporting only: reading the dashboard needs the same permission as reading a
-// payslip, which is what HR managers were granted in migration 016.
 payrollRouter.get(
   "/dashboard",
-  requirePermission("payslip:read"),
+  requirePermission("payroll_dashboard:read"),
   getPayrollDashboardHandler,
 );
 

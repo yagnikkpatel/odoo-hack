@@ -1,24 +1,14 @@
 'use client'
 
 import type { BackendRole } from '@/features/auth/auth-types'
+import { contractAccess } from '@/features/auth/permissions'
 import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 
-/** Mirrors backend migration 007 for visibility; the backend enforces requests. */
+/** Role defaults support callers without a session; hooks use the API's grants. */
 export function contractPermissions(role: BackendRole) {
-  const allowed =
-    role === 'admin' ||
-    role === 'hr_manager' ||
-    role === 'hr_payroll_user' ||
-    role === 'hr_payroll_manager'
-  return {
-    canRead: allowed,
-    canCreate: allowed,
-    canUpdate: allowed,
-    canDelete: allowed,
-  }
+  return contractAccess({ role })
 }
 
 export function useContractPermissions() {
-  const { user } = useCurrentUser()
-  return contractPermissions(user.role)
+  return contractAccess(useCurrentUser().user)
 }

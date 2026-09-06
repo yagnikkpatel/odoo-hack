@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { Button } from '@/features/nexacrm/components/ui/button'
-import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import type { CreatedUser } from '@/features/users/types'
 import {
   Dialog,
@@ -26,9 +25,7 @@ export default function CreateEmployeeDialog({
   const [pending, setPending] = useState(false)
   const [createdAccount, setCreatedAccount] = useState<CreatedUser | null>(null)
   const [linkExisting, setLinkExisting] = useState(false)
-  const { user } = useCurrentUser()
-  const { canCreate } = useEmployeePermissions()
-  const canCreateAccount = user.role === 'admin'
+  const { canCreate, canManageAccounts: canCreateAccount } = useEmployeePermissions()
   if (!canCreate) return null
 
   function changeOpen(next: boolean) {

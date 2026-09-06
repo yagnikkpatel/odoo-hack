@@ -1,12 +1,15 @@
 'use client'
 
-import Link from 'next/link'
+import AccessLink from '../components/access-link'
+import { useEmployeePermissions } from '@/features/employees/permissions'
 import { CalendarIcon, ClockIcon, FileTextIcon, CircleCheckIcon, UsersIcon, WalletIcon } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/features/nexacrm/components/ui/tabs'
 import RecordField from '@/features/nexacrm/components/record/record-field'
 import { RecordGroup } from '@/features/nexacrm/components/record/record-section'
 import UserChip from '@/features/nexacrm/components/record/user-chip'
 import { useEmployeeOptions } from '@/features/hr/employee-options'
+import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { APPROVAL_LABELS, PAYROLL_LABELS } from '../model'
 import type { TimeOffRequest } from '../model'
@@ -16,7 +19,11 @@ import RequestBalance from './balance-summary'
 import { decisionDateLabel, leaveDateLabel, requestPeriod } from './presentation'
 
 export default function RequestContent({ record }: { record: TimeOffRequest }) {
-  const { employees } = useEmployeeOptions()
+  const { canReadAny, canReadTypes, canReadAllocations } = useTimeOffPermissions()
+  const { user } = useCurrentUser()
+  const employeePermissions = useEmployeePermissions()
+  const { employees } = useEmployeeOptions({ enabled: canReadAny })
+  const isSelf = record.employeeId === user.id
   const employee = employees.find(employee => employee.id === record.employeeId)
   const type = useTimeOffStore(state => state.types.find(type => type.id === record.typeId))
   const allocations = useTimeOffStore(state => state.allocations)
@@ -30,18 +37,20 @@ export default function RequestContent({ record }: { record: TimeOffRequest }) {
         <RecordGroup title='Time off request'>
           <RecordField type='static' label='Employee' icon={UsersIcon}>
             {employee ? (
-              <Link href={`/employees/${employee.id}`} className='text-sm hover:underline'>
+              <AccessLink allowed={employeePermissions.canReadAll || (employeePermissions.canRead && isSelf)} href={`/employees/${employee.id}`} className='text-sm hover:underline'>
                 {employee.name}
-              </Link>
+              </AccessLink>
+            ) : isSelf ? (
+              <span className='text-sm'>{user.name}</span>
             ) : (
               <span className='text-muted-foreground text-sm'>Employee unavailable</span>
             )}
           </RecordField>
           <RecordField type='static' label='Time off type' icon={FileTextIcon}>
             {type ? (
-              <Link href={`/time-off/types/${type.id}`} className='text-sm hover:underline'>
+              <AccessLink allowed={canReadTypes} href={`/time-off/types/${type.id}`} className='text-sm hover:underline'>
                 {type.name}
-              </Link>
+              </AccessLink>
             ) : (
               <span className='text-muted-foreground text-sm'>Type unavailable</span>
             )}
@@ -78,14 +87,14 @@ export default function RequestContent({ record }: { record: TimeOffRequest }) {
                   >
                     <div className='min-w-0 space-y-0.5'>
                       <p className='text-xs'>{leaveDateLabel(charge.date)}</p>
-                      <Link
+                      <AccessLink allowed={canReadAllocations}
                         href={`/time-off/allocations/${charge.allocationId}`}
                         className='text-primary text-xs hover:underline'
                       >
                         {allocation
                           ? `${leaveDateLabel(allocation.validFrom)} – ${allocation.validTo ? leaveDateLabel(allocation.validTo) : 'No expiry'} allocation`
                           : 'View allocation'}
-                      </Link>
+                      </AccessLink>
                     </div>
                     <span className='text-xs font-medium tabular-nums'>{formatAmount(charge.amount, record.unit)}</span>
                   </div>

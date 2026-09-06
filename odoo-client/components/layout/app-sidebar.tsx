@@ -15,7 +15,7 @@ import {
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarNavigationItem } from "@/components/layout/sidebar-navigation-item";
-import { getNavigationForRole, isNavigationItemActive } from "@/config/app-navigation";
+import { getNavigationForUser, isNavigationItemActive } from "@/config/app-navigation";
 import { cn } from "@/lib/utils";
 
 type AppSidebarProps = {
@@ -25,6 +25,7 @@ type AppSidebarProps = {
   user: {
     email: string;
     role: string;
+    permissions?: readonly string[];
   };
 };
 
@@ -43,7 +44,7 @@ export function AppSidebar({
   user,
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const navigation = getNavigationForRole(user.role);
+  const navigation = getNavigationForUser(user);
   const [loggingOut, setLoggingOut] = useState(false);
   async function signOut() {
     if (loggingOut) return;

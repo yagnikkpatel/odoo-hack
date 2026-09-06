@@ -4,8 +4,8 @@ import AnalyticsDashboardView from '@/features/nexacrm/views/dashboards/analytic
 import styles from './analytics.module.css'
 
 export const metadata: Metadata = {
-  title: 'Analytics',
-  description: 'Analytics dashboard. Business-data integration pending.'
+  title: 'Dashboard',
+  description: 'Live workforce, attendance, time off and payroll insights.'
 }
 
 export default function AnalyticsDashboardPage() {

@@ -9,12 +9,13 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const requirePackage = createRequire(import.meta.url)
 const cache = new Map()
 function load(relative) {
-  const file = path.resolve(root, relative)
+  let file = path.resolve(root, relative)
+  if (!fs.existsSync(file) && file.endsWith('.ts') && fs.existsSync(file + 'x')) file += 'x'
   if (cache.has(file)) return cache.get(file).exports
   const loaded = { exports: {} }
   cache.set(file, loaded)
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX }
   }).outputText
   const localRequire = spec => spec.startsWith('@/') ? load(spec.slice(2) + '.ts')
     : spec.startsWith('.') ? load(path.resolve(path.dirname(file), spec + '.ts')) : requirePackage(spec)
@@ -27,7 +28,7 @@ const { payrollPermissions } = load('features/payroll/permissions.ts')
 assert.equal(payrollPermissions('hr_payroll_manager').canConfigure,true)
 assert.equal(payrollPermissions('hr_payroll_user').canDelete,false)
 assert.equal(payrollPermissions('hr_payroll_user').canProcess,true)
-assert.equal(payrollPermissions('hr_manager').canReport,true)
+assert.equal(payrollPermissions('hr_manager').canReport,false)
 assert.equal(payrollPermissions('hr_manager').canRead,false)
 assert.equal(payrollPermissions('employee').canRead,false)
 assert.equal(payrollPermissions('admin').canDelete,true)

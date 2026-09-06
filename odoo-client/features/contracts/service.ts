@@ -3,12 +3,14 @@ import type { Employee } from '@/features/employees/types'
 import { ApiError } from '@/lib/api-client'
 import {
   mapContract,
+  mapContractHistoryEntry,
   mapPagination,
   requireContractId,
   requireRecord,
 } from './contract-mapper'
 import type {
   Contract,
+  ContractHistoryEntry,
   ContractInput,
   ContractListQuery,
   ContractUpdateInput,
@@ -93,6 +95,28 @@ export async function updateContract(id: string, input: ContractUpdateInput) {
 
 export async function deleteContract(id: string) {
   await request(`/${requireContractId(id)}`, { method: 'DELETE' })
+}
+
+export async function getContractAuditLog(
+  id: string,
+): Promise<ContractHistoryEntry[]> {
+  const data = await request(`/${requireContractId(id)}/history`)
+  if (!Array.isArray(data)) {
+    throw new ApiError('The contract service returned an invalid history list.', 502)
+  }
+  return data.map(mapContractHistoryEntry)
+}
+
+export async function getEmployeeContractAuditLog(
+  employeeId: string,
+): Promise<ContractHistoryEntry[]> {
+  const data = await request(
+    `/by-employee/${requireContractId(employeeId)}/history`,
+  )
+  if (!Array.isArray(data)) {
+    throw new ApiError('The contract service returned an invalid history list.', 502)
+  }
+  return data.map(mapContractHistoryEntry)
 }
 
 export async function listEmployeeContracts(employeeId: string) {

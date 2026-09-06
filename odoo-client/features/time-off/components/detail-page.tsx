@@ -7,6 +7,7 @@ import { Button } from '@/features/nexacrm/components/ui/button'
 import { Card, CardContent } from '@/features/nexacrm/components/ui/card'
 import RecordNotFound from '@/features/nexacrm/components/record/record-not-found'
 import useTimeOffData from './use-time-off-data'
+import { useTimeOffPermissions } from '../permissions'
 
 export default function TimeOffDetailPage({
   title,
@@ -28,6 +29,8 @@ export default function TimeOffDetailPage({
   children?: ReactNode
 }) {
   useTimeOffData()
+  const { canReadOwn, canReadAny } = useTimeOffPermissions()
+  if (!canReadOwn && !canReadAny) return <p role="alert" className="py-12 text-muted-foreground">You do not have access to time off.</p>
   if (loading)
     return (
       <p role='status' className='py-8 text-sm'>

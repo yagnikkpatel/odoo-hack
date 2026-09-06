@@ -45,7 +45,7 @@ export default function EmployeesToolbar({
       onViewTypeChange={onViewTypeChange}
       viewTypes={EMPLOYEE_VIEW_TYPES}
       showSort={false}
-      showSearch={false}
+      showSearch
       showFilterFieldLabels={false}
       showFilterChips={false}
       options={

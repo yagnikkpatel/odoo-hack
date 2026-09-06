@@ -24,7 +24,7 @@ const csvSafe = (value: string) => (/^\s*[=+\-@]/.test(value) ? "'" + value : va
 
 export default function TypesView() {
   const types = useTimeOffStore(state => state.types)
-  const { canManageTypes } = useTimeOffPermissions()
+  const { canManageTypes, canCreateTypes } = useTimeOffPermissions()
   const [editor, setEditor] = useState<TimeOffType | 'new' | null>(null)
   const [record, setRecord] = useQueryState('record', parseAsString.withOptions({ history: 'push', shallow: true }))
   const selected = types.find(type => type.id === record)
@@ -141,7 +141,7 @@ export default function TypesView() {
         showFilter={false}
         onOpen={type => setRecord(type.id)}
         actions={
-          canManageTypes ? (
+          canCreateTypes ? (
             <Button size='sm' className={ACCENT_ICON_BUTTON} onClick={() => setEditor('new')}>
               <PlusIcon />
               <span className='max-sm:hidden'>New type</span>
@@ -177,7 +177,7 @@ export default function TypesView() {
       >
         {selected && <TypeContent type={selected} />}
       </RecordPanel>
-      {editor && (
+      {editor && (editor === 'new' ? canCreateTypes : canManageTypes) && (
         <TypeEditor type={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} onSaved={setRecord} />
       )}
     </>

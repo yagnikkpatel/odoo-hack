@@ -57,6 +57,10 @@ export async function loadTimeOff(signal?: AbortSignal): Promise<TimeOffData> {
   return mapSnapshot(await request('', { signal }))
 }
 
+export async function loadMyTimeOff(signal?: AbortSignal): Promise<TimeOffData> {
+  return mapSnapshot(await request('/me', { signal }))
+}
+
 export async function createType(input: TimeOffTypeInput): Promise<TimeOffType> {
   return mapTimeOffType(await request('/types', { method: 'POST', body: JSON.stringify(input) }))
 }

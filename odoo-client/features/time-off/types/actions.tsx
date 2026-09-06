@@ -17,15 +17,15 @@ export default function TypeActions({
   onDeleted?: () => void
   detail?: boolean
 }) {
-  const { canManageTypes } = useTimeOffPermissions()
-  if (detail && !canManageTypes) return null
+  const { canManageTypes, canDeleteTypes } = useTimeOffPermissions()
+  if (detail && !canManageTypes && !canDeleteTypes) return null
   return (
     <RowActionShell
       label={'Actions for ' + type.name}
       viewHref={detail ? undefined : '/time-off/types/' + type.id}
       onEdit={canManageTypes ? onEdit : undefined}
       onDelete={
-        canManageTypes
+        canDeleteTypes
           ? async () => {
               const result = await useTimeOffStore.getState().removeType(type.id)
               if (!result.ok) {

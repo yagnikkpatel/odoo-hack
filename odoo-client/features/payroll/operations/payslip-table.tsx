@@ -8,9 +8,10 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import type { ColumnSizingState, PaginationState, RowSelectionState, SortingState } from '@tanstack/react-table'
-import { Trash2Icon } from 'lucide-react'
+import type { ColumnFiltersState, ColumnSizingState, PaginationState, RowSelectionState, SortingState } from '@tanstack/react-table'
+import { FileTextIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
+import RecordViewBar from '@/features/nexacrm/components/data-table/record-view-bar'
 import DataTable from '@/features/nexacrm/components/data-table/data-table'
 import DataTablePagination from '@/features/nexacrm/components/data-table/data-table-pagination'
 import BulkActionBar from '@/features/nexacrm/components/data-table/bulk-action-bar'
@@ -35,6 +36,8 @@ export default function PayslipTable({
   /** Adds the checkbox column and the bulk delete action. */
   canDelete?: boolean
 }) {
+  const [globalFilter, setGlobalFilter] = useState('')
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
@@ -56,8 +59,16 @@ export default function PayslipTable({
   const table = useReactTable({
     data: slips,
     columns,
-    state: { sorting, rowSelection, columnSizing, columnOrder, pagination },
+    state: { globalFilter, columnFilters, sorting, rowSelection, columnSizing, columnOrder, pagination },
     getRowId: row => row.id,
+    onGlobalFilterChange: updater => {
+      setGlobalFilter(updater)
+      setPagination(current => ({ ...current, pageIndex: 0 }))
+    },
+    onColumnFiltersChange: updater => {
+      setColumnFilters(updater)
+      setPagination(current => ({ ...current, pageIndex: 0 }))
+    },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onColumnSizingChange: setColumnSizing,
@@ -98,6 +109,7 @@ export default function PayslipTable({
 
   return (
     <>
+      <div className="px-4"><RecordViewBar table={table} viewName="Payslips" count={table.getFilteredRowModel().rows.length} icon={FileTextIcon} searchPlaceholder="Search payslips…" /></div>
       {canDelete && (
         <BulkActionBar table={table}>
           <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
@@ -107,7 +119,7 @@ export default function PayslipTable({
       )}
       <div className="[&_[data-slot=table-container]]:border-b">
         {/* No drag-to-reorder: `columnOrder` is fixed here, and there is no view menu to reset it. */}
-        <DataTable table={table} isLoading={loading} emptyLabel={empty} />
+        <DataTable table={table} isLoading={loading} emptyLabel={globalFilter.trim() ? 'No payslips match your search.' : empty} />
       </div>
       <DataTablePagination table={table} idPrefix="payslips" noun="payslip" showSelectionCount={canDelete} />
       {confirming && (

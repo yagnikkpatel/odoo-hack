@@ -39,6 +39,55 @@ export type ContractPagination = {
   hasMore: boolean
 }
 
+export type ContractHistoryAction = 'created' | 'updated' | 'deleted'
+
+export type ContractHistoryFieldChange = {
+  old: unknown
+  new: unknown
+}
+
+export type ContractHistorySnapshot = {
+  employeeId: string
+  startDate: string
+  endDate: string
+  wage: number
+  status: ContractStatus
+}
+
+export type ContractHistoryEntry = {
+  id: string
+  contractId: string
+  employeeId: string
+  action: ContractHistoryAction
+  changes: Record<string, ContractHistoryFieldChange>
+  snapshot: ContractHistorySnapshot
+  changedBy: string | null
+  changedByName: string | null
+  createdAt: string
+}
+
+export const CONTRACT_HISTORY_FIELD_LABELS: Record<string, string> = {
+  startDate: 'Start date',
+  endDate: 'End date',
+  wage: 'Wage',
+  status: 'Status',
+}
+
+export function formatContractHistoryValue(
+  field: string,
+  value: unknown,
+): string {
+  if (value === null || value === undefined) return '—'
+  if (field === 'wage' && typeof value === 'number') return formatWage(value)
+  if ((field === 'startDate' || field === 'endDate') && typeof value === 'string') {
+    return formatContractDate(value)
+  }
+  if (field === 'status' && typeof value === 'string') {
+    return CONTRACT_STATUSES[value as ContractStatus] ?? value
+  }
+  return String(value)
+}
+
 export const today = () => {
   const date = new Date()
   return [

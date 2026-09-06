@@ -14,13 +14,13 @@ import {
   ListFilterIcon,
   ArrowUpDownIcon,
   PlusIcon,
-  SearchIcon,
   XIcon
 } from 'lucide-react'
 
 // Component Imports
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { Input } from '@/features/nexacrm/components/ui/input'
+import { TableSearch } from '@/features/nexacrm/components/data-table/table-search'
 import SearchableMenuSection from '@/features/nexacrm/components/ui/searchable-menu-section'
 import {
   DropdownMenu,
@@ -29,7 +29,6 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -155,6 +154,7 @@ const RecordViewBar = <TData,>({
     table.setGlobalFilter('')
     table.resetColumnFilters()
     table.resetSorting()
+    table.setPageIndex(0)
   }
 
   const renderFilterField = (column: Column<TData, unknown>) => (
@@ -216,7 +216,7 @@ const RecordViewBar = <TData,>({
 
   return (
     <div data-testid='record-view-bar' className='bg-background sticky top-0 z-30 -mx-4'>
-      <div className='flex h-11 shrink-0 items-center gap-2 border-b px-4'>
+      <div className='flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2'>
         <div className='flex min-w-0 items-center gap-2'>
           {ViewIcon ? <ViewIcon className='text-muted-foreground size-4 shrink-0' /> : null}
           <span className='truncate text-sm font-medium'>{viewName}</span>
@@ -225,7 +225,7 @@ const RecordViewBar = <TData,>({
           </span>
         </div>
 
-        <div className='ml-auto flex shrink-0 items-center gap-1'>
+        <div className='ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1'>
           {viewTypes.length > 1 ? (
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant='ghost' size='sm' className={VIEW_BAR_TRIGGER} />}>
@@ -251,23 +251,23 @@ const RecordViewBar = <TData,>({
             </DropdownMenu>
           ) : null}
 
+          {showSearch ? (
+            <TableSearch
+              value={globalFilter}
+              onValueChange={value => {
+                table.setGlobalFilter(value)
+                table.setPageIndex(0)
+              }}
+              placeholder={searchPlaceholder}
+              className='mr-1'
+            />
+          ) : null}
+
           {showFilter && <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant='ghost' size='sm' className={VIEW_BAR_TRIGGER} />}>
               <ListFilterIcon /> <span className='max-sm:hidden'>Filter</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end' className='w-60'>
-              {showSearch && <div className='relative p-1'>
-                <SearchIcon className='text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2' />
-                <Input
-                  value={globalFilter}
-                  onChange={event => table.setGlobalFilter(event.target.value)}
-                  onKeyDown={event => event.stopPropagation()}
-                  placeholder={searchPlaceholder}
-                  aria-label={searchPlaceholder}
-                  className='input-sm pl-8'
-                />
-              </div>}
-              {showSearch && <DropdownMenuSeparator />}
               {renderFieldGroup('', visible(filterableColumns), renderFilterField)}
               {renderFieldGroup('', hidden(filterableColumns), renderFilterField)}
             </DropdownMenuContent>

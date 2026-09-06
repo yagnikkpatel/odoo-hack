@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { SessionUser } from '../auth-types'
 import { SessionUnavailable } from './session-unavailable'
 
-const identity = (user: SessionUser) => [user.id, user.email, user.role, user.name || ''].join('\u0000')
+const identity = (user: SessionUser) => [user.id, user.email, user.role, user.name || '', JSON.stringify(user.permissions ? [...user.permissions].sort() : null)].join('\u0000')
 
 /** Revalidate cached layouts after expiry or an account change in another tab. */
 export function SessionGuard({ user, children }: { user: SessionUser; children: ReactNode }) {

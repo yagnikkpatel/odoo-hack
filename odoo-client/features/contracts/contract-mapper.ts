@@ -1,6 +1,8 @@
 import { ApiError } from '@/lib/api-client'
 import type {
   Contract,
+  ContractHistoryAction,
+  ContractHistoryEntry,
   ContractPagination,
   ContractStatus,
 } from './types'
@@ -87,6 +89,47 @@ export function mapContract(value: unknown): Contract {
   const avatar = employeeAvatar(record.employeeAvatar)
   if (avatar) contract.employeeAvatar = avatar
   return contract
+}
+
+const HISTORY_ACTIONS = new Set(['created', 'updated', 'deleted'])
+
+function historyAction(value: unknown): ContractHistoryAction {
+  if (typeof value !== 'string' || !HISTORY_ACTIONS.has(value)) {
+    throw new ApiError('The contract service returned an invalid history action.', 502)
+  }
+  return value as ContractHistoryAction
+}
+
+export function mapContractHistoryEntry(value: unknown): ContractHistoryEntry {
+  const record = requireRecord(value)
+  const changes = record.changes
+  const snapshot = requireRecord(record.snapshot)
+  return {
+    id: requiredText(record.id, 'history id'),
+    contractId: requireContractId(record.contractId),
+    employeeId: requireContractId(record.employeeId),
+    action: historyAction(record.action),
+    changes:
+      changes && typeof changes === 'object' && !Array.isArray(changes)
+        ? (changes as ContractHistoryEntry['changes'])
+        : {},
+    snapshot: {
+      employeeId: requireContractId(snapshot.employeeId),
+      startDate: date(snapshot.startDate, 'start date'),
+      endDate: date(snapshot.endDate, 'end date'),
+      wage: typeof snapshot.wage === 'number' ? snapshot.wage : 0,
+      status: status(snapshot.status),
+    },
+    changedBy:
+      typeof record.changedBy === 'string' && record.changedBy
+        ? record.changedBy
+        : null,
+    changedByName:
+      typeof record.changedByName === 'string' && record.changedByName
+        ? record.changedByName
+        : null,
+    createdAt: requiredText(record.createdAt, 'history timestamp'),
+  }
 }
 
 export function mapPagination(value: unknown): ContractPagination {

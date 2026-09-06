@@ -1,6 +1,7 @@
 'use client'
 
-import Link from 'next/link'
+import AccessLink from '../components/access-link'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { employeeBalance, formatAmount, localDate } from '../logic'
 import { leaveDateLabel } from './presentation'
@@ -14,6 +15,7 @@ export default function RequestBalance({
   typeId: string
   asOf: string
 }) {
+  const { canReadAllocations } = useTimeOffPermissions()
   const state = useTimeOffStore()
   const type = state.types.find(item => item.id === typeId)
   if (!type || !employeeId) return null
@@ -36,12 +38,12 @@ export default function RequestBalance({
     <div className='space-y-3 rounded-lg border p-3'>
       <div className='flex flex-wrap items-center justify-between gap-1'>
         <p className='text-xs font-medium'>Balance at {asOf ? leaveDateLabel(asOf) : 'today'}</p>
-        <Link
+        {canReadAllocations && <AccessLink allowed
           href={`/time-off/allocations?employee=${encodeURIComponent(employeeId)}&type=${encodeURIComponent(typeId)}`}
           className='text-primary text-xs hover:underline'
         >
           View allocations
-        </Link>
+        </AccessLink>}
       </div>
       <dl className='grid grid-cols-3 gap-2'>
         {(
@@ -63,7 +65,7 @@ export default function RequestBalance({
         )}
         {allocations.length ? (
           allocations.map(allocation => (
-            <Link
+            <AccessLink allowed={canReadAllocations}
               key={allocation.id}
               href={`/time-off/allocations/${allocation.id}`}
               className='text-muted-foreground hover:text-foreground flex flex-wrap justify-between gap-1 hover:underline'
@@ -80,7 +82,7 @@ export default function RequestBalance({
                     ? 'Expired'
                     : 'Applicable'}
               </span>
-            </Link>
+            </AccessLink>
           ))
         ) : (
           <p className='text-muted-foreground'>No approved allocations for this employee and leave type.</p>

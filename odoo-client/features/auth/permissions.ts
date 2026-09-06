@@ -1,14 +1,19 @@
-import type { SessionUser } from './auth-types'
+import type { BackendRole } from './auth-types'
+import { DEFAULT_ROLE_PERMISSIONS } from './role-permissions'
 
-/**
- * What the signed-in account may do, derived from the permission codes the API
- * grants it rather than from its role name. The API is still the authorization
- * boundary -- this only decides what the interface offers, and stays in step
- * with the database because both read the same codes.
- */
-export type Actor = Pick<SessionUser, 'role' | 'permissions'>
+/** UI visibility only. Every API continues to enforce its own authorization. */
+export type Actor = { role: string; permissions?: readonly string[] }
 
-const has = (actor: Actor, code: string) => actor.permissions.includes(code)
+export function rolePermissions(role: string): readonly string[] {
+  return Object.hasOwn(DEFAULT_ROLE_PERMISSIONS, role)
+    ? DEFAULT_ROLE_PERMISSIONS[role as BackendRole]
+    : []
+}
+
+export function hasPermission(actor: Actor, code: string) {
+  return (actor.permissions ?? rolePermissions(actor.role)).includes(code)
+}
+const has = hasPermission
 const hasAny = (actor: Actor, ...codes: string[]) => codes.some(code => has(actor, code))
 
 export function employeeAccess(actor: Actor) {
@@ -18,7 +23,6 @@ export function employeeAccess(actor: Actor) {
     canCreate: has(actor, 'employee:create'),
     canUpdate: has(actor, 'employee:update:any'),
     canDelete: has(actor, 'employee:delete'),
-    /** Only an administrator creates login accounts and assigns roles. */
     canManageAccounts: has(actor, 'user:create'),
   }
 }
@@ -38,12 +42,16 @@ export function timeOffAccess(actor: Actor) {
   return {
     canReadOwn: hasAny(actor, 'time_off:read:own', 'time_off:read:any'),
     canReadAny: has(actor, 'time_off:read:any'),
+    canReadTypes: has(actor, 'time_off:read:any'),
+    canReadAllocations: has(actor, 'time_off:read:any'),
     canCreateOwn: has(actor, 'time_off:create:own'),
     canCreateAny: has(actor, 'time_off:create:any'),
     canUpdate: has(actor, 'time_off:update:any'),
     canDelete: has(actor, 'time_off:delete'),
     canApprove: has(actor, 'time_off:approve'),
     canManageTypes: has(actor, 'time_off:update:any'),
+    canCreateTypes: has(actor, 'time_off:update:any'),
+    canDeleteTypes: has(actor, 'time_off:delete'),
   }
 }
 
@@ -57,21 +65,38 @@ export function contractAccess(actor: Actor) {
 }
 
 export function payrollAccess(actor: Actor) {
-  const canRead = hasAny(actor, 'payrun:read', 'payslip:read')
+  const canReadPayruns = has(actor, 'payrun:read')
+  const canReadPayslips = has(actor, 'payslip:read')
+  const canConfigureRules = has(actor, 'salary_rule:update')
+  const canConfigureStructures = has(actor, 'salary_structure:update')
+  const canDeletePayrun = has(actor, 'payrun:delete')
+  const canDeletePayslip = has(actor, 'payslip:delete')
   return {
     role: actor.role,
-    canRead,
-    /** Compute writes payslips; validating and marking paid write the payrun. */
+    canRead: canReadPayruns || canReadPayslips,
+    canReadPayruns,
+    canReadPayslips,
+    canReadRules: has(actor, 'salary_rule:read'),
+    canReadStructures: has(actor, 'salary_structure:read'),
+    canCreatePayrun: has(actor, 'payrun:create'),
     canProcess: has(actor, 'payrun:update') && has(actor, 'payslip:create'),
-    /** Salary structures and rules are read-only for a payroll user. */
-    canConfigure: hasAny(actor, 'salary_structure:update', 'salary_rule:update'),
-    canDelete: hasAny(actor, 'payrun:delete', 'payslip:delete'),
+    canConfigure: canConfigureRules || canConfigureStructures,
+    canConfigureRules,
+    canConfigureStructures,
+    canCreateRules: has(actor, 'salary_rule:create'),
+    canCreateStructures: has(actor, 'salary_structure:create'),
+    canDelete: canDeletePayrun || canDeletePayslip,
+    canDeletePayrun,
+    canDeletePayslip,
+    canDeleteRules: has(actor, 'salary_rule:delete'),
+    canDeleteStructures: has(actor, 'salary_structure:delete'),
     canSend: has(actor, 'payslip:send'),
-    canReport: canRead,
+    // The installed dashboard endpoint requires payslip:read, not the older
+    // payroll_dashboard:read grant. Visibility follows the working endpoint.
+    canReport: canReadPayslips,
   }
 }
 
-/** Every module gate in one place, for navigation and page guards. */
 export function moduleAccess(actor: Actor) {
   return {
     employees: employeeAccess(actor),

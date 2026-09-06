@@ -1,17 +1,18 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { normalizeBackendUrl } from "@/config/backend.cjs";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code: string | null = null) { super(message); }
 }
 
 export function apiBaseUrl() {
-  const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
+  const configured = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (configured) return normalizeBackendUrl(configured, { production: !__DEV__ });
   const host = Constants.expoConfig?.hostUri?.split(":")[0];
   if (__DEV__ && host) return `http://${host}:4000/api`;
   if (__DEV__ && Platform.OS === "web" && typeof window !== "undefined") return `http://${window.location.hostname}:4000/api`;
-  throw new ApiError("Set EXPO_PUBLIC_API_URL to your backend URL, including /api.", 0);
+  throw new ApiError("Backend is not configured. Run npm run connect before building the app.", 0);
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {

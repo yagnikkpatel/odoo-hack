@@ -146,7 +146,7 @@ function ContractDirectory() {
         icon={FileTextIcon}
         searchPlaceholder="Search employee name or email…"
         showSort={false}
-        showSearch={false}
+        showSearch
         showFilterFieldLabels={false}
         showFilterChips={false}
         dynamicFilterOptions={{

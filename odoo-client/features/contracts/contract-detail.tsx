@@ -22,6 +22,7 @@ import { useContractPermissions } from './permissions'
 import ContractActions from './components/contract-actions'
 import ContractFields from './components/contract-fields'
 import ContractHistory from './components/contract-history'
+import ContractAuditLog from './components/contract-audit-log'
 import ContractEditor from './components/contract-editor'
 import { useContractRecord } from './components/use-contract-record'
 
@@ -150,8 +151,9 @@ function ContractRecord({ contractId }: { contractId: string }) {
           </ScrollArea>
         </SidePanel>
         <ScrollArea className="xl:min-h-0 xl:flex-1">
-          <div className="py-4 xl:px-4">
+          <div className="space-y-8 py-4 xl:px-4">
             <ContractHistory contract={contract} />
+            <ContractAuditLog contract={contract} />
           </div>
         </ScrollArea>
       </div>

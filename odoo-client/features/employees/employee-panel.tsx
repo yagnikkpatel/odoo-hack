@@ -92,12 +92,9 @@ function PanelContent({
               <EmployeeFields employee={employee} />
             </TabsContent>
             <TabsContent value="timeline">
-              <EmployeeTimeline />
+              <EmployeeTimeline employeeId={employee.id} />
             </TabsContent>
             <TabsContent value="attendance">
-              <p className="text-muted-foreground mb-3 text-xs">
-                Attendance data is not connected yet.
-              </p>
               <EmployeeAttendance employeeId={employee.id} />
             </TabsContent>
           </div>

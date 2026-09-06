@@ -11,6 +11,7 @@ import { useRecordsTable } from '@/features/hr/use-records-table'
 import RecordsTable from '@/features/hr/components/records-table'
 import { useTimeOffStore } from '../store'
 import useTimeOffData from './use-time-off-data'
+import { useTimeOffPermissions } from '../permissions'
 
 export default function TimeOffListPage<TData extends { id: string }>({
   title,
@@ -41,9 +42,11 @@ export default function TimeOffListPage<TData extends { id: string }>({
   showFilterFieldLabels?: boolean
 }) {
   useTimeOffData()
+  const { canReadOwn, canReadAny } = useTimeOffPermissions()
   const hydrated = useTimeOffStore(state => state.hasHydrated)
   const error = useTimeOffStore(state => state.error)
   const table = useRecordsTable({ data, columns, columnIds })
+  if (!canReadOwn && !canReadAny) return <p role="alert" className="py-12 text-muted-foreground">You do not have access to time off.</p>
   return (
     <div className='flex min-h-full flex-col'>
       <RecordViewBar
@@ -52,7 +55,8 @@ export default function TimeOffListPage<TData extends { id: string }>({
         count={table.getFilteredRowModel().rows.length}
         icon={icon}
         showSort={false}
-        showSearch={false}
+        showSearch
+        searchPlaceholder={`Search ${title.toLowerCase()}…`}
         showFilter={showFilter}
         showFilterFieldLabels={showFilterFieldLabels}
         actions={actions}

@@ -4,12 +4,17 @@ import Link from 'next/link'
 import { CalendarIcon, CalendarPlusIcon } from 'lucide-react'
 import { Button } from '@/features/nexacrm/components/ui/button'
 import { useTimeOffStore } from '../store'
+import { useTimeOffPermissions } from '../permissions'
+import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 
 export default function EmployeeTimeOffLinks({ employeeId }: { employeeId: string }) {
+  const { user } = useCurrentUser()
+  const { canReadOwn, canReadAny, canReadAllocations } = useTimeOffPermissions()
   const requests = useTimeOffStore(state => state.requests.filter(record => record.employeeId === employeeId).length)
   const allocations = useTimeOffStore(
     state => state.allocations.filter(record => record.employeeId === employeeId).length
   )
+  if (!canReadAny && !(canReadOwn && employeeId === user.id)) return null
   return (
     <>
       <Button
@@ -22,7 +27,7 @@ export default function EmployeeTimeOffLinks({ employeeId }: { employeeId: strin
         <span>Time off</span>
         <span className='ml-auto text-xs tabular-nums'>{requests}</span>
       </Button>
-      <Button
+      {canReadAllocations && <Button
         variant='outline'
         size='sm'
         className='justify-start'
@@ -31,7 +36,7 @@ export default function EmployeeTimeOffLinks({ employeeId }: { employeeId: strin
         <CalendarPlusIcon />
         <span>Allocations</span>
         <span className='ml-auto text-xs tabular-nums'>{allocations}</span>
-      </Button>
+      </Button>}
     </>
   )
 }

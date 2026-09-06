@@ -6,11 +6,25 @@ Employee attendance workspace using Expo SDK 57, Expo Router and Space Grotesk. 
 
 ```sh
 npm ci
-# Copy .env.example to .env and set your backend address.
-npx expo start
+npm start
 ```
 
-Set `EXPO_PUBLIC_API_URL` to the backend URL **including /api**. A physical phone must use a reachable LAN/public address, not localhost. In development only, the app can derive the computer's host from Metro and use port 4000. Production builds require an explicit URL. Never place secrets in Expo public environment variables.
+`npm start` detects your computer's LAN address and the backend port, checks `/api/health`, starts the sibling backend if it is not running, and launches Expo with the right API address. Install backend dependencies and configure its database/Redis once first. Keep your phone on the same network. Existing backend processes are reused and never stopped; a backend started by this utility stops when you exit Expo.
+
+Use `npm run android`, `npm run ios`, or `npm run web` for the same automatic setup. For a custom backend use `npm run connect -- dev --url https://your-backend-domain`. To test LAN connectivity without starting anything, run `npm run connect -- dev --check-only`. Set `APP_BACKEND_PORT` only if you need to override the port from `../odoo-server/.env` (default 4000). VPN/firewall or Wi-Fi isolation can still prevent phone connectivity.
+
+## Production connection (configure once)
+
+```sh
+npm run connect -- production --url https://your-backend-domain
+npm run backend:check
+```
+
+The utility adds `/api` if needed, checks the health endpoint, and saves **only the public URL** in `backend.config.json`. Commit that file with the app before a cloud build. `app.config.js` embeds the saved address into compiled Android/iOS/web releases; installed apps do not need Metro or a local `.env` file. A release/export fails early if the backend URL is missing, HTTP-only, or private/localhost.
+
+Deploy the backend to a stable public HTTPS hostname first. The utility does not deploy servers, configure domains/TLS or bypass network restrictions. Changing server IPs behind the same hostname needs no app change; changing the hostname requires a new build or a separately configured Expo Update. Already-installed builds cannot run this Node setup script.
+
+Production URL precedence: `APP_PRODUCTION_API_URL` (explicit CI override), saved `backend.config.json`, then legacy `EXPO_PUBLIC_API_URL`. Development uses the URL provided by the utility; direct `npx expo start` still supports the legacy environment variable. Both backend origins and base paths ending in `/api` are accepted. Do not use the website URL unless it actually hosts the same API. Never place secrets in these public settings.
 
 Use Expo Go compatible with SDK 57, or a development build. Web camera/location require a secure context (HTTPS or localhost).
 

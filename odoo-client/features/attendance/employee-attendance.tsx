@@ -34,8 +34,8 @@ function dateKey(date: Date) {
 
 export function EmployeeAttendanceLink({ employeeId }: { employeeId: string }) {
   const { user } = useCurrentUser()
-  const { canReadAny } = useAttendancePermissions()
-  if (!canReadAny && user.id !== employeeId) return null
+  const { canReadAny, canReadOwn } = useAttendancePermissions()
+  if (!canReadAny && !(canReadOwn && user.id === employeeId)) return null
   return (
     <Button
       variant="outline"
@@ -57,8 +57,8 @@ export default function EmployeeAttendance({
   employeeId: string
 }) {
   const { user } = useCurrentUser()
-  const { canReadAny, canCreate } = useAttendancePermissions()
-  const allowed = canReadAny || user.id === employeeId
+  const { canReadAny, canReadOwn, canCreate } = useAttendancePermissions()
+  const allowed = canReadAny || (canReadOwn && user.id === employeeId)
   const [view, setView] = useState('table')
   const [day, setDay] = useState<Date | undefined>(
     () => new Date(localDateTime().slice(0, 10) + 'T12:00:00'),

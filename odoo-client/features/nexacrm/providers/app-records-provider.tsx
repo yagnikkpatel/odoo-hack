@@ -17,7 +17,7 @@ import EmailsStoreHydrator from '@/features/nexacrm/store/emails-store-hydrator'
  * Only the backend-verified identity enters the user store. Other modules remain empty.
  */
 export default function AppRecordsProvider({ user: session, children }: { user: SessionUser; children: ReactNode }) {
-  const user = { id: session.id, email: session.email, role: session.role, name: session.name || session.email }
+  const user = { id: session.id, email: session.email, role: session.role, name: session.name || session.email, permissions: session.permissions }
   return (
     <CurrentUserProvider user={user}>
       <UsersStoreHydrator data={[user]} />

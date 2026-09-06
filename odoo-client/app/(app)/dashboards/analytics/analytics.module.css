@@ -1,4 +1,4 @@
-/* Keep motion outside the verbatim template components. */
+/* Keep the dashboard entrance subtle and respect reduced-motion preferences. */
 @media (prefers-reduced-motion: no-preference) {
   .entrance {
     animation: analytics-enter 450ms ease-out both;

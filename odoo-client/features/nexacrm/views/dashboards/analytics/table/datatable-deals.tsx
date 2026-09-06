@@ -33,6 +33,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/features/nexacrm/components/ui/avatar'
 import { Badge } from '@/features/nexacrm/components/ui/badge'
 import { Button } from '@/features/nexacrm/components/ui/button'
+import { TableSearch } from '@/features/nexacrm/components/data-table/table-search'
 import { Checkbox } from '@/features/nexacrm/components/ui/checkbox'
 import {
   DropdownMenu,
@@ -253,6 +254,7 @@ const columns: ColumnDef<Item>[] = [
  */
 const DealsDatatable = ({ data }: { data: Item[] }) => {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [search, setSearch] = useState('')
 
   const pageSize = 5
 
@@ -265,10 +267,17 @@ const DealsDatatable = ({ data }: { data: Item[] }) => {
     data,
     columns,
     state: {
+      globalFilter: search,
       columnFilters,
       pagination
     },
     onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setSearch,
+    globalFilterFn: (row, _columnId, value: string) => {
+      const query = value.trim().toLowerCase()
+      return [row.original.id, row.original.contact, row.original.company, row.original.status]
+        .some(field => field.toLowerCase().includes(query))
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -324,7 +333,14 @@ const DealsDatatable = ({ data }: { data: Item[] }) => {
             </Button>
           </div>
           <div className='flex flex-1 flex-wrap items-center gap-4 lg:justify-end'>
-            <Filter column={table.getColumn('contact')!} />
+            <TableSearch
+              value={search}
+              onValueChange={value => {
+                table.setPageIndex(0)
+                table.setGlobalFilter(value)
+              }}
+              placeholder='Search deals…'
+            />
             <Filter column={table.getColumn('status')!} />
           </div>
         </div>

@@ -21,6 +21,7 @@ import { downloadCsv } from '@/features/nexacrm/utils/csv'
 import { Choice } from '@/features/hr/components/form'
 import RecordPanel from '@/features/hr/components/record-panel'
 import { useEmployeeOptions } from '@/features/hr/employee-options'
+import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { STATUS_LABELS } from '../model'
@@ -34,14 +35,14 @@ import RequestEditor from './editor'
 import { requestPeriod } from './presentation'
 
 type RequestRow = TimeOffRequest & { employeeName: string; avatar?: string; typeName: string; period: string }
-const COLUMN_IDS = ['employeeName', 'typeName', 'period', 'duration', 'status']
 const csvSafe = (value: string) => (/^\s*[=+\-@]/.test(value) ? "'" + value : value)
 
 export default function RequestsView() {
-  const { employees } = useEmployeeOptions()
+  const { canReadAny, canCreateOwn, canCreateAny } = useTimeOffPermissions()
+  const { user } = useCurrentUser()
+  const { employees } = useEmployeeOptions({ enabled: canReadAny })
   const requests = useTimeOffStore(state => state.requests)
   const types = useTimeOffStore(state => state.types)
-  const { canCreateAny } = useTimeOffPermissions()
   const [employeeId, setEmployeeId] = useQueryState(
     'employee',
     parseAsString.withOptions({ history: 'push', shallow: true })
@@ -49,36 +50,45 @@ export default function RequestsView() {
   const [typeId, setTypeId] = useQueryState('type', parseAsString.withOptions({ history: 'push', shallow: true }))
   const [recordId, setRecordId] = useQueryState('record', parseAsString.withOptions({ history: 'push', shallow: true }))
   const [editor, setEditor] = useState<TimeOffRequest | 'new' | null>(null)
-  const selected = requests.find(request => request.id === recordId)
+  const selected = requests.find(request => request.id === recordId && (canReadAny || request.employeeId === user.id))
   const data = useMemo<RequestRow[]>(
     () =>
       requests
-        .filter(request => (!employeeId || request.employeeId === employeeId) && (!typeId || request.typeId === typeId))
+        .filter(request => (canReadAny || request.employeeId === user.id) && (!employeeId || request.employeeId === employeeId) && (!typeId || request.typeId === typeId))
         .map(request => {
-          const employee = employees.find(employee => employee.id === request.employeeId)
+          // Without `time_off:read:any` the directory endpoints 403, so an own-scope
+          // viewer resolves their own name locally instead of looking it up there.
+          const employeeName =
+            request.employeeId === user.id
+              ? user.name
+              : employees.find(employee => employee.id === request.employeeId)?.name
           return {
             ...request,
-            employeeName: employee ? employee.name : 'Employee unavailable',
+            employeeName: employeeName || 'Employee unavailable',
             typeName: types.find(type => type.id === request.typeId)?.name || 'Type unavailable',
             period: requestPeriod(request)
           }
         }),
-    [requests, employees, types, employeeId, typeId]
+    [requests, employees, types, employeeId, typeId, user.id, user.name, canReadAny]
   )
   const columns = useMemo<ColumnDef<RequestRow>[]>(
     () => [
-      {
-        accessorKey: 'employeeName',
-        size: 205,
-        meta: { label: 'Employee', icon: UsersIcon },
-        header: ({ column }) => <DataTableColumnHeader column={column} title='Employee' />,
-        cell: ({ row }) => (
-          <span className='flex min-w-0 items-center gap-2'>
-            <PersonAvatar name={row.original.employeeName} src={row.original.avatar} className='size-6' />
-            <span className='truncate'>{row.original.employeeName}</span>
-          </span>
-        )
-      },
+      ...(canReadAny
+        ? [
+            {
+              accessorKey: 'employeeName',
+              size: 205,
+              meta: { label: 'Employee', icon: UsersIcon },
+              header: ({ column }) => <DataTableColumnHeader column={column} title='Employee' />,
+              cell: ({ row }) => (
+                <span className='flex min-w-0 items-center gap-2'>
+                  <PersonAvatar name={row.original.employeeName} src={row.original.avatar} className='size-6' />
+                  <span className='truncate'>{row.original.employeeName}</span>
+                </span>
+              )
+            } satisfies ColumnDef<RequestRow>
+          ]
+        : []),
       {
         accessorKey: 'typeName',
         size: 165,
@@ -117,7 +127,11 @@ export default function RequestsView() {
         cell: ({ row }) => <TimeOffStatusBadge status={row.original.status} />
       }
     ],
-    []
+    [canReadAny]
+  )
+  const columnIds = useMemo(
+    () => (canReadAny ? ['employeeName', 'typeName', 'period', 'duration', 'status'] : ['typeName', 'period', 'duration', 'status']),
+    [canReadAny]
   )
   return (
     <>
@@ -127,11 +141,11 @@ export default function RequestsView() {
         icon={CalendarDaysIcon}
         data={data}
         columns={columns}
-        columnIds={COLUMN_IDS}
+        columnIds={columnIds}
         showFilterFieldLabels={false}
         onOpen={record => setRecordId(record.id)}
         actions={
-          canCreateAny ? (
+          canCreateOwn || canCreateAny ? (
             <Button size='sm' className={ACCENT_ICON_BUTTON} onClick={() => setEditor('new')}>
               <PlusIcon />
               <span className='max-sm:hidden'>New request</span>
@@ -141,20 +155,22 @@ export default function RequestsView() {
         }
         filters={
           <>
-            <div className='grid w-full gap-1.5 sm:w-52'>
-              <label htmlFor='requests-employee-scope' className='text-muted-foreground text-xs'>
-                Employee
-              </label>
-              <Choice
-                id='requests-employee-scope'
-                value={employeeId || 'all'}
-                options={[
-                  { value: 'all', label: 'All employees' },
-                  ...employees.map(employee => ({ value: employee.id, label: employee.name }))
-                ]}
-                onChange={value => setEmployeeId(value === 'all' ? null : value)}
-              />
-            </div>
+            {canReadAny && (
+              <div className='grid w-full gap-1.5 sm:w-52'>
+                <label htmlFor='requests-employee-scope' className='text-muted-foreground text-xs'>
+                  Employee
+                </label>
+                <Choice
+                  id='requests-employee-scope'
+                  value={employeeId || 'all'}
+                  options={[
+                    { value: 'all', label: 'All employees' },
+                    ...employees.map(employee => ({ value: employee.id, label: employee.name }))
+                  ]}
+                  onChange={value => setEmployeeId(value === 'all' ? null : value)}
+                />
+              </div>
+            )}
             <div className='grid w-full gap-1.5 sm:w-48'>
               <label htmlFor='requests-type-scope' className='text-muted-foreground text-xs'>
                 Time off type

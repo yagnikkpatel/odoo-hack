@@ -43,14 +43,20 @@ export async function listEmployeeDirectory(): Promise<EmployeeOption[]> {
   return directory
 }
 
-/** Loads the directory once per mount, with a retry for the caller to surface. */
-export function useEmployeeOptions() {
+/**
+ * Loads the directory once per mount, with a retry for the caller to surface.
+ *
+ * Pass `enabled: false` for viewers who cannot read the directory (e.g. an employee
+ * without `employee:read:any`) - the underlying endpoints would otherwise 403.
+ */
+export function useEmployeeOptions({ enabled = true }: { enabled?: boolean } = {}) {
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
+    if (!enabled) return
     let active = true
     setLoading(true)
     setError(null)
@@ -68,9 +74,13 @@ export function useEmployeeOptions() {
     return () => {
       active = false
     }
-  }, [attempt])
+  }, [enabled, attempt])
 
   const reload = useCallback(() => setAttempt(count => count + 1), [])
 
+  // Masked rather than reset in the effect above: a viewer who cannot read the
+  // directory should never see a stale result, but flipping `enabled` at runtime
+  // does not happen in practice, so there is nothing to actually clear.
+  if (!enabled) return { employees: [], loading: false, error: null, reload }
   return { employees, loading, error, reload }
 }

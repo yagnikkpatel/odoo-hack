@@ -16,11 +16,13 @@ import type {
   TimeOffTypeInput
 } from './model'
 
+type TimeOffScope = 'own' | 'any'
+
 type TimeOffStore = TimeOffData & {
   hasHydrated: boolean
   isLoading: boolean
   error: string | null
-  load: () => Promise<void>
+  load: (scope?: TimeOffScope) => Promise<void>
   saveType: (input: TimeOffTypeInput, id?: string) => Promise<Result>
   removeType: (id: string) => Promise<Result>
   saveAllocation: (input: AllocationInput, id?: string) => Promise<Result>
@@ -76,12 +78,15 @@ function requestPayload(input: RequestInput, unit?: LeaveUnit): RequestInput {
 
 let loadVersion = 0
 let loadController: AbortController | undefined
+// Remembered so a post-mutation refresh() reuses the scope the page loaded with -
+// an own-scope viewer must never be re-pointed at the any-scope snapshot.
+let loadScope: TimeOffScope = 'any'
 
 export const useTimeOffStore = create<TimeOffStore>()((set, get) => {
   // load() never rejects — it records the failure on `error` — so a refresh that fails
   // cannot undo a write that succeeded, and mount effects need no catch handler.
   async function refresh() {
-    await Promise.allSettled([get().load()])
+    await Promise.allSettled([get().load(loadScope)])
   }
 
   async function mutate(action: () => Promise<string>, reload = false): Promise<Result> {
@@ -122,14 +127,15 @@ export const useTimeOffStore = create<TimeOffStore>()((set, get) => {
     isLoading: false,
     error: null,
 
-    async load() {
+    async load(scope = loadScope) {
+      loadScope = scope
       const version = ++loadVersion
       loadController?.abort()
       loadController = new AbortController()
       const { signal } = loadController
       set({ isLoading: true, error: null })
       try {
-        const data = await service.loadTimeOff(signal)
+        const data = scope === 'own' ? await service.loadMyTimeOff(signal) : await service.loadTimeOff(signal)
         if (version !== loadVersion) return
         set({
           types: reconcile(data.types, get().types),

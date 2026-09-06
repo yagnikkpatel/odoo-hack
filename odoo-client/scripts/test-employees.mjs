@@ -86,7 +86,7 @@ try {
     assert.equal(employeePermissions(role).canCreate, true)
     assert.equal(employeePermissions(role).canDelete, true)
   }
-  assert.deepEqual(employeePermissions('employee'), { canRead: true, canReadAll: false, canCreate: false, canUpdate: false, canDelete: false })
+  assert.deepEqual(employeePermissions('employee'), { canRead: true, canReadAll: false, canCreate: false, canUpdate: false, canDelete: false, canManageAccounts: false })
   assert.equal(employeePermissions('unknown').canRead, false)
 
   assert.deepEqual(state().employees, [])

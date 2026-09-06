@@ -35,7 +35,7 @@ export default function EmployeesView(props: EmployeesViewProps) {
 }
 
 function EmployeeDirectory({ defaultView }: EmployeesViewProps) {
-  const { canCreate } = useEmployeePermissions()
+  const { canCreate, canManageAccounts } = useEmployeePermissions()
   const [createOpen, setCreateOpen] = useState(false)
   const [, setPreviewId] = useEmployeePreview()
   const [viewType, setViewType] = useQueryState(
@@ -57,8 +57,8 @@ function EmployeeDirectory({ defaultView }: EmployeesViewProps) {
     createAction = (
       <Button size="sm" className={ACCENT_ICON_BUTTON} onClick={() => setCreateOpen(true)}>
         <PlusIcon />
-        <span className="max-sm:hidden">New users</span>
-        <span className="sr-only sm:hidden">New users</span>
+        <span className="max-sm:hidden">{canManageAccounts ? 'New users' : 'New employee'}</span>
+        <span className="sr-only sm:hidden">{canManageAccounts ? 'New users' : 'New employee'}</span>
       </Button>
     )
   }

@@ -8,7 +8,9 @@ import { TimePicker } from '@/features/nexacrm/components/ui/time-picker'
 import { Textarea } from '@/features/nexacrm/components/ui/textarea'
 import { dateValue } from '@/features/nexacrm/lib/date-time'
 import { useEmployeeOptions } from '@/features/hr/employee-options'
+import { useCurrentUser } from '@/features/nexacrm/contexts/currentUserContext'
 import { useSchedulesStore } from '@/features/working-schedules/store'
+import { useTimeOffPermissions } from '../permissions'
 import { useTimeOffStore } from '../store'
 import { APPROVAL_LABELS, PAYROLL_LABELS } from '../model'
 import type { RequestInput, TimeOffRequest } from '../model'
@@ -28,7 +30,14 @@ export default function RequestEditor({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const { employees, loading: employeesLoading, error: employeesError, reload: reloadEmployees } = useEmployeeOptions()
+  const { canCreateAny } = useTimeOffPermissions()
+  const { user } = useCurrentUser()
+  const {
+    employees,
+    loading: employeesLoading,
+    error: employeesError,
+    reload: reloadEmployees
+  } = useEmployeeOptions({ enabled: canCreateAny })
   const state = useTimeOffStore()
   const schedules = useSchedulesStore(state => state.schedules)
   const assignments = useSchedulesStore(state => state.assignments)
@@ -44,7 +53,9 @@ export default function RequestEditor({
           reason: record.reason
         }
       : {
-          employeeId: employeeId || employees[0]?.id || '',
+          // Without `time_off:create:any` only the current user's own request can be filed,
+          // so the employee field below is locked to them instead of the (403'd) directory.
+          employeeId: canCreateAny ? employeeId || employees[0]?.id || '' : user.id,
           typeId: typeId || state.types.find(type => type.active)?.id || '',
           startDate: dateValue(new Date()),
           endDate: dateValue(new Date()),
@@ -94,7 +105,9 @@ export default function RequestEditor({
     >
       <div className='grid gap-4 sm:grid-cols-2'>
         <FormField label='Employee' id='request-employee'>
-          {employeesError ? (
+          {!canCreateAny ? (
+            <p className='text-sm'>{user.name}</p>
+          ) : employeesError ? (
             <p className='text-destructive text-sm'>
               {employeesError}{' '}
               <button type='button' className='underline' onClick={reloadEmployees}>

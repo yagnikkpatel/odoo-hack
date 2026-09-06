@@ -45,13 +45,15 @@ export function parseSessionUser(value: unknown): SessionUser | null {
     !parseEmail(value.email) ||
     typeof value.role !== 'string' ||
     !BACKEND_ROLES.some(role => role === value.role) ||
-    (value.name !== undefined && (typeof value.name !== 'string' || value.name.length > 120))
+    (value.name !== undefined && (typeof value.name !== 'string' || value.name.length > 120)) ||
+    (value.permissions !== undefined && (!Array.isArray(value.permissions) || value.permissions.some(permission => typeof permission !== 'string' || !permission.trim() || permission.length > 120)))
   )
     return null
   return {
     id: value.id,
     email: value.email as string,
     role: value.role as SessionUser['role'],
-    ...(typeof value.name === 'string' ? { name: value.name } : {})
+    ...(typeof value.name === 'string' ? { name: value.name } : {}),
+    ...(Array.isArray(value.permissions) ? { permissions: [...new Set(value.permissions as string[])] } : {})
   }
 }

@@ -1,84 +1,123 @@
 'use client'
-import { DATA_API_CONNECTED } from '@/features/hr/data-availability'
-import DataConnectionNotice from '@/features/hr/components/data-connection-notice'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangleIcon, BarChart3Icon, WalletIcon, FileTextIcon, UsersIcon, CalendarCheckIcon, ClockIcon } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/features/nexacrm/components/ui/card'
-import { Button } from '@/features/nexacrm/components/ui/button'
-import { DatePicker } from '@/features/nexacrm/components/ui/date-picker'
-import SearchableSelect from '@/features/nexacrm/components/ui/searchable-select'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/features/nexacrm/components/ui/chart'
-import { useEmployeesStore } from '@/features/employees/store'
-import { EMPLOYMENT_TYPE_LABELS } from '@/features/employees/types'
-import { today } from '@/features/contracts/types'
-import { payrollAttendanceInputs } from '../attendance-input'
-import { hoursLabel } from '@/features/attendance/types'
-import { useSchedulesStore } from '@/features/working-schedules/store'
-import { useTimeOffStore } from '@/features/time-off/store'
-import { usePayrollStore } from '../store'
-import { payrollContractInputs } from '../contract-input'
-import { usePayrollPermissions } from '../permissions'
-import { money, PAYRUN_STATUSES } from '../types'
-import { payrollReport } from './data'
-import { formatRecordCount } from '@/features/nexacrm/lib/record-count'
-
-const count = (number: number) => number.toLocaleString('en-IN', { maximumFractionDigits: 2 })
-const chartConfig = { net: { label: 'Net salary paid', color: 'var(--chart-1)' } }
+import DashboardView from '@/features/dashboard/dashboard-view'
+import type { DashboardData } from '@/features/dashboard/types'
+import { DepartmentChart, EmptyChart, PayrollTrend, money, number } from '@/features/dashboard/dashboard-charts'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/features/nexacrm/components/ui/card'
+import { TableSearch } from '@/features/nexacrm/components/data-table/table-search'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/features/nexacrm/components/ui/table'
 
 export default function PayrollReports() {
-  const employees = useEmployeesStore(state => state.employees)
-  const contracts = payrollContractInputs
-  const attendance = payrollAttendanceInputs
-  const { schedules, assignments } = useSchedulesStore()
-  const leave = useTimeOffStore()
-  const { payruns, payslips } = usePayrollStore()
-  const permissions = usePayrollPermissions()
-  const [asOf] = useState(today)
-  const [from, setFrom] = useState(asOf.slice(0, 7) + '-01')
-  const [to, setTo] = useState(asOf)
-  const [department, setDepartment] = useState('all')
-  const [employmentType, setEmploymentType] = useState('all')
-  const [currency, setCurrency] = useState('INR')
-  const validPeriod = Boolean(from && to && from <= to && (new Date(to).getTime() - new Date(from).getTime()) / 86400000 <= 366)
-  const report = useMemo(() => payrollReport({ employees, contracts, attendance, schedules, assignments, leave, payruns, payslips }, { from: validPeriod ? from : asOf, to: validPeriod ? to : asOf, department, employmentType, currency }, asOf), [employees, contracts, attendance, schedules, assignments, leave, payruns, payslips, from, to, department, employmentType, currency, asOf, validPeriod])
-  if (!permissions.canReport) return <div className="p-8 text-sm">Payroll reports are available to HR and payroll staff.</div>
-  if (!DATA_API_CONNECTED) return <div className="space-y-4 py-4"><h1 className="text-lg font-semibold">Payroll dashboard</h1><DataConnectionNotice /></div>
-  return <div className="space-y-5 py-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-lg font-semibold"><BarChart3Icon className="size-5" />Payroll dashboard</h1><p className="text-muted-foreground mt-1 text-sm">Salary, attendance and leave from your workspace records.</p></div>{permissions.canRead && <Button variant="outline" size="sm" render={<Link href="/payroll" />}>View payruns</Button>}</div>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      <Filter label="Period from" id="payroll-report-from"><DatePicker id="payroll-report-from" value={from} onChange={setFrom} /></Filter>
-      <Filter label="Period to" id="payroll-report-to"><DatePicker id="payroll-report-to" value={to} onChange={setTo} /></Filter>
-      <Filter label="Department" id="payroll-report-department"><SearchableSelect id="payroll-report-department" value={department} onChange={setDepartment} options={[{ value: 'all', label: 'All departments' }, ...report.departments.map(value => ({ value, label: value }))]} /></Filter>
-      <Filter label="Employee type" id="payroll-report-type"><SearchableSelect id="payroll-report-type" value={employmentType} onChange={setEmploymentType} options={[{ value: 'all', label: 'All employee types' }, ...Object.entries(EMPLOYMENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))]} /></Filter>
-      <Filter label="Currency" id="payroll-report-currency"><SearchableSelect id="payroll-report-currency" value={currency} onChange={setCurrency} options={['INR', 'USD', 'EUR', 'GBP'].map(value => ({ value, label: value }))} /></Filter>
-    </div>
-    {!validPeriod ? <p role="alert" className="text-destructive text-sm">Choose an ordered date range of at most 366 days.</p> : <>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Kpi title="Total net salary paid" value={money(report.netPaid, currency)} icon={WalletIcon} detail={`${report.paid.length} paid payslips`} />
-        <Kpi title="Payslips generated" value={count(report.slips.length)} icon={FileTextIcon} detail="For the selected payroll period" />
-        <Kpi title="Average salary paid" value={money(report.average, currency)} icon={UsersIcon} detail="Net paid / paid payslips" />
-        <Kpi title="Approved time off" value={`${count(report.approvedDays)} days`} icon={CalendarCheckIcon} detail={`${count(report.approvedHours)} hours of hourly leave`} />
-        <Kpi title="Attendance health" value={report.attendance.coverage === null ? 'No schedule' : `${report.attendance.coverage}%`} icon={ClockIcon} detail={`${report.attendance.covered} / ${report.attendance.scheduled} scheduled days covered`} />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card><CardHeader><CardTitle>Salary cost by department</CardTitle><CardDescription>Net salary paid in {currency}</CardDescription></CardHeader><CardContent>{report.paid.length ? <ChartContainer config={chartConfig} className="h-64 w-full"><BarChart data={report.costs}><CartesianGrid vertical={false} /><XAxis dataKey="department" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} width={65} tickFormatter={value => count(Number(value))} /><ChartTooltip content={<ChartTooltipContent />} /><Bar dataKey="net" fill="var(--color-net)" radius={4} /></BarChart></ChartContainer> : <EmptyChart text="Mark a payrun paid to see department salary costs." />}</CardContent></Card>
-        <Card><CardHeader><CardTitle>Monthly net salary trends</CardTitle><CardDescription>Paid payslips grouped by payroll period end month</CardDescription></CardHeader><CardContent>{report.trends.length ? <ChartContainer config={chartConfig} className="h-64 w-full"><LineChart data={report.trends}><CartesianGrid vertical={false} /><XAxis dataKey="month" tickLine={false} axisLine={false} /><YAxis tickLine={false} axisLine={false} width={65} /><ChartTooltip content={<ChartTooltipContent />} /><Line dataKey="net" stroke="var(--color-net)" strokeWidth={2} dot={{ r: 4 }} /></LineChart></ChartContainer> : <EmptyChart text="Paid payroll history will appear here." />}</CardContent></Card>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card><CardHeader><CardTitle>Attendance overview</CardTitle><CardDescription>Up to today; scheduled employee-days</CardDescription></CardHeader><CardContent className="space-y-2"><Metric label="Present" value={count(report.attendance.present)} /><Metric label="Late arrivals" value={count(report.attendance.late)} /><Metric label="Absent" value={count(report.attendance.absent)} /><Metric label="Overtime" value={hoursLabel(report.attendance.overtimeMinutes)} /><Metric label="Missing check-outs" value={count(report.attendance.missing)} /><Metric label="Manually corrected" value={count(report.attendance.manualEdits)} /><p className="text-muted-foreground pt-2 text-xs">Coverage includes completed attendance or approved full-day leave. {report.attendance.withoutSchedule} employees have no schedule for this period.</p></CardContent></Card>
-        <Card><CardHeader><CardTitle>Time off overview</CardTitle><CardDescription>Approved charges within the period</CardDescription></CardHeader><CardContent className="space-y-2"><Metric label="Approved leave" value={`${count(report.approvedDays)} days / ${count(report.approvedHours)} hours`} /><Metric label="Unpaid leave" value={`${count(report.unpaidDays)} days / ${count(report.unpaidHours)} hours`} /><Metric label="Pending requests" value={count(report.pending)} /><Metric label="Remaining day balance" value={`${count(report.balanceDays)} days`} /><Metric label="Remaining hour balance" value={`${count(report.balanceHours)} hours`} /><p className="text-muted-foreground pt-2 text-xs">Balances use approved allocations valid at period end. Day and hour balances are kept separate.</p></CardContent></Card>
-        <Card><CardHeader><CardTitle>Payroll status</CardTitle><CardDescription>Payruns overlapping the selected period</CardDescription></CardHeader><CardContent className="space-y-2">{Object.entries(PAYRUN_STATUSES).map(([status, label]) => <Metric key={status} label={label} value={count(report.runs.filter(run => run.status === status).length)} />)}<Metric label="Employees needing contract review" value={count(report.noContract)} /></CardContent></Card>
-      </div>
-      <Card><CardHeader><CardTitle>Department breakdown</CardTitle><CardDescription>Current headcount and historical net salary paid</CardDescription></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="pb-3 font-medium">Department</th><th className="pb-3 text-right font-medium">Headcount</th><th className="pb-3 text-right font-medium">Net salary paid ({currency})</th></tr></thead><tbody>{report.costs.map(row => <tr key={row.department} className="border-b last:border-0"><td className="py-3">{row.department}</td><td className="py-3 text-right tabular-nums">{row.headcount}</td><td className="py-3 text-right tabular-nums">{money(row.net, currency)}</td></tr>)}</tbody></table>{!report.costs.length && <p className="text-muted-foreground py-8 text-center text-sm">No departments match these filters.</p>}</div><p className="text-muted-foreground pt-3 text-sm">{formatRecordCount(report.costs.length, 'department')}</p></CardContent></Card>
-      <Card><CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangleIcon className="size-4" />Operational alerts</CardTitle><CardDescription>Missing bank information, duplicate payslips and contract attention items</CardDescription></CardHeader><CardContent className="space-y-2">{report.warnings.map((warning, index) => <div key={`${warning.runId}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"><span>{warning.message}</span>{permissions.canRead && <Link href={'/payroll/' + warning.runId} className="text-primary hover:underline">{warning.runName}</Link>}</div>)}{report.noContract > 0 && <p className="rounded-lg border p-3 text-sm">{report.noContract} employees need a single active contract covering this full period. Review <Link href="/contracts" className="text-primary hover:underline">Contracts</Link> before creating payroll.</p>}{!report.warnings.length && !report.noContract && <p className="text-muted-foreground text-sm">No payroll warnings for these filters.</p>}</CardContent></Card>
-      <p className="text-muted-foreground text-xs">Amounts include full payslips whose periods overlap the selected range; they are not prorated again. Salary totals use the selected currency only.</p>
-    </>}
-  </div>
+  return <DashboardView
+    title="HR & payroll reports"
+    description="Salary, attendance and leave reports from your connected records."
+    renderContent={(data, canReadPayroll) => <ReportContent data={data} canReadPayroll={canReadPayroll} />}
+  />
 }
-function Filter({ label, id, children }: { label: string; id: string; children: React.ReactNode }) { return <div className="grid gap-1.5"><label htmlFor={id} className="text-muted-foreground text-xs">{label}</label>{children}</div> }
-function Kpi({ title, value, detail, icon: Icon }: { title: string; value: string; detail: string; icon: typeof WalletIcon }) { return <Card className="gap-2 py-4"><CardContent><div className="text-muted-foreground flex items-center justify-between gap-2 text-xs"><span>{title}</span><Icon className="size-4 shrink-0" /></div><div className="mt-3 break-words text-xl font-semibold tabular-nums">{value}</div><p className="text-muted-foreground mt-1 text-xs">{detail}</p></CardContent></Card> }
-function Metric({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-3 text-sm"><span className="text-muted-foreground">{label}</span><span className="text-right font-medium tabular-nums">{value}</span></div> }
-function EmptyChart({ text }: { text: string }) { return <div className="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed px-6 text-center text-sm">{text}</div> }
+
+function ReportContent({ data, canReadPayroll }: { data: DashboardData; canReadPayroll: boolean }) {
+  const [search, setSearch] = useState('')
+  const query = search.trim().toLowerCase()
+  const departments = data.departments.filter(row => row.department.toLowerCase().includes(query))
+  const statuses = { draft: 'Draft', computed: 'Computed', validated: 'Validated', paid: 'Paid' }
+  const alerts = data.alerts.filter(alert => alert.count > 0 && (
+    alert.code !== 'duplicate_payslip' || data.period.startDate.slice(0, 7) === data.period.endDate.slice(0, 7)
+  ))
+
+  return <>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <Kpi title="Net salary paid" value={money(data.totals.netPaid, data.currency)} detail={`${number(data.totals.statusCounts.paid)} paid payslips`} />
+      <Kpi title="Payslips generated" value={number(data.totals.payslips)} detail="All statuses in the selected period" />
+      <Kpi title="Average paid payslip" value={money(data.averageNet, data.currency)} detail="Net paid divided by paid payslips" />
+      <Kpi title="Approved leave" value={`${number(data.timeOff.approvedDays)} days`} detail={`${number(data.timeOff.approvedHours)} hours recorded separately`} />
+      <Kpi title="Present share of records" value={data.attendance.coverage === null ? '—' : `${number(data.attendance.coverage)}%`} detail={`${number(data.attendance.present)} of ${number(data.attendance.records)} recorded entries`} />
+    </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel title="Salary cost by department" description={`Net salary paid within the selected period · ${data.currency}`}>
+        <DepartmentChart data={data.departments} metric="net" currency={data.currency} />
+      </Panel>
+      <Panel title="Monthly net salary paid" description={`12 months ending ${data.period.endDate.slice(0, 7)} · grouped by payroll end month`}>
+        {data.trends.some(row => row.payslips > 0)
+          ? <PayrollTrend data={data.trends} currency={data.currency} endDate={data.period.endDate} />
+          : <EmptyChart>No paid payroll in this 12-month window.</EmptyChart>}
+      </Panel>
+    </div>
+    <div className="grid gap-4 lg:grid-cols-3">
+      <Panel title="Attendance overview" description="Recorded attendance within the selected dates">
+        <div className="space-y-3">
+          <Metric label="Present" value={number(data.attendance.present)} />
+          <Metric label="Absent" value={number(data.attendance.absent)} />
+          <Metric label="Incomplete / open" value={number(data.attendance.incomplete)} />
+          <Metric label="Worked hours" value={number(data.attendance.workedHours)} />
+          <Metric label="Overtime hours" value={number(data.attendance.overtimeHours)} />
+          <Metric label="Checked in without check-out" value={number(data.attendance.missingCheckOuts)} />
+          <Metric label="Manually corrected" value={number(data.attendance.manualEdits)} />
+          <p className="text-muted-foreground text-xs">Open records may include ongoing shifts. These counts measure recorded attendance, not coverage against a work schedule.</p>
+        </div>
+      </Panel>
+      <Panel title="Time off overview" description="Approved charges within the selected dates">
+        <div className="space-y-3">
+          <Metric label="Approved days" value={number(data.timeOff.approvedDays)} />
+          <Metric label="Approved hours" value={number(data.timeOff.approvedHours)} />
+          <Metric label="Unpaid days" value={number(data.timeOff.unpaidDays)} />
+          <Metric label="Unpaid hours" value={number(data.timeOff.unpaidHours)} />
+          <Metric label="Pending requests in period" value={number(data.timeOff.pendingRequests)} />
+          <Metric label="Remaining day balance" value={number(data.timeOff.remainingDays)} />
+          <Metric label="Remaining hour balance" value={number(data.timeOff.remainingHours)} />
+          <p className="text-muted-foreground text-xs">Balances are measured at period end. Days and hours are separate units.</p>
+        </div>
+      </Panel>
+      <Panel title="Payroll status" description="Company-wide payruns overlapping the period">
+        <div className="space-y-3">
+          {Object.entries(statuses).map(([status, label]) => <Metric key={status} label={label} value={number(data.payrunStatusCounts[status as keyof typeof statuses])} />)}
+          <Metric label="Filtered paid employees" value={number(data.totals.employeesPaid)} />
+          <Metric label="Filtered gross salary paid" value={money(data.totals.grossPaid, data.currency)} />
+          <Metric label="Deductions & contributions" value={money(data.totals.deductionsPaid, data.currency)} />
+          <p className="text-muted-foreground text-xs">Payrun counts are company-wide. Salary amounts follow the department and currency filters.</p>
+          {canReadPayroll && <Link href="/payroll" className="text-primary inline-block text-sm hover:underline">View payruns</Link>}
+        </div>
+      </Panel>
+    </div>
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3"><CardTitle>Department breakdown</CardTitle><TableSearch value={search} onValueChange={setSearch} placeholder="Search departments…" /></div>
+        <CardDescription>Current active headcount and payroll in the selected period</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader><TableRow><TableHead>Department</TableHead><TableHead className="text-right">Active employees</TableHead><TableHead className="text-right">Payslips</TableHead><TableHead className="text-right">Gross paid ({data.currency})</TableHead><TableHead className="text-right">Net paid ({data.currency})</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {departments.map(row => <TableRow key={row.department}><TableCell className="font-medium">{row.department}</TableCell><TableCell className="text-right tabular-nums">{number(row.headcount)}</TableCell><TableCell className="text-right tabular-nums">{number(row.payslips)}</TableCell><TableCell className="text-right tabular-nums">{money(row.gross, data.currency)}</TableCell><TableCell className="text-right tabular-nums">{money(row.net, data.currency)}</TableCell></TableRow>)}
+            {!departments.length && <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No departments match your search and filters.</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+        <p className="text-muted-foreground mt-3 text-sm">{number(departments.length)} department{departments.length === 1 ? '' : 's'}</p>
+      </CardContent>
+    </Card>
+    <Panel title="Operational review" description="Contract coverage, payroll checks and saved warnings">
+      <div className="space-y-3">
+        {alerts.map(alert => <div key={alert.code} className="rounded-lg border p-3 text-sm">
+          <p>{alert.code === 'duplicate_payslip' ? `${number(alert.count)} employees have multiple payslips in the selected period.` : alert.message}</p>
+          {alert.code === 'duplicate_payslip' && <p className="text-muted-foreground mt-1 text-xs">Review payroll dates before treating these as duplicates.</p>}
+          {alert.code === 'missing_contract' && <p className="text-muted-foreground mt-1 text-xs">A contract change within the selection can cause this; check coverage for the actual payroll dates.</p>}
+          {alert.code === 'unvalidated_payrun' && <p className="text-muted-foreground mt-1 text-xs">This count is company-wide.</p>}
+        </div>)}
+        {data.warnings.length > 0 && <details className="rounded-lg border p-3"><summary className="cursor-pointer text-sm font-medium">{number(data.warnings.length)} saved company-wide payroll warnings</summary><div className="mt-3 max-h-64 space-y-3 overflow-y-auto">{data.warnings.slice(0, 10).map((warning, index) => <div key={`${warning.payrunId}-${index}`} className="text-sm"><p>{warning.message}</p>{canReadPayroll && <Link href={`/payroll/${encodeURIComponent(warning.payrunId)}`} className="text-primary text-xs hover:underline">{warning.payrunName}</Link>}</div>)}</div>{data.warnings.length > 10 && <p className="text-muted-foreground mt-3 text-xs">Showing the first 10. Open a payrun for its full warning list.</p>}</details>}
+        {!alerts.length && !data.warnings.length && <p className="text-muted-foreground text-sm">No operational warnings reported for this period.</p>}
+      </div>
+    </Panel>
+    <p className="text-muted-foreground text-xs">Period: {data.period.startDate}–{data.period.endDate}. Salary totals include full paid payslips overlapping these dates in {data.currency}; amounts are not prorated. The trend uses its own 12-month window. Headcount is a current snapshot. Zero paid amounts do not mean no salary is owed.</p>
+  </>
+}
+
+function Panel({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return <Card><CardHeader><CardTitle>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader><CardContent>{children}</CardContent></Card>
+}
+function Kpi({ title, value, detail }: { title: string; value: string; detail: string }) {
+  return <Card><CardContent><p className="text-muted-foreground text-sm">{title}</p><p className="mt-3 break-words text-xl font-semibold tabular-nums">{value}</p><p className="text-muted-foreground mt-2 text-xs">{detail}</p></CardContent></Card>
+}
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-start justify-between gap-3 text-sm"><span className="text-muted-foreground">{label}</span><span className="text-right font-medium tabular-nums">{value}</span></div>
+}
