@@ -1,5 +1,8 @@
 # Payroll email delivery
 
+For the password reset code email, which shares this SMTP configuration but runs
+on its own queue and worker, see [PASSWORD-RESET.md](PASSWORD-RESET.md).
+
 The API queues payslips; a separate worker generates their PDFs and sends them.
 From `odoo-server`, start PostgreSQL and Redis, then use either:
 

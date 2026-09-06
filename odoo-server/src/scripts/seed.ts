@@ -1,24 +1,3 @@
-/**
- * One-shot demo seed.
- *
- * Fills every module the API exposes -- accounts, org chart, contracts, half a
- * year of attendance, leave configuration and history, the payroll rule book,
- * and payruns walked through the real compute/validate/pay lifecycle -- so a
- * fresh database opens as a company mid-operation rather than as empty screens.
- *
- * Payroll is produced by calling the payroll service rather than by inserting
- * payslip rows: the figures, lines and warnings then match exactly what the
- * application would have calculated, and nothing can drift from the engine.
- *
- * Every generated value comes from one seeded PRNG, so re-running the script
- * reproduces the same company. It TRUNCATEs the module tables first (roles and
- * permissions are owned by the migrations and are left alone), which makes it
- * safe to re-run but destructive to anything already there -- it is a demo
- * seed, not a migration.
- *
- *   npm run seed
- */
-
 import bcrypt from "bcryptjs";
 import { Queue } from "bullmq";
 import { seedContract } from "./lib/seed-contract";

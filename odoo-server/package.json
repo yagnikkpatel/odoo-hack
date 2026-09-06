@@ -16,8 +16,11 @@
     "worker:attendance": "tsx src/workers/markAbsentees.worker.ts",
     "worker:payroll": "tsx src/workers/payslipEmail.worker.ts",
     "worker:payroll:prod": "node dist/workers/payslipEmail.worker.js",
+    "worker:auth": "tsx src/workers/authEmail.worker.ts",
+    "worker:auth:prod": "node dist/workers/authEmail.worker.js",
     "dev:all": "node scripts/dev-with-mail.cjs",
-    "test:mail": "node scripts/test-mailing.cjs"
+    "test:mail": "node scripts/test-mailing.cjs",
+    "test:password-reset": "node scripts/test-password-reset.cjs"
   },
   "keywords": [],
   "author": "",

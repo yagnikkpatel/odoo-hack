@@ -33,6 +33,7 @@ export type UserRecord = {
 
 export type UserAuthRecord = {
   id: string;
+  name: string;
   email: string;
   role: UserRole;
   status: UserStatus;

@@ -34,13 +34,14 @@ export const env = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "30d",
   redisUrl: checkRequiredEnvVariables("REDIS_URL"),
   cacheTtlSeconds: Number(process.env.CACHE_TTL_SECONDS ?? 60),
-  passwordResetOtp: process.env.PASSWORD_RESET_OTP ?? "123456",
-  passwordResetOtpTtlSeconds: Number(
-    process.env.PASSWORD_RESET_OTP_TTL_SECONDS ?? 600,
-  ),
-  passwordResetTokenTtlSeconds: Number(
-    process.env.PASSWORD_RESET_TOKEN_TTL_SECONDS ?? 600,
-  ),
+  // Password reset OTPs are generated per request and mailed over SMTP; there is
+  // no fixed code to configure.
+  passwordResetOtpTtlSeconds: boundedNumber("PASSWORD_RESET_OTP_TTL_SECONDS", 600, 60, 3600),
+  passwordResetTokenTtlSeconds: boundedNumber("PASSWORD_RESET_TOKEN_TTL_SECONDS", 600, 60, 3600),
+  // A wrong code burns one of these; the OTP is discarded once they run out, so
+  // guessing costs a new email rather than more tries.
+  passwordResetOtpMaxAttempts: boundedNumber("PASSWORD_RESET_OTP_MAX_ATTEMPTS", 5, 1, 20),
+  passwordResetResendCooldownSeconds: boundedNumber("PASSWORD_RESET_RESEND_COOLDOWN_SECONDS", 60, 0, 3600),
   // Optional payroll delivery settings; normal payroll works without SMTP.
   smtpHost: process.env.SMTP_HOST ?? "",
   smtpPort: Number(process.env.SMTP_PORT ?? 587),

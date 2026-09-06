@@ -48,7 +48,7 @@ export async function findAuthUserByEmail(
   email: string,
 ): Promise<UserAuthRecord | null> {
   const result = await pool.query<UserAuthRecord>(
-    `SELECT u.id, u.email, r.name AS role, u.status, u.password_hash
+    `SELECT u.id, u.name, u.email, r.name AS role, u.status, u.password_hash
      FROM users u
      JOIN roles r ON r.id = u.role_id
      WHERE u.email = $1`,

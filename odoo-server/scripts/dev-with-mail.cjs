@@ -1,5 +1,5 @@
 const { spawn } = require('node:child_process');
-const children = ['dev', 'worker:payroll'].map(command =>
+const children = ['dev', 'worker:payroll', 'worker:auth'].map(command =>
   spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', command], { stdio: 'inherit', detached: process.platform !== 'win32' }));
 let stopping = false;
 function stop(code = 0) {
