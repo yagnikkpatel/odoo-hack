@@ -28,12 +28,12 @@ export function AuthBackdrop({ children }: AuthBackdropProps) {
       className="group/backdrop bg-background relative isolate flex min-h-svh flex-col overflow-hidden"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-30 scale-105">
-        {/* Original NexaCRM decorative background: intentionally not content imagery. */}
+        {/* Static dashboard preview behind the sign-in modal. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/dashboards-1.webp"
+          src="/images/login-dashboard.png"
           alt=""
-          className="size-full object-cover opacity-90 blur-[7px] saturate-[0.3]"
+          className="size-full object-cover opacity-90 blur-[16px] saturate-[0.3]"
         />
       </div>
 
@@ -48,7 +48,7 @@ export function AuthBackdrop({ children }: AuthBackdropProps) {
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/dashboards-1.webp" alt="" className="size-full object-cover" />
+        <img src="/images/login-dashboard.png" alt="" className="size-full object-cover" />
       </div>
 
       {children}
