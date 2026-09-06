@@ -7,7 +7,7 @@ const printable = (value: string) => value.replace(/[\u2010-\u2015]/g, '-').repl
 const amount = (value: number, currency: string) => `${currency} ${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 export const payslipFilename = (slip: Payslip) => `payslip-${slip.employeeName.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || slip.employeeId}-${slip.startDate}.pdf`
 
-export async function generatePayslipPdf(slip: Payslip, run: Payrun): Promise<Uint8Array> {
+export async function generatePayslipPdf(slip: Payslip, run: Pick<Payrun, 'name'>): Promise<Uint8Array> {
   if (!slip.lines.length || slip.status === 'draft') throw new Error('Compute this payslip before printing it.')
   const document = await PDFDocument.create()
   document.setTitle(`Payslip - ${slip.employeeName} - ${slip.startDate}`)
@@ -41,7 +41,7 @@ export async function generatePayslipPdf(slip: Payslip, run: Payrun): Promise<Ui
   const fields = [
     ['Employee ID', slip.employeeId], ['Department', slip.department || 'Not assigned'],
     ['Payrun', run.name], ['Period', `${slip.startDate} to ${slip.endDate}`],
-    ['Salary structure', slip.structureName], ['Contract', slip.contractSnapshot?.name || 'Unavailable'],
+    ['Salary structure', slip.structureName], ['Contract', slip.contractSnapshot ? ('name' in slip.contractSnapshot ? slip.contractSnapshot.name : slip.contractSnapshot.id) : 'Unavailable'],
     ['Worked days / hours', `${slip.workedDays} days / ${slip.workedHours.toFixed(2)} hours`],
     ['Scheduled days / hours', `${slip.expectedDays} days / ${slip.expectedHours.toFixed(2)} hours`],
   ]
@@ -87,7 +87,7 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
 
-export async function downloadPayslipPdf(slip: Payslip, run: Payrun) {
+export async function downloadPayslipPdf(slip: Payslip, run: Pick<Payrun, 'name'>) {
   const bytes = await generatePayslipPdf(slip, run)
   downloadBlob(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), payslipFilename(slip))
 }

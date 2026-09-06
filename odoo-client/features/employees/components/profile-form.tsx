@@ -200,8 +200,8 @@ export default function ProfileForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4" aria-busy={pending}>
-      <fieldset disabled={pending} className="space-y-4">
+    <form onSubmit={submit} className="min-w-0 space-y-4" aria-busy={pending}>
+      <fieldset disabled={pending} className="min-w-0 space-y-4">
         {account && !employee && (
           <div className="bg-muted rounded-lg p-3 text-sm">
             <p className="font-medium">{account.name}</p>
@@ -213,7 +213,7 @@ export default function ProfileForm({
           </div>
         )}
         {!employee && !account && (
-          <div className="grid gap-2">
+          <div className="grid min-w-0 gap-2">
             <Label htmlFor={`${formId}-account`}>Employee account</Label>
             <SearchableSelect
               id={`${formId}-account`}
@@ -265,7 +265,7 @@ export default function ProfileForm({
         )}
         <div className="grid gap-4 sm:grid-cols-2">
           {profileFields.map((field) => (
-            <div key={field.name} className="grid gap-2">
+            <div key={field.name} className="grid min-w-0 gap-2">
               <Label htmlFor={`${formId}-${field.name}`}>{field.label}</Label>
               <Input
                 id={`${formId}-${field.name}`}
@@ -281,7 +281,7 @@ export default function ProfileForm({
               />
             </div>
           ))}
-          <div className="grid content-start gap-2">
+          <div className="grid min-w-0 content-start gap-2">
             <Label htmlFor={`${formId}-manager`}>Manager</Label>
             <SearchableSelect
               id={`${formId}-manager`}

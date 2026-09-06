@@ -41,6 +41,16 @@ export const env = {
   passwordResetTokenTtlSeconds: Number(
     process.env.PASSWORD_RESET_TOKEN_TTL_SECONDS ?? 600,
   ),
+  // Optional payroll delivery settings; normal payroll works without SMTP.
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: Number(process.env.SMTP_PORT ?? 587),
+  smtpSecure: process.env.SMTP_SECURE === "true",
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPassword: process.env.SMTP_PASSWORD ?? "",
+  smtpFromName: process.env.SMTP_FROM_NAME ?? "PeoplePay360 Payroll",
+  smtpFromEmail: process.env.SMTP_FROM_EMAIL ?? process.env.SMTP_USER ?? "",
+  smtpMaxConnections: boundedNumber("SMTP_MAX_CONNECTIONS", 3, 1, 20),
+  smtpMessagesPerSecond: boundedNumber("SMTP_MESSAGES_PER_SECOND", 5, 1, 100),
   // Preserve the recovered verification threshold and GPS allowance defaults.
   // Tighten GPS policy explicitly for a deployment after testing its devices.
   faceMatchThreshold: boundedNumber("FACE_MATCH_THRESHOLD", 0.5, 0.1, 1),
@@ -48,3 +58,5 @@ export const env = {
   locationMaxAccuracyM: boundedNumber("ATTENDANCE_LOCATION_MAX_ACCURACY_M", 1000, 1, 10000),
   attendanceStoreSelfies: process.env.ATTENDANCE_STORE_SELFIES !== "false",
 } as const;
+
+export const isSmtpConfigured = Boolean(env.smtpHost && env.smtpUser && env.smtpPassword && env.smtpFromEmail);

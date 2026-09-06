@@ -97,7 +97,7 @@ export default function PayslipTable({
     const store = usePayrollStore.getState()
     try {
       // Sequential on purpose: each delete reloads operations, and the API rejects a locked payslip.
-      for (const slip of selected) await store.removePayslip(slip.id)
+      for (const slip of selected) { const result = await store.removePayslip(slip.id); if (!result.ok) throw new Error(result.error) }
       table.resetRowSelection()
       setConfirming(false)
     } catch (cause) {

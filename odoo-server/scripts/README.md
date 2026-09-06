@@ -1,35 +1,33 @@
-# Database seeds
+# Database seed
 
-Run commands from `odoo-server` with `.env` configured. Apply the current schema
-first:
+From `odoo-server`, configure `.env`, then run:
 
 ```sh
 npm run migrate
+npm run seed
 ```
 
-For individual modules, run these in dependency order:
+`npm run seed` is the single complete demo seed. `seed:demo` is a compatibility
+alias for that same command. The old individual module seeds have been removed.
 
-```sh
-npm run seed             # Admin from SEED_ADMIN_* environment variables
-npm run seed:dummy       # Employee accounts and profiles
-npm run seed:contracts   # Contracts plus contract_history creation entries
-npm run seed:attendance  # Attendance for existing employees
-npm run seed:time-off    # Leave types, allocations, requests and decision history
-npm run seed:payroll     # Salary rules and structures, including quantity/active
-```
+The seed clears all application records and rebuilds users, profiles, contracts
+and their history, attendance, leave types/allocations/requests, salary rules,
+structures, bank accounts, payruns and computed payslips. Migration-owned roles,
+permissions and schema are preserved. PostgreSQL and Redis must be running.
+Stop email workers before resetting; an active delivery makes the seed abort.
 
-The admin, dummy-user and payroll seeds reuse existing records. The contracts
-and time-off seeds add sample records on each run. Attendance skips existing
-employee/date pairs. Payroll seeding restores the sample rules and structure
-memberships; it does not generate payslips.
+Payroll runs through the real compute/validate/pay services. Historical months
+are paid, the second-most-recent month is validated, the last completed month is
+computed, and the current month is draft. All payroll participants have complete
+bank details, one applicable running contract and settled attendance. Salary
+structures contain their formula dependencies. The seed fails on payroll
+warnings rather than hiding or deleting warnings from computed records.
 
-For a complete demo, use `npm run seed:demo` instead. **This clears existing
-application data**, including contract history, and rebuilds accounts, profiles,
-contracts, audit entries, attendance, time off, payroll and delivery records.
-It requires PostgreSQL and Redis. Payroll is computed through the application
-service. Seeded contract history uses the current snapshot format and a null
-actor to identify script-generated records.
+No email deliveries or sent/failed/queued statuses are fabricated. Existing
+payslip email jobs, application caches and login sessions are cleared during the
+reset. Other workers' queues are left alone. The seed never sends email.
 
-The optional `node scripts/seed-time-off.cjs` seeds through a running API instead
-of direct SQL. It uses `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`, skips when
-leave types exist, and accepts `--reset` to delete the existing time-off data.
+All demo accounts use `SEED_DEMO_PASSWORD` (default `00000000`). Sign in again
+after reseeding. Login addresses include `admin@peoplepay360.com`,
+`hr@peoplepay360.com`, `payroll@peoplepay360.com`,
+`payroll.user@peoplepay360.com` and `employee@peoplepay360.com`.

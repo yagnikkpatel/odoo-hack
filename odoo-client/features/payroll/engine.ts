@@ -9,7 +9,7 @@ import { slotMinutes } from '@/features/working-schedules/types'
 import type { TimeOffData } from '@/features/time-off/model'
 import type { Payrun, Payslip, SalaryRule, SalaryStructure, PayrollWarning } from './types'
 export const round = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-export const FORMULA_VARIABLES = ['WAGE', 'WORKED_DAYS', 'WORKED_HOURS', 'EXPECTED_DAYS', 'EXPECTED_HOURS', 'UNPAID_DAYS', 'PERIOD_DAYS']
+export const FORMULA_VARIABLES = ['WAGE', 'WORKED_DAYS', 'WORKED_HOURS', 'OVERTIME_HOURS', 'EXPECTED_DAYS', 'EXPECTED_HOURS', 'UNPAID_DAYS', 'PERIOD_DAYS']
 /** Small arithmetic parser; never executes JavaScript or resolves object properties. */
 export function evaluateFormula(source: string, variables: Record<string, number>): number {
   const tokens = source.match(/(?:\d+(?:\.\d*)?|\.\d+)|[A-Za-z_][A-Za-z_0-9]*|[()+\-*/]/g) || []

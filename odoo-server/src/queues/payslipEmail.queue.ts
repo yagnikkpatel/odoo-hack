@@ -39,7 +39,7 @@ export function isSendPayslipJob(
 export const payslipEmailQueue = new Queue<PayslipEmailJobData>(
   PAYSLIP_EMAIL_QUEUE,
   {
-    connection: bullmqConnection,
+    connection: { ...bullmqConnection, maxRetriesPerRequest: 1, enableOfflineQueue: false },
     defaultJobOptions: {
       // An SMTP refusal is usually a throttle or a dropped connection, so the
       // retries are spaced widely enough for the provider to let the account
@@ -52,10 +52,13 @@ export const payslipEmailQueue = new Queue<PayslipEmailJobData>(
   },
 );
 
+payslipEmailQueue.on("error", (error) => logger.error({ err: error }, "payslip queue error"));
+
 export async function enqueuePayslipEmail(
   job: SendPayslipEmailJob,
+  jobId: string,
 ): Promise<string | null> {
-  const queued = await payslipEmailQueue.add(SEND_PAYSLIP_JOB, job);
+  const queued = await payslipEmailQueue.add(SEND_PAYSLIP_JOB, job, { jobId });
 
   logger.info(
     {

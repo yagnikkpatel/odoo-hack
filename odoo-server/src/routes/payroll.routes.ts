@@ -1,3 +1,4 @@
+import { getEmailReadiness } from "../lib/payroll-email-readiness";
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requirePermission } from "../middlewares/permission.middleware";
@@ -34,6 +35,10 @@ import {
 export const payrollRouter = Router();
 
 payrollRouter.use(requireAuth);
+payrollRouter.get("/delivery-status", requirePermission("payslip:send"), async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ success: true, data: await getEmailReadiness() });
+});
 
 payrollRouter.get(
   "/dashboard",
@@ -124,7 +129,6 @@ payrollRouter.post(
 payrollRouter.get(
   "/payruns/:id",
   requirePermission("payrun:read"),
-  getPayrollDashboardHandler,
   getPayrunHandler,
 );
 

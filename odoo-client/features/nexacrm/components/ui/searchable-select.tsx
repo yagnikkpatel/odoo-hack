@@ -87,7 +87,7 @@ export default function SearchableSelect({
             aria-haspopup='dialog'
             disabled={disabled}
             variant='outline'
-            className={cn('h-8 w-full justify-between gap-1.5 rounded-lg px-2.5 text-sm font-normal', className)}
+            className={cn('h-8 w-full min-w-0 justify-between gap-1.5 rounded-lg px-2.5 text-sm font-normal', className)}
           />
         }
       >

@@ -15,11 +15,14 @@ export function RuleEditor({ rule, onClose, onSaved }: { rule?: SalaryRule; onCl
   const rules = usePayrollStore(state => state.rules)
   const [draft, setDraft] = useState<SalaryRuleInput>(rule ? { ...rule } : { name: '', code: '', category: 'allowance', sequence: Math.max(0, ...rules.map(item=>item.sequence)) + 10, method: 'fixed', amount: 0, percentage: 0, base: 'BASIC', formula: '', active: true })
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
   const set = (value: Partial<SalaryRuleInput>) => { setDraft(current => ({ ...current, ...value })); setError(null) }
   const earlierCodes = rules.filter(item => item.id !== rule?.id && item.active && item.sequence < draft.sequence).sort((a,b) => a.sequence-b.sequence).map(item => item.code)
-  return <EditorDialog title={rule ? 'Edit salary rule' : 'New salary rule'} description="Define a salary component and how it is calculated on payslips." onClose={onClose} error={error} onSubmit={event => {
+  return <EditorDialog title={rule ? 'Edit salary rule' : 'New salary rule'} description="Define a salary component and how it is calculated on payslips." onClose={onClose} pending={pending} error={error} onSubmit={async event => {
     event.preventDefault()
-    const result = usePayrollStore.getState().saveRule(draft, rule?.id)
+    setPending(true)
+    const result = await usePayrollStore.getState().saveRule(draft, rule?.id)
+    setPending(false)
     if (!result.ok) { setError(result.error); toast.error(result.error); return }
     toast.success('Salary rule saved'); onSaved(result.id); onClose()
   }}>
@@ -41,6 +44,7 @@ export function RuleEditor({ rule, onClose, onSaved }: { rule?: SalaryRule; onCl
 export function StructureEditor({ structure, onClose, onSaved }: { structure?: SalaryStructure; onClose: () => void; onSaved: (id: string) => void }) {
   const [draft,setDraft] = useState<SalaryStructureInput>(structure ? {...structure, ruleIds:[...structure.ruleIds]} : {name:'',description:'',active:true,ruleIds:[]})
   const [error,setError] = useState<string|null>(null)
+  const [pending, setPending] = useState(false)
   const [search,setSearch] = useState('')
   const [sequences,setSequences] = useState<Record<string,number>>({})
   const rules = usePayrollStore(state=>state.rules)
@@ -49,9 +53,11 @@ export function StructureEditor({ structure, onClose, onSaved }: { structure?: S
   const selectedRules = effectiveRules.filter(rule=>draft.ruleIds.includes(rule.id))
   const dependencyError = validateRules(selectedRules.filter(rule=>rule.active))
   const set = (value:Partial<SalaryStructureInput>)=> {setDraft(current=>({...current,...value}));setError(null)}
-  return <EditorDialog title={structure ? 'Edit salary structure' : 'New salary structure'} description="Choose the rules that a payrun uses to calculate employee payslips." onClose={onClose} error={error} onSubmit={event=>{
+  return <EditorDialog title={structure ? 'Edit salary structure' : 'New salary structure'} description="Choose the rules that a payrun uses to calculate employee payslips." onClose={onClose} pending={pending} error={error} onSubmit={async event=>{
     event.preventDefault()
-    const result=usePayrollStore.getState().saveStructure(draft,structure?.id,selectedRules.filter(rule=>Object.hasOwn(sequences,rule.id)))
+    setPending(true)
+    const result=await usePayrollStore.getState().saveStructure(draft,structure?.id,selectedRules.filter(rule=>Object.hasOwn(sequences,rule.id)))
+    setPending(false)
     if (!result.ok) {setError(result.error);toast.error(result.error);return}
     toast.success('Salary structure saved');onSaved(result.id);onClose()
   }}>

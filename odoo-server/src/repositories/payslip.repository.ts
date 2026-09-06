@@ -220,7 +220,7 @@ export async function findAllPayslips(query: {
     `SELECT COUNT(*) OVER()::int AS "total", ${PAYSLIP_COLUMNS}
      ${PAYSLIP_FROM}
      ${where}
-     ORDER BY slip.start_date DESC, slip.employee_name ASC
+     ORDER BY slip.start_date DESC, slip.employee_name ASC, slip.id ASC
      LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
     values,
   );

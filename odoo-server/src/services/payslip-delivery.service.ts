@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { getEmailReadiness } from "../lib/payroll-email-readiness";
 import { AppError } from "../errors/AppError";
 import { isSmtpConfigured } from "../config/env";
 import { isValidEmail } from "../lib/mailer";
@@ -7,14 +9,13 @@ import {
   findDeliveriesByPayrun,
   findDeliveryByPayslip,
   markDeliveryStatus,
-  recordDeliveryJob,
 } from "../repositories/payslipDelivery.repository";
 import { findPayrunById } from "../repositories/payrun.repository";
 import {
   findAllPayslips,
   findPayslipById,
 } from "../repositories/payslip.repository";
-import { enqueuePayslipEmail } from "../queues/payslipEmail.queue";
+import { enqueuePayslipEmail, payslipEmailQueue } from "../queues/payslipEmail.queue";
 import {
   DeliveryDispatchResult,
   DeliverySkip,
@@ -29,13 +30,15 @@ import {
  */
 const SENDABLE_PAYRUN_STATUSES = new Set(["validated", "paid"]);
 
-function requireSmtp(): void {
+async function requireSmtp(): Promise<void> {
   if (!isSmtpConfigured) {
     throw new AppError(
       503,
       "Email delivery is not configured. Set the SMTP variables on the server and start the payslip email worker.",
     );
   }
+  const readiness = await getEmailReadiness();
+  if (!readiness.available) throw new AppError(503, readiness.reason);
 }
 
 /** Resolves the address to use, or the reason this payslip cannot be sent. */
@@ -82,7 +85,9 @@ async function dispatch(
       continue;
     }
 
+    const jobId = randomUUID();
     const claimed = await claimDelivery({
+      jobId,
       payslipId: slip.id,
       payrunId,
       employeeId: slip.employeeId,
@@ -101,23 +106,27 @@ async function dispatch(
     }
 
     try {
-      const jobId = await enqueuePayslipEmail({
+      await enqueuePayslipEmail({
         payslipId: slip.id,
         payrunId,
         recipient: resolved.recipient,
         requestedBy,
-      });
-
-      if (jobId) {
-        await recordDeliveryJob(slip.id, jobId);
-      }
+      }, jobId);
 
       queued.push(claimed);
     } catch (error) {
-      // The row was claimed before the job was accepted, so releasing it here
-      // is what keeps a Redis outage from leaving a payslip stuck as 'queued'.
-      await markDeliveryStatus(slip.id, "failed", {
-        error: "Could not be queued for delivery. Try again.",
+      // A lost Redis reply does not prove enqueue failed. Keep an uncertain
+      // claim closed to re-sends until reconciliation can inspect the job.
+      let confirmedAbsent = false;
+      try {
+        if (await payslipEmailQueue.getJob(jobId)) {
+          queued.push(claimed);
+          continue;
+        }
+        confirmedAbsent = true;
+      } catch { /* Recovery will reconcile when Redis is available again. */ }
+      if (confirmedAbsent) await markDeliveryStatus(slip.id, "failed", {
+        jobId, error: "Could not be queued for delivery. Try again.",
       });
 
       logger.error(
@@ -128,7 +137,7 @@ async function dispatch(
       skipped.push({
         payslipId: slip.id,
         employeeName: slip.employeeName,
-        reason: "Could not be queued for delivery. Try again.",
+        reason: confirmedAbsent ? "Could not be queued for delivery. Try again." : "Queue confirmation is pending. Refresh delivery status before retrying.",
       });
     }
   }
@@ -148,7 +157,7 @@ export async function sendPayrunPayslips(
   },
   requestedBy?: string,
 ): Promise<DeliveryDispatchResult> {
-  requireSmtp();
+  await requireSmtp();
 
   const payrun = await findPayrunById(payrunId);
 
@@ -163,16 +172,27 @@ export async function sendPayrunPayslips(
     );
   }
 
-  const { rows } = await findAllPayslips({
-    limit: 500,
-    offset: 0,
-    payrunId,
-  });
-
-  const requested = input.payslipIds?.length ? new Set(input.payslipIds) : null;
-  const selected = requested
-    ? rows.filter((slip) => requested.has(slip.id))
-    : rows;
+  if (input.payslipIds && input.payslipIds.length === 0) {
+    throw new AppError(400, "Select at least one payslip.");
+  }
+  const rows: PayslipRecord[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await findAllPayslips({ limit: 500, offset, payrunId });
+    rows.push(...page.rows);
+    offset += page.rows.length;
+    if (offset >= page.total) break;
+    if (!page.rows.length) throw new AppError(409, "Payslips changed. Refresh and try again.");
+  }
+  const requested = input.payslipIds ? new Set(input.payslipIds) : null;
+  const selected = requested ? rows.filter((slip) => requested.has(slip.id)) : rows;
+  if (requested && selected.length !== requested.size) {
+    throw new AppError(400, "Some selected payslips do not belong to this payrun.");
+  }
+  const selectedIds = new Set(selected.map((slip) => slip.id));
+  if (input.recipients?.some((entry) => !selectedIds.has(entry.payslipId))) {
+    throw new AppError(400, "Recipient overrides must belong to selected payslips.");
+  }
 
   if (!selected.length) {
     throw new AppError(404, "No payslips were found to send for this payrun");
@@ -205,7 +225,7 @@ export async function sendPayslip(
   input: { email?: string },
   requestedBy?: string,
 ): Promise<DeliveryDispatchResult> {
-  requireSmtp();
+  await requireSmtp();
 
   const slip = await findPayslipById(payslipId);
 

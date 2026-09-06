@@ -18,6 +18,7 @@ import type {
   PayrunInput,
   SalaryRuleInput,
   SalaryStructureInput,
+  PayrollPagination,
 } from './types'
 
 async function request(path: string, options: RequestInit = {}) {
@@ -69,14 +70,29 @@ function search(params: URLSearchParams, value?: string) {
   return params
 }
 
+/** Follow every backend page so the existing table search covers the full collection. */
+export async function collectPayrollPages<T>(read: (offset: number) => Promise<{ items: T[]; pagination: PayrollPagination }>): Promise<T[]> {
+  const items: T[] = []
+  let offset = 0
+  for (;;) {
+    const page = await read(offset)
+    items.push(...page.items)
+    if (!page.pagination.hasMore) return items
+    if (!page.items.length || page.pagination.offset !== offset) throw new ApiError('Payroll pagination did not advance. Please retry.', 502)
+    offset += page.items.length
+  }
+}
+
 /**
  * Payroll configuration is small and every screen needs all of it at once --
  * a rule editor has to know the codes of every other rule, and a structure
  * lists its rules -- so these read the whole collection rather than a page.
  */
 export async function listSalaryRules(signal?: AbortSignal) {
-  const data = await request('/salary-rules?limit=200', { signal })
-  return collection(data, 'rules').map(mapSalaryRule)
+  return collectPayrollPages(async offset => {
+    const data = await request(`/salary-rules?limit=200&offset=${offset}`, { signal })
+    return { items: collection(data, 'rules').map(mapSalaryRule), pagination: mapPagination(requireRecord(data).pagination) }
+  })
 }
 
 export async function createSalaryRule(input: SalaryRuleInput) {
@@ -102,8 +118,10 @@ export async function deleteSalaryRule(id: string) {
 }
 
 export async function listSalaryStructures(signal?: AbortSignal) {
-  const data = await request('/salary-structures?limit=200', { signal })
-  return collection(data, 'structures').map(mapSalaryStructure)
+  return collectPayrollPages(async offset => {
+    const data = await request(`/salary-structures?limit=200&offset=${offset}`, { signal })
+    return { items: collection(data, 'structures').map(mapSalaryStructure), pagination: mapPagination(requireRecord(data).pagination) }
+  })
 }
 
 export async function createSalaryStructure(
@@ -234,11 +252,11 @@ export async function listEligibleEmployees(
   endDate: string,
   signal?: AbortSignal,
 ): Promise<PayrollEmployeeOption[]> {
-  const params = new URLSearchParams({ startDate, endDate, limit: '500' })
-  const data = await request(`/eligible-employees?${params.toString()}`, {
-    signal,
+  return collectPayrollPages(async offset => {
+    const params = new URLSearchParams({ startDate, endDate, limit: '500', offset: String(offset) })
+    const data = await request(`/eligible-employees?${params.toString()}`, { signal })
+    return { items: collection(data, 'employees').map(mapEmployeeOption), pagination: mapPagination(requireRecord(data).pagination) }
   })
-  return collection(data, 'employees').map(mapEmployeeOption)
 }
 
 export async function setBankAccount(employeeId: string, accountNumber: string) {
@@ -260,9 +278,29 @@ export async function sendPayrunPayslips(
     payslipIds?: string[]
     recipients?: { payslipId: string; email: string }[]
   } = {},
-) {
+): Promise<import('./types').DeliveryDispatch> {
+  requirePayrollId(payrunId)
+  options.payslipIds?.forEach(requirePayrollId)
+  options.recipients?.forEach(entry => requirePayrollId(entry.payslipId))
+  if (options.payslipIds && options.recipients?.some(entry => !options.payslipIds!.includes(entry.payslipId))) {
+    throw new ApiError('Recipient overrides must belong to selected payslips.', 400)
+  }
+  if (options.payslipIds && options.payslipIds.length > 500) {
+    const result: import('./types').DeliveryDispatch = { payrunId, queued: [], skipped: [] }
+    for (let offset = 0; offset < options.payslipIds.length; offset += 500) {
+      const payslipIds = options.payslipIds.slice(offset, offset + 500)
+      const batch = await sendPayrunPayslips(payrunId, {
+        payslipIds,
+        recipients: options.recipients?.filter(entry => payslipIds.includes(entry.payslipId)),
+      })
+      result.queued.push(...batch.queued)
+      result.skipped.push(...batch.skipped)
+    }
+    return result
+  }
   const body: Record<string, unknown> = {}
-  if (options.payslipIds?.length) {
+  if (options.payslipIds !== undefined) {
+    if (!options.payslipIds.length) throw new ApiError("Select at least one payslip.", 400)
     body.payslipIds = options.payslipIds.map(requirePayrollId)
   }
   if (options.recipients?.length) {
@@ -320,4 +358,12 @@ export async function getPayrollDashboard(
   return mapPayrollDashboard(
     await request(`/dashboard?${params.toString()}`, { signal }),
   )
+}
+
+export async function getEmailDeliveryReadiness(signal?: AbortSignal): Promise<{ available: boolean; reason: string }> {
+  const data = requireRecord(await request('/delivery-status', { signal }))
+  if (typeof data.available !== 'boolean' || typeof data.reason !== 'string') {
+    throw new ApiError('The email service returned an invalid status.', 502)
+  }
+  return { available: data.available, reason: data.reason }
 }

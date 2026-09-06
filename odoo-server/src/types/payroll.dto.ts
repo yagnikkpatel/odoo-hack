@@ -221,7 +221,7 @@ export const setBankAccountSchema = z.object({
  * employees whose payslip carries a wrong or missing one.
  */
 export const sendPayrunPayslipsSchema = z.object({
-  payslipIds: z.array(z.uuid()).max(500).optional(),
+  payslipIds: z.array(z.uuid()).min(1).max(500).optional(),
   recipients: z
     .array(
       z.object({

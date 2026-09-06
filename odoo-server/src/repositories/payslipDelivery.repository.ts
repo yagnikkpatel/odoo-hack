@@ -30,6 +30,7 @@ export type QueuedDelivery = {
   employeeId: string;
   recipient: string;
   queuedBy?: string;
+  jobId: string;
 };
 
 /**
@@ -43,15 +44,16 @@ export async function claimDelivery(
   const result = await pool.query<{ id: string }>(
     `INSERT INTO payslip_deliveries (
        payslip_id, payrun_id, employee_id, recipient, status, attempts,
-       error, message_id, queued_by, queued_at, sent_at, updated_at
+       error, message_id, job_id, queued_by, queued_at, sent_at, updated_at
      )
-     VALUES ($1, $2, $3, $4, 'queued', 0, '', '', $5, NOW(), NULL, NOW())
+     VALUES ($1, $2, $3, $4, 'queued', 0, '', '', $6, $5, NOW(), NULL, NOW())
      ON CONFLICT (payslip_id) DO UPDATE
        SET recipient = EXCLUDED.recipient,
            status = 'queued',
            attempts = 0,
            error = '',
            message_id = '',
+           job_id = EXCLUDED.job_id,
            queued_by = EXCLUDED.queued_by,
            queued_at = NOW(),
            sent_at = NULL,
@@ -64,6 +66,7 @@ export async function claimDelivery(
       delivery.employeeId,
       delivery.recipient,
       delivery.queuedBy ?? null,
+      delivery.jobId,
     ],
   );
 
@@ -74,40 +77,40 @@ export async function claimDelivery(
   return findDeliveryByPayslip(delivery.payslipId);
 }
 
-export async function recordDeliveryJob(
-  payslipId: string,
-  jobId: string,
-): Promise<void> {
-  await pool.query(
-    `UPDATE payslip_deliveries
-     SET job_id = $2, updated_at = NOW()
-     WHERE payslip_id = $1`,
-    [payslipId, jobId],
+/** Claim this exact queued attempt; a stalled job must never send twice. */
+export async function beginDelivery(payslipId: string, jobId: string, attempts: number): Promise<boolean> {
+  const result = await pool.query(
+    `UPDATE payslip_deliveries SET status = 'sending', attempts = $3, updated_at = NOW()
+     WHERE payslip_id = $1 AND job_id = $2 AND status = 'queued' RETURNING id`,
+    [payslipId, jobId, attempts],
   );
+  return Boolean(result.rowCount);
 }
 
 export async function markDeliveryStatus(
   payslipId: string,
   status: DeliveryStatus,
-  details: { attempts?: number; error?: string; messageId?: string } = {},
+  details: { jobId: string; attempts?: number; error?: string; messageId?: string },
 ): Promise<void> {
   await pool.query(
     `UPDATE payslip_deliveries
-     SET status = $2,
-         attempts = COALESCE($3, attempts),
-         error = COALESCE($4, error),
+     SET status = $2, attempts = COALESCE($3, attempts), error = COALESCE($4, error),
          message_id = COALESCE($5, message_id),
-         sent_at = CASE WHEN $2 = 'sent' THEN NOW() ELSE sent_at END,
-         updated_at = NOW()
-     WHERE payslip_id = $1`,
-    [
-      payslipId,
-      status,
-      details.attempts ?? null,
-      details.error ?? null,
-      details.messageId ?? null,
-    ],
+         sent_at = CASE WHEN $2 = 'sent' THEN NOW() ELSE sent_at END, updated_at = NOW()
+     WHERE payslip_id = $1 AND job_id = $6 AND status IN ('queued', 'sending')`,
+    [payslipId, status, details.attempts ?? null, details.error ?? null,
+      details.messageId ?? null, details.jobId],
   );
+}
+
+export async function findDeliveryAttempt(payslipId: string): Promise<{
+  jobId: string; status: DeliveryStatus;
+} | null> {
+  const result = await pool.query(
+    `SELECT job_id AS "jobId", status FROM payslip_deliveries WHERE payslip_id = $1`,
+    [payslipId],
+  );
+  return result.rows[0] ?? null;
 }
 
 export async function findDeliveryByPayslip(
@@ -134,23 +137,15 @@ export async function findDeliveriesByPayrun(
   return result.rows;
 }
 
-/**
- * Releases deliveries the worker can no longer be holding. A queue job lives in
- * Redis; if the worker dies mid-batch the rows it claimed would otherwise stay
- * 'sending' forever and block every re-send.
- */
-export async function expireStaleDeliveries(
-  olderThanMinutes: number,
-): Promise<number> {
+/** Candidates only: the caller must inspect Redis before releasing a job. */
+export async function findStaleDeliveries(olderThanMinutes: number): Promise<{
+  payslipId: string; jobId: string; status: DeliveryStatus;
+}[]> {
   const result = await pool.query(
-    `UPDATE payslip_deliveries
-     SET status = 'failed',
-         error = 'Delivery did not complete. Send this payslip again.',
-         updated_at = NOW()
-     WHERE status IN ('queued', 'sending')
-       AND queued_at < NOW() - ($1 || ' minutes')::interval`,
+    `SELECT payslip_id AS "payslipId", job_id AS "jobId", status
+     FROM payslip_deliveries WHERE status IN ('queued', 'sending')
+       AND updated_at < NOW() - ($1 || ' minutes')::interval`,
     [String(olderThanMinutes)],
   );
-
-  return result.rowCount ?? 0;
+  return result.rows;
 }
